@@ -1,0 +1,20 @@
+# جلب سجلات الأعطال من TestFlight
+name: Crash Logs
+on:
+  workflow_dispatch:
+env:
+  ASC_ISSUER_ID: ed50eb85-3437-4876-9fa3-1f3fcc29123a
+jobs:
+  crashes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          pip3 install --quiet pyjwt cryptography
+          mkdir -p "$RUNNER_TEMP/k"; printf '%s' "$ASC_KEY_P8" > "$RUNNER_TEMP/k/key.p8"
+          ASC_KEY_PATH="$RUNNER_TEMP/k/key.p8" python3 ci/fetch_crashes.py 6833357928
+          rm -rf "$RUNNER_TEMP/k"
