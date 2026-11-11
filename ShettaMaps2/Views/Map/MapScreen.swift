@@ -16,6 +16,10 @@ struct MapScreen: View {
     @EnvironmentObject private var community: CommunityService
     @AppStorage(SettingsKeys.showLandmarks) private var showLandmarks = true
     @AppStorage(SettingsKeys.showCommunity) private var showCommunity = true
+    @AppStorage(SettingsKeys.landmarkKinds) private var landmarkKindsRaw = ""
+    @State private var nameFilter = ""
+    @State private var showFilterField = false
+    @FocusState private var filterFocused: Bool
     @Query(sort: \SavedPlace.name) private var places: [SavedPlace]
 
     @State private var showPickedOptions = false
@@ -32,9 +36,13 @@ struct MapScreen: View {
 
     /// أسماء الأماكن المعروفة (OpenStreetMap) ضمن المنطقة الظاهرة، عند تكبير كافٍ.
     private var landmarkPins: [MapOverlaySet.Pin] {
+        let kinds = PlaceKind.decodeSet(landmarkKindsRaw)
+        let filtered = !kinds.isEmpty || !nameFilter.isEmpty
+        // عند الفلترة تقل الأسماء، فيُسمح بعرضها على مساحة أوسع
         guard showLandmarks, let b = mapManager.visibleBounds, let r = mapManager.visibleRegion,
-              r.span.latitudeDelta < 3 else { return [] }
-        return search.entries(sw: b.sw, ne: b.ne, limit: r.span.latitudeDelta < 0.5 ? 150 : 70).map {
+              r.span.latitudeDelta < (filtered ? 8 : 3) else { return [] }
+        return search.entries(sw: b.sw, ne: b.ne, limit: r.span.latitudeDelta < 0.5 ? 150 : 70,
+                              kinds: kinds, nameFilter: nameFilter).map {
             .init(id: "g-\($0.id)", title: $0.name, subtitle: $0.kind.title, coordinate: .init(latitude: $0.lat, longitude: $0.lon),
                   kind: .landmark, symbol: $0.kind.icon)
         }
@@ -54,6 +62,7 @@ struct MapScreen: View {
 
             VStack(spacing: 8) {
                 StatusHUD()
+                if showLandmarks && !navigation.snapshot.isNavigating && !mapManager.isPickingPoint { placeFilterBar }
                 banners
                 if navigation.snapshot.isNavigating { NavigationPanel() }
                 if recorder.isActive { RecordingPanel(onStop: { showStopRecordingConfirm = true }) }
@@ -208,6 +217,63 @@ struct MapScreen: View {
         }
         if let msg = location.lastError, location.isAuthorized {
             Banner(icon: "exclamationmark.circle", text: msg, tint: .orange)
+        }
+    }
+
+    // MARK: - فلتر الأماكن المعروفة
+
+    private var selectedKinds: Set<PlaceKind> { PlaceKind.decodeSet(landmarkKindsRaw) }
+
+    private func toggleKind(_ k: PlaceKind) {
+        var s = selectedKinds
+        if s.contains(k) { s.remove(k) } else { s.insert(k) }
+        if s.count == PlaceKind.mapKinds.count { s = [] }
+        landmarkKindsRaw = PlaceKind.encodeSet(s)
+    }
+
+    /// شريط فلترة أسماء الأماكن الظاهرة على الخريطة حسب النوع أو الاسم.
+    private var placeFilterBar: some View {
+        VStack(spacing: 6) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    Button { showFilterField.toggle(); filterFocused = showFilterField; if !showFilterField { nameFilter = "" } } label: {
+                        Image(systemName: nameFilter.isEmpty ? "line.3.horizontal.decrease" : "line.3.horizontal.decrease.circle.fill")
+                            .font(.footnote.weight(.semibold))
+                            .frame(width: 34, height: 32)
+                            .background(Capsule().fill(showFilterField || !nameFilter.isEmpty ? Theme.desertOrange : Theme.sand))
+                            .foregroundStyle(showFilterField || !nameFilter.isEmpty ? Color.white : Color.primary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("فلترة الأسماء على الخريطة")
+                    FilterChip(title: "الكل", icon: "square.grid.2x2", selected: selectedKinds.isEmpty) { landmarkKindsRaw = "" }
+                    ForEach(PlaceKind.mapKinds) { k in
+                        FilterChip(title: k.title, icon: k.icon, selected: selectedKinds.contains(k)) { toggleKind(k) }
+                    }
+                }
+                .padding(.horizontal, 2)
+            }
+            if showFilterField {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                    TextField("اكتب اسم المكان لإظهاره على الخريطة", text: $nameFilter)
+                        .focused($filterFocused)
+                        .submitLabel(.done)
+                        .autocorrectionDisabled()
+                    if !nameFilter.isEmpty {
+                        Button { nameFilter = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
+                            .accessibilityLabel("مسح")
+                    }
+                    Button("بحث شامل") { router.pendingSearchQuery = nameFilter; router.mapSheet = .search }
+                        .font(.footnote.weight(.semibold))
+                }
+                .padding(.horizontal, 12).padding(.vertical, 9)
+                .background(RoundedRectangle(cornerRadius: 12).fill(.regularMaterial))
+            }
+            if (!selectedKinds.isEmpty || !nameFilter.isEmpty), let r = mapManager.visibleRegion, r.span.latitudeDelta >= 8 {
+                Text("قرّب الخريطة لعرض الأماكن المطابقة")
+                    .font(.caption).padding(.horizontal, 10).padding(.vertical, 4)
+                    .background(Capsule().fill(.regularMaterial))
+            }
         }
     }
 

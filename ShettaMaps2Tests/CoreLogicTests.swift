@@ -248,3 +248,17 @@ final class SearchNormalizationTests: XCTestCase {
         XCTAssertEqual(entries[0].lat, 24.1)
     }
 }
+
+final class PlaceKindFilterTests: XCTestCase {
+    func testEncodeDecodeRoundTrip() {
+        let set: Set<PlaceKind> = [.valley, .rawdah]
+        let raw = PlaceKind.encodeSet(set)
+        XCTAssertEqual(raw, "rawdah,valley")
+        XCTAssertEqual(PlaceKind.decodeSet(raw), set)
+    }
+
+    func testDecodeIgnoresUnknownAndNonMapKinds() {
+        XCTAssertEqual(PlaceKind.decodeSet("rawdah,saved,all,xyz"), [.rawdah])
+        XCTAssertTrue(PlaceKind.decodeSet("").isEmpty)
+    }
+}

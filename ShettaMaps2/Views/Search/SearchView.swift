@@ -15,6 +15,7 @@ struct SearchView: View {
     @EnvironmentObject private var community: CommunityService
     @Query private var places: [SavedPlace]
     @State private var selectedCommunity: CommunityPlace?
+    @AppStorage(SettingsKeys.landmarkKinds) private var mapKindsRaw = ""
 
     enum Scope: String, CaseIterable, Identifiable { case local, online; var id: String { rawValue } }
 
@@ -83,6 +84,12 @@ struct SearchView: View {
         .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "جبل، وادي، روضة، مخيم…")
         .onSubmit(of: .search) { if scope == .online { Task { await runOnline() } } }
         .navigationTitle("البحث")
+        .onAppear {
+            // إذا كان على الخريطة فلتر بنوع واحد، يبدأ البحث به
+            let kinds = PlaceKind.decodeSet(mapKindsRaw)
+            if kinds.count == 1, let k = kinds.first { kind = k }
+            if !router.pendingSearchQuery.isEmpty { query = router.pendingSearchQuery; router.pendingSearchQuery = "" }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $selectedCommunity) { cp in NavigationStack { CommunityPlaceView(place: cp) } }
         .toolbar {

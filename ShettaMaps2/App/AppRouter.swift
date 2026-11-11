@@ -53,6 +53,8 @@ enum MapSheet: Identifiable {
 final class AppRouter: ObservableObject {
     @Published var selectedSection: AppSection = .map
     @Published var mapSheet: MapSheet?
+    /// نص يُمرَّر من فلتر الخريطة إلى شاشة البحث الشامل.
+    @Published var pendingSearchQuery = ""
     @Published var incomingGPX: URL?
     @Published var plannerDraft = RoutePlannerDraft()
 

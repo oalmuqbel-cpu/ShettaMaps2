@@ -16,6 +16,7 @@ enum SettingsKeys {
     static let weakGPSThreshold = "weakGPSThreshold"
     static let showLandmarks = "showLandmarks"
     static let showCommunity = "showCommunity"
+    static let landmarkKinds = "landmarkKinds"
 }
 
 let appLog = Logger(subsystem: "com.almuqbel.ShettaMaps2", category: "app")

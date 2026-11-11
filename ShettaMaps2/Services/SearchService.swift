@@ -32,6 +32,17 @@ enum PlaceKind: String, CaseIterable, Identifiable, Codable {
         case .saved: return "bookmark"
         }
     }
+
+    /// أنواع الأماكن المعروفة التي تظهر أسماؤها على الخريطة (للفلترة).
+    static let mapKinds: [PlaceKind] = [.rawdah, .mountain, .valley, .shaib, .water, .camp, .landmark]
+
+    /// يحوّل قيمة الفلتر المحفوظة ("rawdah,valley") إلى مجموعة؛ الفارغة تعني الكل.
+    static func decodeSet(_ raw: String) -> Set<PlaceKind> {
+        Set(raw.split(separator: ",").compactMap { PlaceKind(rawValue: String($0)) }.filter { mapKinds.contains($0) })
+    }
+    static func encodeSet(_ set: Set<PlaceKind>) -> String {
+        mapKinds.filter { set.contains($0) }.map(\.rawValue).joined(separator: ",")
+    }
 }
 
 struct SearchResult: Identifiable, Hashable {
@@ -188,10 +199,17 @@ final class SearchService: ObservableObject {
     }
 
     /// أشهر الأماكن داخل منطقة ظاهرة لعرض أسمائها على الخريطة (عدد محدود لوضوح العرض).
-    func entries(sw: CLLocationCoordinate2D, ne: CLLocationCoordinate2D, limit: Int = 120) -> [GazetteerEntry] {
+    /// kinds الفارغة تعني كل الأنواع، و nameFilter يطابق الاسم أو الأسماء البديلة بعد التطبيع.
+    func entries(sw: CLLocationCoordinate2D, ne: CLLocationCoordinate2D, limit: Int = 120,
+                 kinds: Set<PlaceKind> = [], nameFilter: String = "") -> [GazetteerEntry] {
         let priority: [PlaceKind: Int] = [.rawdah: 0, .valley: 1, .mountain: 2, .camp: 3, .water: 4, .shaib: 5, .landmark: 6]
+        let key = Self.searchKey(nameFilter)
         var found: [GazetteerEntry] = []
-        for e in gazetteer where (sw.latitude...ne.latitude).contains(e.lat) && (sw.longitude...ne.longitude).contains(e.lon) {
+        for item in normalizedIndex {
+            let e = item.entry
+            guard (sw.latitude...ne.latitude).contains(e.lat), (sw.longitude...ne.longitude).contains(e.lon),
+                  kinds.isEmpty || kinds.contains(e.kind),
+                  key.isEmpty || item.keys.contains(where: { $0.contains(key) }) else { continue }
             found.append(e)
             if found.count > limit * 6 { break }
         }
