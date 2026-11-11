@@ -209,7 +209,7 @@ final class NavigationEngineTests: XCTestCase {
         XCTAssertEqual(p.target.name, "ب")
         XCTAssertFalse(p.isFinalTarget)
         XCTAssertEqual(p.relativeBearing ?? 0, -90, accuracy: 0.1) // الهدف شمالًا والسيارة شرقًا = يسار
-        XCTAssertTrue(NavigationEngine.instruction(for: p).contains("يسار"))
+        XCTAssertTrue(NavigationEngine.instruction(for: p).contains("يسارًا"))
         XCTAssertGreaterThan(p.remainingDistance, p.distanceToTarget)
         XCTAssertNotNil(p.estimatedSeconds)
 
