@@ -7,7 +7,7 @@ on:
     inputs:
       runner:
         description: "macOS runner label"
-        default: macos-15
+        default: macos-26
         required: false
 
 env:
