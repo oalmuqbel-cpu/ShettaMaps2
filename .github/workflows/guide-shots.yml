@@ -45,7 +45,7 @@ jobs:
           # تشغيل أول لتهيئة البيانات وقاعدة الأماكن
           xcrun simctl launch "$UDID" $BID; sleep 15; xcrun simctl terminate "$UDID" $BID || true
           i=1
-          for s in map filter pick search coords save offline trips tracks settings; do
+          for s in map filter pick record search coords save places offline trips tracks settings; do
             xcrun simctl launch "$UDID" $BID -GuideScreen $s
             sleep 2; xcrun simctl location "$UDID" set 24.7136,46.6753
             sleep 14
