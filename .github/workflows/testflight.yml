@@ -16,7 +16,7 @@ env:
 
 jobs:
   testflight:
-    runs-on: ${{ inputs.runner || 'macos-15' }}
+    runs-on: ${{ inputs.runner || 'macos-26' }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
