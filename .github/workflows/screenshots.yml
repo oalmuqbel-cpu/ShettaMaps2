@@ -66,10 +66,17 @@ jobs:
                     -e 'tell application "System Events" to tell process "Simulator" to click menu item "CarPlay" of menu 1 of menu item "External Displays" of menu 1 of menu bar item "I/O" of menu bar 1'
           sleep 15
           xcrun simctl io "$UDID" screenshot --display=external shots/03-carplay-home.png
+          brew install cliclick >/dev/null 2>&1 || true
+          osascript -e 'tell application "System Events" to tell process "Simulator" to get {name, position, size} of every window' | tee shots/windows.txt
+          screencapture -x shots/desktop.png || true
+          python3 ci/carplay_tap.py shots/windows.txt && sleep 12
+          xcrun simctl io "$UDID" screenshot --display=external shots/04-carplay-map.png
+          screencapture -x shots/desktop2.png || true
 
       - name: Convert to JPG and commit
         run: |
           mkdir -p docs/screenshots
+          cp shots/windows.txt docs/screenshots/debug-windows.txt 2>/dev/null || true
           for f in shots/*.png; do
             [ -f "$f" ] || continue
             sips -s format jpeg -s formatOptions 80 "$f" --out "docs/screenshots/$(basename "${f%.png}").jpg" >/dev/null
