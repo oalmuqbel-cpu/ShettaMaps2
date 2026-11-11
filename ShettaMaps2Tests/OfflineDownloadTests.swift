@@ -1,5 +1,6 @@
 import XCTest
 import CoreLocation
+import MapLibre
 @testable import ShettaMaps2
 
 /// اختبار تكامل: تنزيل منطقة صغيرة فعليًا من مصدر الخرائط الافتراضي ثم إيقافها واستئنافها وحذفها.
@@ -47,5 +48,36 @@ final class OfflineDownloadTests: XCTestCase {
         if let done { m.delete(done) }
         try await waitFor(20) { !m.regions.contains { $0.id == started.id } }
         XCTAssertFalse(m.regions.contains { $0.id == started.id })
+    }
+}
+
+/// الحزم القديمة المنزّلة بنمط demotiles تسبب انهيارًا عند استئنافها؛ يجب حذفها دون تشغيلها.
+@MainActor
+final class IncompatiblePackTests: XCTestCase {
+    func testOldDemotilesPackIsRemovedWithoutResuming() async throws {
+        let style = URL(string: "https://demotiles.maplibre.org/style.json")!
+        let region = MLNTilePyramidOfflineRegion(styleURL: style,
+                                                 bounds: MLNCoordinateBounds(sw: .init(latitude: 24.7, longitude: 46.6),
+                                                                             ne: .init(latitude: 24.8, longitude: 46.7)),
+                                                 fromZoomLevel: 6, toZoomLevel: 8)
+        let added = expectation(description: "added")
+        MLNOfflineStorage.shared.addPack(for: region, withContext: Data()) { _, error in
+            XCTAssertNil(error); added.fulfill()     // لا يُستأنف: الإضافة وحدها لا تبدأ التنزيل
+        }
+        await fulfillment(of: [added], timeout: 10)
+
+        func blockedCount() -> Int {
+            (MLNOfflineStorage.shared.packs ?? []).filter {
+                ($0.region as? MLNTilePyramidOfflineRegion)?.styleURL.host == "demotiles.maplibre.org"
+            }.count
+        }
+        XCTAssertGreaterThan(blockedCount(), 0)
+        let m = OfflineMapManager.shared
+        m.refreshRegions()
+        XCTAssertFalse(m.regions.contains { $0.styleURL.contains("demotiles") }, "لا تظهر في القائمة")
+        XCTAssertGreaterThan(m.removeIncompatiblePacks(), 0)
+        let deadline = Date().addingTimeInterval(10)
+        while blockedCount() > 0 && Date() < deadline { try await Task.sleep(nanoseconds: 300_000_000) }
+        XCTAssertEqual(blockedCount(), 0)
     }
 }

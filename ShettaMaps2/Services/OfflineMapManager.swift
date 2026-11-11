@@ -141,11 +141,31 @@ final class OfflineMapManager: ObservableObject {
         if !didRestorePacks {
             didRestorePacks = true
             let paused = pausedIDs
-            for pack in packs {
+            let removedBlocked = removeIncompatiblePacks()
+            for pack in packs where !Self.isBlocked(pack) {
                 if pack.state != .complete && !paused.contains(packID(pack)) { pack.resume() }
+            }
+            if removedBlocked > 0 {
+                lastError = "حُذفت \(removedBlocked) منطقة نُزّلت بمصدر خرائط قديم غير متوافق. أعد تنزيلها من شاشة الخرائط المحفوظة."
             }
         }
         refreshRegions()
+    }
+
+    /// يحذف الحزم القديمة المنزّلة بنمط محظور دون تشغيلها؛ استئنافها يسبب انهيار MapLibre. يعيد عددها.
+    @discardableResult
+    func removeIncompatiblePacks() -> Int {
+        let blocked = (MLNOfflineStorage.shared.packs ?? []).filter(Self.isBlocked)
+        for pack in blocked {
+            MLNOfflineStorage.shared.removePack(pack) { [weak self] _ in Self.onMain { self?.refreshRegions() } }
+        }
+        return blocked.count
+    }
+
+    /// هل الحزمة منزّلة بنمط من مضيف محظور؟
+    private static func isBlocked(_ pack: MLNOfflinePack) -> Bool {
+        guard let host = (pack.region as? MLNTilePyramidOfflineRegion)?.styleURL.host else { return false }
+        return blockedStyleHosts.contains(host)
     }
 
     // MARK: - النمط النشط
@@ -161,7 +181,7 @@ final class OfflineMapManager: ObservableObject {
     // MARK: - حزم التنزيل
 
     func refreshRegions() {
-        let packs = MLNOfflineStorage.shared.packs ?? []
+        let packs = (MLNOfflineStorage.shared.packs ?? []).filter { !Self.isBlocked($0) }
         for pack in packs where pack.state == .unknown && !progressRequested.contains(ObjectIdentifier(pack)) {
             // بعد إعادة فتح التطبيق تكون حالة الحزمة وتقدمها غير معروفين حتى نطلبهما
             progressRequested.insert(ObjectIdentifier(pack))
@@ -231,7 +251,7 @@ final class OfflineMapManager: ObservableObject {
     }
 
     func toggle(_ item: OfflineRegionItem) {
-        guard let pack = pack(for: item) else { refreshRegions(); return }
+        guard let pack = pack(for: item), !Self.isBlocked(pack) else { refreshRegions(); return }
         if pack.state == .active {
             pack.suspend()
             pausedIDs.insert(item.id)

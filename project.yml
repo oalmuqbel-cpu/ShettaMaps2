@@ -63,6 +63,9 @@ targets:
       - path: ShettaMaps2Tests
     dependencies:
       - target: ShettaMaps2
+      - package: MapLibre
+        product: MapLibre
+        embed: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.almuqbel.ShettaMaps2Tests
