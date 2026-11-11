@@ -153,10 +153,6 @@ struct MapScreen: View {
             Banner(icon: "wifi.slash", text: "لا يوجد اتصال. قد لا تظهر الخريطة الحالية في المناطق غير المحملة.",
                    actionTitle: "خرائط دون إنترنت", tint: Theme.brown) { mapManager.layer = .offline }
         }
-        if mapManager.layer == .offline && offlineMaps.isUsingDemoStyle {
-            Banner(icon: "info.circle", text: "النمط التجريبي المجاني يعرض تفاصيل قليلة. أضف مصدر خرائط مرخصًا من الإعدادات.",
-                   tint: Theme.brown)
-        }
         if let err = offlineMaps.lastError {
             Banner(icon: "exclamationmark.triangle", text: err, actionTitle: "إخفاء", tint: .red) { offlineMaps.clearError() }
         }

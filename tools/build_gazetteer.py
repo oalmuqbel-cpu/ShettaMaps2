@@ -21,7 +21,7 @@ def kind_for(tags: dict, name: str) -> str:
         return "shaib"
     if n.startswith(("وادي", "الوادي")) or tags.get("waterway") == "wadi" or tags.get("natural") == "valley":
         return "valley"
-    if tags.get("natural") in ("peak", "hill", "ridge", "volcano", "cliff", "rock") or n.startswith(("جبل", "جبال")):
+    if tags.get("natural") in ("peak", "hill", "ridge", "volcano", "cliff", "rock", "saddle") or n.startswith(("جبل", "جبال", "هضبة", "طويق")):
         return "mountain"
     if tags.get("tourism") in ("camp_site", "picnic_site") or tags.get("leisure") == "picnic_table":
         return "camp"
@@ -37,10 +37,15 @@ def center(el):
         return c.get("lat"), c.get("lon")
     return None, None
 
-def main(src, dst):
-    data = json.load(open(src, encoding="utf-8"))
+def main(srcs, dst):
+    elements = []
+    for src in srcs:
+        try:
+            elements += json.load(open(src, encoding="utf-8")).get("elements", [])
+        except Exception as e:
+            print("skip", src, e)
     features, seen = [], set()
-    for el in data.get("elements", []):
+    for el in elements:
         tags = el.get("tags", {})
         name = tags.get("name:ar") or tags.get("name")
         if not name:
@@ -53,22 +58,15 @@ def main(src, dst):
             continue
         seen.add(key)
         alts = [v for k, v in tags.items() if k in ("name", "name:en", "alt_name", "old_name") and v != name]
-        features.append({
-            "type": "Feature",
-            "geometry": {"type": "Point", "coordinates": [lon, lat]},
-            "properties": {
-                "id": f"osm-{el['type']}-{el['id']}",
-                "name": name,
-                "alt_names": alts,
-                "kind": kind_for(tags, name),
-                "source": "OpenStreetMap (ODbL)"
-            }
-        })
-    json.dump({"type": "FeatureCollection", "attribution": "© OpenStreetMap contributors", "features": features},
-              open(dst, "w", encoding="utf-8"), ensure_ascii=False)
+        props = {"id": f"osm-{el['type'][0]}{el['id']}", "name": name, "kind": kind_for(tags, name)}
+        if alts: props["alt_names"] = alts[:3]
+        features.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": [round(lon, 5), round(lat, 5)]},
+                         "properties": props})
+    json.dump({"type": "FeatureCollection", "attribution": "© OpenStreetMap contributors", "license": "ODbL",
+               "features": features}, open(dst, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
     print(f"تم إنشاء {len(features)} مكان في {dst}")
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    if len(sys.argv) < 3:
         print(__doc__); sys.exit(1)
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1:-1], sys.argv[-1])

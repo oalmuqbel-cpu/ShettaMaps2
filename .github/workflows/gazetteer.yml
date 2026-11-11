@@ -1,0 +1,42 @@
+# بناء قاعدة الأماكن البرية المعروفة من OpenStreetMap (ODbL) وتضمينها في التطبيق
+name: Build Gazetteer
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download from Overpass
+        run: |
+          mkdir -p osm
+          for CC in SA AE KW QA BH OM; do
+            sed "s/__CC__/$CC/" ci/overpass_query.txt > q.txt
+            for attempt in 1 2 3; do
+              if curl -sS --fail -A "Samt-gazetteer-builder/1.0 (github.com/oalmuqbel-cpu)" \
+                   --data-urlencode "data@q.txt" https://overpass-api.de/api/interpreter -o "osm/$CC.json"; then
+                echo "$CC: $(python3 -c "import json;print(len(json.load(open('osm/$CC.json'))['elements']))") elements"; break
+              fi
+              echo "retry $CC"; sleep 60
+            done
+            sleep 20
+          done
+      - name: Build GeoJSON
+        run: |
+          python3 tools/build_gazetteer.py osm/*.json ShettaMaps2/Resources/gazetteer.geojson
+          ls -la ShettaMaps2/Resources/gazetteer.geojson
+          python3 -c "
+          import json,collections
+          d=json.load(open('ShettaMaps2/Resources/gazetteer.geojson'))
+          print(collections.Counter(f['properties']['kind'] for f in d['features']))"
+      - name: Commit
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add ShettaMaps2/Resources/gazetteer.geojson
+          git commit -m "تحديث قاعدة الأماكن من OpenStreetMap" || echo "no changes"
+          git pull --rebase
+          git push

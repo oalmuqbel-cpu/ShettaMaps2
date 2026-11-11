@@ -25,8 +25,8 @@ struct OfflineMapsView: View {
         List {
             Section {
                 Label {
-                    Text(offline.isUsingDemoStyle
-                         ? "المصدر الحالي: نمط MapLibre التجريبي (تفاصيل محدودة). للاستخدام الفعلي أضف رابط نمط من مزوّد يسمح بالتخزين دون اتصال، أو استورد ملف MBTiles."
+                    Text(offline.isUsingDefaultStyle
+                         ? "المصدر الحالي: OpenFreeMap (بيانات OpenStreetMap). يسمح بتنزيل حتى 3000 مربع لكل منطقة، فاختر منطقة متوسطة الحجم أو قلّل أعلى مستوى تكبير."
                          : "المصدر الحالي: \(offline.selectedTilesetID != nil ? "ملف محلي" : offline.styleURLString)")
                         .font(.footnote)
                 } icon: { Image(systemName: "info.circle") }
@@ -44,7 +44,7 @@ struct OfflineMapsView: View {
                 }
                 if let estimate {
                     LabeledContent("تقدير عدد المربعات", value: "\(estimate)")
-                    if estimate > OfflineMapManager.maxTilesPerRegion {
+                    if estimate > offline.maxTilesPerRegion {
                         Text("المنطقة كبيرة جدًا؛ صغّر الخريطة أو خفّض أعلى مستوى تكبير.").font(.caption).foregroundStyle(.red)
                     }
                 }
@@ -174,10 +174,10 @@ struct MapSourceSettingsView: View {
     var body: some View {
         Form {
             Section {
-                TextField(OfflineMapManager.demoStyleURL, text: $styleURL)
+                TextField(OfflineMapManager.defaultStyleURL, text: $styleURL)
                     .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                     .environment(\.layoutDirection, .leftToRight)
-                Button("استعادة النمط التجريبي") { styleURL = "" }
+                Button("استعادة المصدر الافتراضي (OpenFreeMap)") { styleURL = "" }
             } header: { Text("رابط نمط الخريطة (style.json)") } footer: {
                 Text("ضع رابط نمط من خادم مربعات خاص بك أو من مزوّد تجاري يسمح ترخيصه بالتخزين دون اتصال (قد يحتاج مفتاح API ضمن الرابط). لا تستخدم خوادم OpenStreetMap العامة للتنزيل الجماعي لأن سياستها تمنع ذلك.")
             }

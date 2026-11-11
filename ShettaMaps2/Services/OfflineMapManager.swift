@@ -68,9 +68,19 @@ enum OfflineMapError: LocalizedError {
 final class OfflineMapManager: ObservableObject {
     static let shared = OfflineMapManager()
 
-    /// نمط تجريبي مجاني من MapLibre — تفاصيله محدودة جدًا (حدود الدول)، للاختبار فقط.
-    static let demoStyleURL = "https://demotiles.maplibre.org/style.json"
-    static let maxTilesPerRegion = 120_000
+    /// النمط الافتراضي: OpenFreeMap (بيانات OpenStreetMap، مجاني بلا مفتاح).
+    /// شروطه للتنزيل دون اتصال: حتى 3000 مربع أو 50 ميجابايت لكل تنزيل، و4 طلبات متوازية كحد أقصى، مع User-Agent يعرّف التطبيق.
+    static let defaultStyleURL = "https://tiles.openfreemap.org/styles/liberty"
+    static let defaultStyleTileLimit = 3_000
+    static let customStyleTileLimit = 120_000
+    static let userAgent = "Samt/1.0 (iOS; com.almuqbel.ShettaMaps2; offline-navigation)"
+    /// نمط MapLibre التجريبي يسبب انهيار التنزيل دون اتصال في MapLibre Native (خطأ في معالجة رابط الخطوط)، لذا يُمنع.
+    static let blockedStyleHosts = ["demotiles.maplibre.org"]
+
+    /// الحد الأقصى للمربعات حسب مصدر الخرائط الحالي.
+    var maxTilesPerRegion: Int {
+        styleURLString == Self.defaultStyleURL ? Self.defaultStyleTileLimit : Self.customStyleTileLimit
+    }
 
     @Published private(set) var regions: [OfflineRegionItem] = []
     @Published private(set) var tilesets: [LocalTileset] = []
@@ -84,12 +94,15 @@ final class OfflineMapManager: ObservableObject {
 
     var styleURLString: String {
         let s = UserDefaults.standard.string(forKey: SettingsKeys.offlineStyleURL) ?? ""
-        return s.isEmpty ? Self.demoStyleURL : s
+        if s.isEmpty { return Self.defaultStyleURL }
+        if let host = URL(string: s)?.host, Self.blockedStyleHosts.contains(host) { return Self.defaultStyleURL }
+        return s
     }
 
-    var isUsingDemoStyle: Bool { styleURLString == Self.demoStyleURL && selectedTilesetID == nil }
+    var isUsingDefaultStyle: Bool { styleURLString == Self.defaultStyleURL && selectedTilesetID == nil }
 
     private init() {
+        Self.configureNetwork()
         loadTilesets()
         if let s = UserDefaults.standard.string(forKey: "selectedTileset"), let id = UUID(uuidString: s),
            tilesets.contains(where: { $0.id == id }) {
@@ -158,15 +171,19 @@ final class OfflineMapManager: ObservableObject {
             throw OfflineMapError.invalidStyleURL
         }
         let estimate = GeoMath.estimatedTileCount(sw: sw, ne: ne, minZoom: minZoom, maxZoom: maxZoom)
-        guard estimate <= Self.maxTilesPerRegion else { throw OfflineMapError.tooLarge(estimate) }
+        guard estimate <= maxTilesPerRegion else { throw OfflineMapError.tooLarge(estimate) }
+        if let host = style.host, Self.blockedStyleHosts.contains(host) { throw OfflineMapError.invalidStyleURL }
 
-        let bounds = MLNCoordinateBounds(sw: sw, ne: ne)
+        // حدود صالحة دائمًا (خطوط العرض والطول ضمن المدى)
+        let safeSW = CLLocationCoordinate2D(latitude: max(-85, min(85, sw.latitude)), longitude: max(-180, min(180, sw.longitude)))
+        let safeNE = CLLocationCoordinate2D(latitude: max(-85, min(85, ne.latitude)), longitude: max(-180, min(180, ne.longitude)))
+        let bounds = MLNCoordinateBounds(sw: safeSW, ne: safeNE)
         let region = MLNTilePyramidOfflineRegion(styleURL: style, bounds: bounds,
                                                  fromZoomLevel: Double(minZoom), toZoomLevel: Double(maxZoom))
         let ctx = PackContext(id: UUID().uuidString, name: name.isEmpty ? "منطقة" : name)
         let data = (try? JSONEncoder().encode(ctx)) ?? Data()
         MLNOfflineStorage.shared.addPack(for: region, withContext: data) { [weak self] pack, error in
-            MainActor.assumeIsolated {
+            Self.onMain {
                 if let error {
                     self?.lastError = "تعذّر بدء التنزيل: \(error.localizedDescription)"
                     return
@@ -186,7 +203,7 @@ final class OfflineMapManager: ObservableObject {
     func delete(_ item: OfflineRegionItem) {
         guard let pack = pack(for: item) else { return }
         MLNOfflineStorage.shared.removePack(pack) { [weak self] error in
-            MainActor.assumeIsolated {
+            Self.onMain {
                 if let error { self?.lastError = error.localizedDescription }
                 self?.refreshRegions()
             }
@@ -197,6 +214,23 @@ final class OfflineMapManager: ObservableObject {
         (MLNOfflineStorage.shared.packs ?? []).first {
             (try? JSONDecoder().decode(PackContext.self, from: $0.context))?.id == item.id
         }
+    }
+
+    /// ينفذ على الخيط الرئيسي بأمان سواء استُدعي منه أو من خيط آخر.
+    nonisolated private static func onMain(_ work: @escaping @MainActor () -> Void) {
+        if Thread.isMainThread {
+            MainActor.assumeIsolated { work() }
+        } else {
+            DispatchQueue.main.async { MainActor.assumeIsolated { work() } }
+        }
+    }
+
+    /// يعرّف التطبيق لخوادم الخرائط ويحدّ الاتصالات المتوازية بأربعة (شروط OpenFreeMap).
+    private static func configureNetwork() {
+        let config = URLSessionConfiguration.default
+        config.httpMaximumConnectionsPerHost = 4
+        config.httpAdditionalHeaders = ["User-Agent": userAgent]
+        MLNNetworkConfiguration.sharedManager.sessionConfiguration = config
     }
 
     // MARK: - ملفات MBTiles المحلية

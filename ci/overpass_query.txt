@@ -1,0 +1,11 @@
+[out:json][timeout:900][maxsize:1073741824];
+area["ISO3166-1"="__CC__"][admin_level=2]->.a;
+(
+  nwr["natural"~"^(peak|hill|ridge|volcano|valley|spring|sand|dune|cliff|saddle|desert)$"]["name"](area.a);
+  way["waterway"="wadi"]["name"](area.a);
+  node["place"~"^(locality|isolated_dwelling)$"]["name"](area.a);
+  nwr["tourism"~"^(camp_site|picnic_site|viewpoint|attraction)$"]["name"](area.a);
+  nwr["historic"]["name"](area.a);
+  node["man_made"="water_well"]["name"](area.a);
+);
+out center tags;
