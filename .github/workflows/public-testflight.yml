@@ -1,0 +1,27 @@
+# رابط TestFlight عام
+name: Public TestFlight Link
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        default: status
+env:
+  ASC_ISSUER_ID: ed50eb85-3437-4876-9fa3-1f3fcc29123a
+jobs:
+  link:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          CONTACT_FIRST: ${{ secrets.CONTACT_FIRST }}
+          CONTACT_LAST: ${{ secrets.CONTACT_LAST }}
+          CONTACT_PHONE: ${{ secrets.CONTACT_PHONE }}
+          CONTACT_EMAIL: ${{ secrets.CONTACT_EMAIL }}
+        run: |
+          pip3 install --quiet pyjwt cryptography
+          mkdir -p "$RUNNER_TEMP/k"; printf '%s' "$ASC_KEY_P8" > "$RUNNER_TEMP/k/key.p8"
+          ASC_KEY_PATH="$RUNNER_TEMP/k/key.p8" python3 ci/public_testflight.py "${{ inputs.mode }}"
+          rm -rf "$RUNNER_TEMP/k"
