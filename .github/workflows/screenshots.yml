@@ -47,10 +47,14 @@ jobs:
           open -a Simulator --args -CurrentDeviceUDID "$UDID" || true
           sleep 10
           xcrun simctl launch "$UDID" $BID
-          sleep 12
+          sleep 3
+          xcrun simctl location "$UDID" set 24.7136,46.6753
+          sleep 10
           xcrun simctl io "$UDID" screenshot shots/01-map.png
           xcrun simctl terminate "$UDID" $BID || true
           xcrun simctl launch "$UDID" $BID -DemoNavigation
+          sleep 2
+          xcrun simctl location "$UDID" set 24.7136,46.6753
           sleep 18
           xcrun simctl io "$UDID" screenshot shots/02-navigation.png
 
@@ -61,7 +65,20 @@ jobs:
                     -e 'delay 2' \
                     -e 'tell application "System Events" to tell process "Simulator" to click menu item "CarPlay" of menu 1 of menu item "External Displays" of menu 1 of menu bar item "I/O" of menu bar 1'
           sleep 15
-          xcrun simctl io "$UDID" screenshot --display=external shots/03-carplay.png
+          xcrun simctl io "$UDID" screenshot --display=external shots/03-carplay-home.png
+          # فتح التطبيق على شاشة CarPlay بالنقر على أيقونته (الموضع من لقطة الشاشة الرئيسية لـ CarPlay 800x480)
+          osascript <<'OSA'
+          tell application "System Events" to tell process "Simulator"
+            set w to (first window whose name contains "CarPlay")
+            set {wx, wy} to position of w
+            set {ww, wh} to size of w
+            set titleH to 28
+            set sc to ww / 800
+            click at {wx + 205 * sc, wy + titleH + 280 * sc}
+          end tell
+          OSA
+          sleep 12
+          xcrun simctl io "$UDID" screenshot --display=external shots/04-carplay-app.png
 
       - name: Convert to JPG and commit
         run: |
