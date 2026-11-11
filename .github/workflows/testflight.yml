@@ -30,6 +30,13 @@ jobs:
           mkdir -p "$RUNNER_TEMP/keys"
           printf '%s' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8"
 
+      - name: Register Bundle ID and check app record
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          pip3 install --quiet --break-system-packages pyjwt cryptography || pip3 install --quiet pyjwt cryptography
+          ASC_KEY_PATH="$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8" python3 ci/register_bundle_id.py com.almuqbel.ShettaMaps2 "Shetta Maps 2"
+
       # الأرشفة بدون توقيع، ثم يوقّع Xcode بشهادة التوزيع السحابية أثناء التصدير (لا يحتاج أجهزة مسجلة)
       - name: Archive
         env:
