@@ -1,4 +1,4 @@
-# خرائط شتة 2 — ملف توليد مشروع Xcode عبر XcodeGen
+# سَمْت — ملف توليد مشروع Xcode عبر XcodeGen
 # التوليد: brew install xcodegen && cd ShettaMaps2 && xcodegen generate
 name: ShettaMaps2
 options:

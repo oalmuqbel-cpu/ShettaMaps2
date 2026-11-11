@@ -87,7 +87,7 @@ final class CarPlayInstrumentClusterSceneDelegate: UIResponder, CPTemplateApplic
                                                    didConnect instrumentClusterController: CPInstrumentClusterController) {
         MainActor.assumeIsolated {
             instrumentClusterController.delegate = self
-            instrumentClusterController.inactiveDescriptionVariants = ["خرائط شتة 2"]
+            instrumentClusterController.inactiveDescriptionVariants = ["سَمْت"]
             CarPlayConnectionMonitor.shared.setInstrumentCluster(true)
         }
     }

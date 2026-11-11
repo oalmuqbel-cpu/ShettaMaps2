@@ -89,7 +89,7 @@ struct PlacesListView: View {
     private func exportAll() {
         let points = filtered.map { GPXDocument.Point(name: $0.name, lat: $0.latitude, lon: $0.longitude,
                                                        elevation: $0.altitude, notes: $0.notes) }
-        let xml = GPXService.export(waypoints: points, name: "مواقع خرائط شتة 2")
+        let xml = GPXService.export(waypoints: points, name: "مواقع سَمْت")
         exportURL = try? GPXService.writeTemporaryFile(xml, baseName: "ShettaMaps2-Places")
     }
 }

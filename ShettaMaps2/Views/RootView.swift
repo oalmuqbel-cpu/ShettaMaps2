@@ -57,7 +57,7 @@ struct PadRootView: View {
                     Label(s.title, systemImage: s.icon).tag(s)
                 }
             }
-            .navigationTitle("خرائط شتة 2")
+            .navigationTitle("سَمْت")
         } content: {
             NavigationStack {
                 switch router.selectedSection {
