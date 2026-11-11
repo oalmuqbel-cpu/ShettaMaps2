@@ -33,6 +33,8 @@ final class CarPlayMapViewController: UIViewController {
     private var lastPlacesFetch = Date.distantPast
 
     private let env = AppEnvironment.shared
+    private let mapKitDelegate = CarPlayMapKitDelegate()
+    private let libreDelegate = CarPlayMapLibreDelegate()
 
     private(set) var engine: CarPlayMapEngine {
         didSet { UserDefaults.standard.set(engine.rawValue, forKey: "carPlayEngine") }
@@ -76,7 +78,7 @@ final class CarPlayMapViewController: UIViewController {
         case .mapKitStandard, .mapKitSatellite:
             let m = MKMapView(frame: view.bounds)
             m.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-            m.delegate = self
+            m.delegate = mapKitDelegate
             m.mapType = engine == .mapKitSatellite ? .hybrid : .standard
             m.showsUserLocation = true
             m.showsCompass = role != .cluster
@@ -91,7 +93,7 @@ final class CarPlayMapViewController: UIViewController {
         case .offline:
             let m = MLNMapView(frame: view.bounds, styleURL: env.offlineMaps.activeStyleURL)
             m.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-            m.delegate = self
+            m.delegate = libreDelegate
             m.showsUserLocation = true
             m.compassView.isHidden = role == .cluster
             m.logoView.isHidden = role == .cluster
@@ -238,9 +240,11 @@ final class CarPlayMapViewController: UIViewController {
     }
 }
 
-// MARK: - MapKit delegate
+// MARK: - مندوبو الخريطة
+// كائنان منفصلان لأن MKMapViewDelegate وMLNMapViewDelegate يستخدمان أسماء دوال Objective-C متطابقة
+// ولا يمكن لكائن واحد أن يطبّق الاثنين معًا.
 
-extension CarPlayMapViewController: MKMapViewDelegate {
+final class CarPlayMapKitDelegate: NSObject, MKMapViewDelegate {
     nonisolated func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
         MainActor.assumeIsolated { MapKitOverlayRenderer.renderer(for: overlay) }
     }
@@ -250,9 +254,7 @@ extension CarPlayMapViewController: MKMapViewDelegate {
     }
 }
 
-// MARK: - MapLibre delegate
-
-extension CarPlayMapViewController: MLNMapViewDelegate {
+final class CarPlayMapLibreDelegate: NSObject, MLNMapViewDelegate {
     nonisolated func mapView(_ mapView: MLNMapView, strokeColorForShapeAnnotation annotation: MLNShape) -> UIColor {
         MapLibreOverlayRenderer.strokeColor(for: annotation)
     }
