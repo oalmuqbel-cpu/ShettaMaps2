@@ -15,6 +15,7 @@ struct OfflineMapsView: View {
     @State private var error: String?
     @State private var importing = false
     @State private var confirmDelete: OfflineRegionItem?
+    @State private var confirmDeleteAll = false
 
     private var estimate: Int? {
         guard let b = mapManager.visibleBounds else { return nil }
@@ -66,10 +67,24 @@ struct OfflineMapsView: View {
                 if offline.regions.isEmpty { Text("لا توجد مناطق منزلة").foregroundStyle(.secondary) }
                 ForEach(offline.regions) { r in
                     VStack(alignment: .leading, spacing: 6) {
-                        HStack {
+                        HStack(spacing: 12) {
                             Text(r.name).font(.body.weight(.semibold))
                             Spacer()
                             Text(stateTitle(r.state)).font(.caption).foregroundStyle(stateColor(r.state))
+                            if r.state != .complete {
+                                Button { offline.toggle(r) } label: {
+                                    Image(systemName: r.state == .downloading ? "pause.circle" : "play.circle")
+                                        .font(.title2)
+                                }
+                                .buttonStyle(.borderless)
+                                .accessibilityLabel(r.state == .downloading ? "إيقاف التنزيل" : "استئناف التنزيل")
+                            }
+                            Button(role: .destructive) { confirmDelete = r } label: {
+                                Image(systemName: "trash").font(.title3)
+                            }
+                            .buttonStyle(.borderless)
+                            .tint(.red)
+                            .accessibilityLabel("حذف المنطقة")
                         }
                         ProgressView(value: r.fraction)
                         HStack {
@@ -97,6 +112,16 @@ struct OfflineMapsView: View {
                 }
                 if offline.totalDownloadedBytes > 0 {
                     LabeledContent("المساحة المستخدمة", value: Fmt.bytes(Int64(offline.totalDownloadedBytes)))
+                }
+                if offline.regions.count > 1 {
+                    Button("حذف كل المناطق", role: .destructive) { confirmDeleteAll = true }
+                }
+            }
+
+            if let err = offline.lastError {
+                Section {
+                    Label(err, systemImage: "exclamationmark.triangle").foregroundStyle(.red).font(.footnote)
+                    Button("إخفاء") { offline.clearError() }
                 }
             }
 
@@ -144,15 +169,19 @@ struct OfflineMapsView: View {
                             titleVisibility: .visible) {
             Button("حذف", role: .destructive) { if let r = confirmDelete { offline.delete(r) }; confirmDelete = nil }
         }
+        .confirmationDialog("حذف كل المناطق المنزلة؟", isPresented: $confirmDeleteAll, titleVisibility: .visible) {
+            Button("حذف الكل", role: .destructive) { offline.deleteAll() }
+        }
     }
 
     private func stateTitle(_ s: OfflineRegionItem.State) -> String {
         switch s {
         case .downloading: return "جارٍ التنزيل"
         case .paused: return "متوقف"
+        case .interrupted: return "متوقف — اضغط للاستئناف"
         case .complete: return "مكتمل"
         case .invalid: return "غير صالح"
-        case .unknown: return "—"
+        case .unknown: return "جارٍ القراءة"
         }
     }
 

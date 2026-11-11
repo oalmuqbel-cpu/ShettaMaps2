@@ -17,7 +17,7 @@ struct OfflineRegionItem: Identifiable, Equatable {
     var bytes: UInt64
     var state: State
 
-    enum State: Equatable { case downloading, paused, complete, invalid, unknown }
+    enum State: Equatable { case downloading, paused, interrupted, complete, invalid, unknown }
 
     var fraction: Double { expected > 0 ? min(1, Double(completed) / Double(expected)) : 0 }
 
@@ -90,7 +90,17 @@ final class OfflineMapManager: ObservableObject {
     @Published private(set) var lastError: String?
 
     private var observers: [NSObjectProtocol] = []
+    private var packsObservation: NSKeyValueObservation?
+    private var didRestorePacks = false
+    private var progressRequested: Set<ObjectIdentifier> = []
     private let tilesetsKey = "localTilesets"
+    private let pausedKey = "pausedOfflinePacks"
+
+    /// المناطق التي أوقفها المستخدم بنفسه؛ لا تُستأنف تلقائيًا عند فتح التطبيق.
+    private var pausedIDs: Set<String> {
+        get { Set(UserDefaults.standard.stringArray(forKey: pausedKey) ?? []) }
+        set { UserDefaults.standard.set(Array(newValue), forKey: pausedKey) }
+    }
 
     var styleURLString: String {
         let s = UserDefaults.standard.string(forKey: SettingsKeys.offlineStyleURL) ?? ""
@@ -119,10 +129,23 @@ final class OfflineMapManager: ObservableObject {
                 self?.refreshRegions()
             }
         })
-        // تحميل الحزم المحفوظة يتم بشكل غير متزامن داخل MapLibre
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            MainActor.assumeIsolated { self?.refreshRegions() }
+        // MapLibre يحمّل الحزم المحفوظة بشكل غير متزامن بعد فتح التطبيق؛ نراقب اكتمال التحميل
+        // ثم نطلب تقدم كل حزمة ونستأنف التنزيلات التي انقطعت بإغلاق التطبيق.
+        packsObservation = MLNOfflineStorage.shared.observe(\.packs, options: [.initial, .new]) { [weak self] _, _ in
+            Self.onMain { self?.restorePacksIfNeeded() }
         }
+    }
+
+    private func restorePacksIfNeeded() {
+        guard let packs = MLNOfflineStorage.shared.packs else { return }
+        if !didRestorePacks {
+            didRestorePacks = true
+            let paused = pausedIDs
+            for pack in packs {
+                if pack.state != .complete && !paused.contains(packID(pack)) { pack.resume() }
+            }
+        }
+        refreshRegions()
     }
 
     // MARK: - النمط النشط
@@ -139,18 +162,31 @@ final class OfflineMapManager: ObservableObject {
 
     func refreshRegions() {
         let packs = MLNOfflineStorage.shared.packs ?? []
+        for pack in packs where pack.state == .unknown && !progressRequested.contains(ObjectIdentifier(pack)) {
+            // بعد إعادة فتح التطبيق تكون حالة الحزمة وتقدمها غير معروفين حتى نطلبهما
+            progressRequested.insert(ObjectIdentifier(pack))
+            pack.requestProgress()
+        }
         regions = packs.compactMap { item(from: $0) }
+    }
+
+    /// معرّف ثابت للحزمة: من بياناتها المحفوظة، أو من حدودها إن تعذّرت قراءتها.
+    private func packID(_ pack: MLNOfflinePack) -> String {
+        if let meta = try? JSONDecoder().decode(PackContext.self, from: pack.context) { return meta.id }
+        guard let r = pack.region as? MLNTilePyramidOfflineRegion else { return "pack-unknown" }
+        return String(format: "pack-%.5f-%.5f-%.5f-%.5f-%.0f-%.0f", r.bounds.sw.latitude, r.bounds.sw.longitude,
+                      r.bounds.ne.latitude, r.bounds.ne.longitude, r.minimumZoomLevel, r.maximumZoomLevel)
     }
 
     private func item(from pack: MLNOfflinePack) -> OfflineRegionItem? {
         guard let region = pack.region as? MLNTilePyramidOfflineRegion else { return nil }
         let meta = (try? JSONDecoder().decode(PackContext.self, from: pack.context))
-            ?? PackContext(id: UUID().uuidString, name: "منطقة")
+            ?? PackContext(id: packID(pack), name: "منطقة")
         let p = pack.progress
         let state: OfflineRegionItem.State
         switch pack.state {
         case .active: state = .downloading
-        case .inactive: state = .paused
+        case .inactive: state = pausedIDs.contains(meta.id) ? .paused : .interrupted
         case .complete: state = .complete
         case .invalid: state = .invalid
         default: state = .unknown
@@ -195,25 +231,42 @@ final class OfflineMapManager: ObservableObject {
     }
 
     func toggle(_ item: OfflineRegionItem) {
-        guard let pack = pack(for: item) else { return }
-        if pack.state == .active { pack.suspend() } else { pack.resume() }
+        guard let pack = pack(for: item) else { refreshRegions(); return }
+        if pack.state == .active {
+            pack.suspend()
+            pausedIDs.insert(item.id)
+        } else {
+            pausedIDs.remove(item.id)
+            pack.resume()
+        }
         refreshRegions()
     }
 
     func delete(_ item: OfflineRegionItem) {
-        guard let pack = pack(for: item) else { return }
+        guard let pack = pack(for: item) else { refreshRegions(); return }
+        remove(pack, id: item.id)
+    }
+
+    /// حذف كل المناطق المنزلة.
+    func deleteAll() {
+        for pack in MLNOfflineStorage.shared.packs ?? [] { remove(pack, id: packID(pack)) }
+    }
+
+    private func remove(_ pack: MLNOfflinePack, id: String) {
+        if pack.state == .active { pack.suspend() }
+        pausedIDs.remove(id)
+        // إخفاء فوري من القائمة حتى لا تبقى ظاهرة أثناء الحذف
+        regions.removeAll { $0.id == id }
         MLNOfflineStorage.shared.removePack(pack) { [weak self] error in
             Self.onMain {
-                if let error { self?.lastError = error.localizedDescription }
+                if let error { self?.lastError = "تعذّر حذف المنطقة: \(error.localizedDescription)" }
                 self?.refreshRegions()
             }
         }
     }
 
     private func pack(for item: OfflineRegionItem) -> MLNOfflinePack? {
-        (MLNOfflineStorage.shared.packs ?? []).first {
-            (try? JSONDecoder().decode(PackContext.self, from: $0.context))?.id == item.id
-        }
+        (MLNOfflineStorage.shared.packs ?? []).first { packID($0) == item.id }
     }
 
     /// ينفذ على الخيط الرئيسي بأمان سواء استُدعي منه أو من خيط آخر.
