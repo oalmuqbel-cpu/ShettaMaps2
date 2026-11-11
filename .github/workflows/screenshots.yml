@@ -1,0 +1,78 @@
+# التقاط لقطات شاشة للتطبيق (الآيفون وCarPlay إن أمكن) وحفظها في المستودع
+name: Screenshots
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  shots:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select latest Xcode 26
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Build for simulator
+        run: |
+          set -o pipefail
+          xcodegen generate
+          UDID=$(python3 ci/pick_simulator.py)
+          echo "UDID=$UDID" >> $GITHUB_ENV
+          xcodebuild build -project ShettaMaps2.xcodeproj -scheme ShettaMaps2 \
+            -destination "id=$UDID" -derivedDataPath build | tail -5
+
+      - name: Capture screenshots
+        run: |
+          set -x
+          mkdir -p shots
+          APP=$(find build/Build/Products -name "ShettaMaps2.app" -maxdepth 3 | head -1)
+          BID=com.almuqbel.ShettaMaps2
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 || true
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl privacy "$UDID" grant location-always $BID || xcrun simctl privacy "$UDID" grant location $BID || true
+          xcrun simctl location "$UDID" set 24.7136,46.6753
+          open -a Simulator --args -CurrentDeviceUDID "$UDID" || true
+          sleep 10
+          xcrun simctl launch "$UDID" $BID
+          sleep 12
+          xcrun simctl io "$UDID" screenshot shots/01-map.png
+          xcrun simctl terminate "$UDID" $BID || true
+          xcrun simctl launch "$UDID" $BID -DemoNavigation
+          sleep 18
+          xcrun simctl io "$UDID" screenshot shots/02-navigation.png
+
+      - name: Try CarPlay display
+        continue-on-error: true
+        run: |
+          osascript -e 'tell application "Simulator" to activate' \
+                    -e 'delay 2' \
+                    -e 'tell application "System Events" to tell process "Simulator" to click menu item "CarPlay" of menu 1 of menu item "External Displays" of menu 1 of menu bar item "I/O" of menu bar 1'
+          sleep 15
+          xcrun simctl io "$UDID" screenshot --display=external shots/03-carplay.png
+
+      - name: Convert to JPG and commit
+        run: |
+          mkdir -p docs/screenshots
+          for f in shots/*.png; do
+            [ -f "$f" ] || continue
+            sips -s format jpeg -s formatOptions 80 "$f" --out "docs/screenshots/$(basename "${f%.png}").jpg" >/dev/null
+          done
+          ls -la docs/screenshots
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add docs/screenshots
+          git commit -m "لقطات شاشة آلية" || echo "no changes"
+          git push

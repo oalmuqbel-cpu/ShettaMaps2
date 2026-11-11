@@ -38,7 +38,26 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         MainActor.assumeIsolated {
             _ = AppEnvironment.shared
             AppEnvironment.shared.location.start()
+            Self.startDemoNavigationIfRequested()
         }
         return true
+    }
+
+    /// لالتقاط لقطات الشاشة آليًا فقط: يبدأ ملاحة تجريبية عند تمرير الوسيط -DemoNavigation.
+    @MainActor
+    private static func startDemoNavigationIfRequested() {
+        guard ProcessInfo.processInfo.arguments.contains("-DemoNavigation") else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+            MainActor.assumeIsolated {
+                let env = AppEnvironment.shared
+                guard let c = env.location.location?.coordinate else { return }
+                let stop = GeoMath.destination(from: c, distance: 3_500, bearing: 35)
+                let dest = GeoMath.destination(from: c, distance: 9_000, bearing: 60)
+                env.navigation.start(NavigationPlan(origin: Waypoint(name: "موقعي", coordinate: c),
+                                                    waypoints: [Waypoint(name: "نقطة التوقف", coordinate: stop)],
+                                                    destination: Waypoint(name: "المخيم", coordinate: dest),
+                                                    mode: .direct))
+            }
+        }
     }
 }
