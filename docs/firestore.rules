@@ -1,0 +1,29 @@
+rules_version = '2';
+// قواعد أمان المشاركة المجتمعية لتطبيق سَمْت
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /places/{placeId} {
+      allow read: if true;
+
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['name','kind','lat','lon','notes','authorUid','createdAt','reportCount'])
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 60
+        && request.resource.data.notes is string && request.resource.data.notes.size() <= 300
+        && request.resource.data.lat is number && request.resource.data.lat >= 12 && request.resource.data.lat <= 33
+        && request.resource.data.lon is number && request.resource.data.lon >= 34 && request.resource.data.lon <= 60
+        && request.resource.data.kind in ['mountain','valley','rawdah','shaib','camp','water','landmark']
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.reportCount == 0;
+
+      // صاحب المشاركة فقط يحذفها
+      allow delete: if request.auth != null && resource.data.authorUid == request.auth.uid;
+
+      // الإبلاغ: زيادة عداد البلاغات بواحد فقط
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reportCount'])
+        && request.resource.data.reportCount == resource.data.reportCount + 1;
+    }
+  }
+}

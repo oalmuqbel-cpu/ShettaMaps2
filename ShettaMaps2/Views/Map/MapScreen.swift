@@ -12,6 +12,10 @@ struct MapScreen: View {
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var mapManager: MapManager
     @EnvironmentObject private var trips: TripManager
+    @EnvironmentObject private var search: SearchService
+    @EnvironmentObject private var community: CommunityService
+    @AppStorage(SettingsKeys.showLandmarks) private var showLandmarks = true
+    @AppStorage(SettingsKeys.showCommunity) private var showCommunity = true
     @Query(sort: \SavedPlace.name) private var places: [SavedPlace]
 
     @State private var showPickedOptions = false
@@ -22,7 +26,26 @@ struct MapScreen: View {
                             liveSegments: recorder.liveSegments,
                             navigation: navigation.snapshot,
                             currentLocation: location.location?.coordinate,
-                            picked: mapManager.pickedCoordinate)
+                            picked: mapManager.pickedCoordinate,
+                            extraPins: landmarkPins + communityPins)
+    }
+
+    /// أسماء الأماكن المعروفة (OpenStreetMap) ضمن المنطقة الظاهرة، عند تكبير كافٍ.
+    private var landmarkPins: [MapOverlaySet.Pin] {
+        guard showLandmarks, let b = mapManager.visibleBounds, let r = mapManager.visibleRegion,
+              r.span.latitudeDelta < 3 else { return [] }
+        return search.entries(sw: b.sw, ne: b.ne, limit: r.span.latitudeDelta < 0.5 ? 150 : 70).map {
+            .init(id: "g-\($0.id)", title: $0.name, subtitle: $0.kind.title, coordinate: .init(latitude: $0.lat, longitude: $0.lon),
+                  kind: .landmark, symbol: $0.kind.icon)
+        }
+    }
+
+    private var communityPins: [MapOverlaySet.Pin] {
+        guard showCommunity, let b = mapManager.visibleBounds else { return [] }
+        return community.places(in: b.sw, b.ne).prefix(150).map {
+            .init(id: "c-\($0.id)", title: $0.name, subtitle: "مشاركة مجتمعية · \($0.kind.title)", coordinate: $0.coordinate,
+                  kind: .community, symbol: nil)
+        }
     }
 
     var body: some View {
@@ -44,6 +67,23 @@ struct MapScreen: View {
             .padding(.horizontal, 12)
             .padding(.bottom, 8)
 
+            if showLandmarks || showCommunity {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Text("بيانات الأماكن: © OpenStreetMap contributors")
+                            .font(.system(size: 9))
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(.thinMaterial, in: Capsule())
+                            .environment(\.layoutDirection, .rightToLeft)
+                        Spacer()
+                    }
+                    .padding(.leading, 70)
+                    .padding(.bottom, 92)
+                }
+                .allowsHitTesting(false)
+            }
+
             if mapManager.isPickingPoint {
                 VStack {
                     Text("اضغط على الخريطة لتحديد نقطة")
@@ -56,6 +96,8 @@ struct MapScreen: View {
             }
         }
         .sheet(item: $router.mapSheet) { sheet in sheetContent(sheet) }
+        .onChange(of: mapManager.visibleRegion?.center.latitude) { _, _ in refreshCommunity() }
+        .onChange(of: mapManager.visibleRegion?.center.longitude) { _, _ in refreshCommunity() }
         .onChange(of: mapManager.pickedCoordinate?.latitude) { _, new in
             if new != nil { showPickedOptions = true }
         }
@@ -110,6 +152,11 @@ struct MapScreen: View {
                         Label(l.title, systemImage: l.icon).tag(l)
                     }
                 }
+                Divider()
+                Toggle(isOn: $showLandmarks) { Label("أسماء الأماكن المعروفة", systemImage: "mappin.circle") }
+                if community.isEnabled {
+                    Toggle(isOn: $showCommunity) { Label("مشاركات المجتمع", systemImage: "person.2") }
+                }
             } label: {
                 Image(systemName: "square.3.layers.3d")
                     .font(.title3.weight(.semibold))
@@ -162,6 +209,12 @@ struct MapScreen: View {
         if let msg = location.lastError, location.isAuthorized {
             Banner(icon: "exclamationmark.circle", text: msg, tint: .orange)
         }
+    }
+
+    private func refreshCommunity() {
+        guard showCommunity, community.isEnabled, network.isOnline,
+              let b = mapManager.visibleBounds, let r = mapManager.visibleRegion, r.span.latitudeDelta < 4 else { return }
+        Task { await community.refresh(sw: b.sw, ne: b.ne) }
     }
 
     private func toggleRecording() {

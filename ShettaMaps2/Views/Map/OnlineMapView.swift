@@ -19,7 +19,7 @@ struct OnlineMapView: View {
                     lineContent(line)
                 }
                 ForEach(overlays.pins, id: \.id) { pin in
-                    Marker(pin.title, systemImage: PinImageFactory.symbol(kind: pin.kind), coordinate: pin.coordinate)
+                    Marker(pin.title, systemImage: pin.symbol ?? PinImageFactory.symbol(kind: pin.kind), coordinate: pin.coordinate)
                         .tint(Color(uiColor: PinImageFactory.color(kind: pin.kind)))
                 }
             }

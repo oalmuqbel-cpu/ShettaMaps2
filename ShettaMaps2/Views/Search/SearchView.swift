@@ -12,7 +12,9 @@ struct SearchView: View {
     @EnvironmentObject private var navigation: SharedNavigationState
     @EnvironmentObject private var mapManager: MapManager
     @EnvironmentObject private var router: AppRouter
+    @EnvironmentObject private var community: CommunityService
     @Query private var places: [SavedPlace]
+    @State private var selectedCommunity: CommunityPlace?
 
     enum Scope: String, CaseIterable, Identifiable { case local, online; var id: String { rawValue } }
 
@@ -26,7 +28,13 @@ struct SearchView: View {
     @State private var importMessage: String?
 
     private var localResults: [SearchResult] {
-        search.searchLocal(query, kind: kind, places: places, near: location.location?.coordinate)
+        let near = location.location?.coordinate
+        var list = search.searchLocal(query, kind: kind, places: places, near: near)
+        if kind != .saved {
+            list += community.search(query, near: near).filter { kind == .all || $0.kind == kind }
+            if let near { list.sort { GeoMath.distance(near, $0.coordinate) < GeoMath.distance(near, $1.coordinate) } }
+        }
+        return Array(list.prefix(150))
     }
 
     var body: some View {
@@ -55,7 +63,7 @@ struct SearchView: View {
                             .font(.footnote)
                         Button("استيراد قاعدة أماكن (GeoJSON)") { importing = true }
                     } footer: {
-                        Text("أنشئ القاعدة من بيانات موثقة مثل OpenStreetMap باستخدام الأداة المرفقة مع المشروع، ولا يضيف التطبيق أي أسماء أو إحداثيات من عنده.")
+                        Text("القاعدة المضمنة مبنية من بيانات OpenStreetMap الموثقة، ولا يضيف التطبيق أي أسماء أو إحداثيات من عنده.")
                     }
                 }
                 Section(header: Text("النتائج (\(localResults.count))")) {
@@ -76,6 +84,7 @@ struct SearchView: View {
         .onSubmit(of: .search) { if scope == .online { Task { await runOnline() } } }
         .navigationTitle("البحث")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $selectedCommunity) { cp in NavigationStack { CommunityPlaceView(place: cp) } }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("إغلاق") { dismiss() } }
             ToolbarItem(placement: .primaryAction) {
@@ -122,6 +131,9 @@ struct SearchView: View {
                 }
                 if r.source != .saved {
                     Button { router.mapSheet = .savePlace(r.coordinate) } label: { Label("حفظ", systemImage: "mappin") }
+                }
+                if r.source == .community, let cp = community.place(forResultID: r.id) {
+                    Button { selectedCommunity = cp } label: { Label("التفاصيل والإبلاغ", systemImage: "info.circle") }
                 }
             } label: { Image(systemName: "ellipsis.circle").font(.title3) }
         }

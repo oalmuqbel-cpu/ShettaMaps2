@@ -10,12 +10,14 @@ struct MapOverlaySet: Equatable {
         var subtitle: String?
         var coordinate: CLLocationCoordinate2D
         var kind: PinKind
+        /// رمز SF Symbol مخصص (لأنواع الأماكن الجغرافية).
+        var symbol: String? = nil
         static func == (a: Pin, b: Pin) -> Bool {
             a.id == b.id && a.title == b.title && a.kind == b.kind
                 && a.coordinate.latitude == b.coordinate.latitude && a.coordinate.longitude == b.coordinate.longitude
         }
     }
-    enum PinKind: Equatable { case saved, destination, waypoint, picked, start, search }
+    enum PinKind: Equatable { case saved, destination, waypoint, picked, start, search, landmark, community }
     enum LineKind: Equatable { case track, direct, road, importedTrack }
 
     struct Line: Equatable {

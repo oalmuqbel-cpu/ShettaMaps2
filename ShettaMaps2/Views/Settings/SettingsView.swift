@@ -65,19 +65,24 @@ struct SettingsView: View {
                 Button { restoring = true } label: { Label("استعادة من نسخة احتياطية", systemImage: "externaldrive.badge.timemachine") }
             }
 
+            Section("المجتمع") {
+                NavigationLink("المشاركة المجتمعية") { CommunitySettingsView() }
+            }
+
             Section("CarPlay") {
                 NavigationLink("حالة الاتصال والاختبار") { CarPlayDiagnosticsView() }
                 LabeledContent("الحالة", value: carPlay.isConnected ? "متصل" : "غير متصل")
             }
 
             Section("الخصوصية") {
-                Text("تُحفظ مواقعك ومساراتك ورحلاتك على جهازك فقط. لا يرسل التطبيق أي بيانات إلى خوادم خارجية. عند استخدام خرائط الإنترنت أو البحث عبر الإنترنت أو توجيهات الطرق، تُرسل Apple أو مزوّد الخرائط الطلبات اللازمة لتلك الخدمة فقط.")
+                Text("تُحفظ مواقعك ومساراتك ورحلاتك على جهازك فقط. لا يُرسل أي مكان إلى خادم إلا إذا اخترت له «عام» عند الحفظ، وحينها يُرسل الاسم والإحداثيات والنوع والملاحظات فقط دون أي معلومات عنك. عند استخدام خرائط الإنترنت أو البحث عبر الإنترنت أو توجيهات الطرق، تُرسل Apple أو مزوّد الخرائط الطلبات اللازمة لتلك الخدمة فقط.")
                     .font(.footnote)
             }
 
             Section("حول") {
                 LabeledContent("الإصدار", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")
-                Text("محرك الخرائط دون إنترنت: MapLibre Native (رخصة BSD-2). الخرائط عبر الإنترنت: Apple MapKit.").font(.footnote)
+                Text("محرك الخرائط دون إنترنت: MapLibre Native (رخصة BSD-2). الخرائط دون إنترنت: OpenFreeMap. الخرائط عبر الإنترنت: Apple MapKit.").font(.footnote)
+                Text("أسماء الأماكن المعروفة: © OpenStreetMap contributors، متاحة بموجب رخصة Open Database License (ODbL).").font(.footnote)
             }
         }
         .navigationTitle("الإعدادات")

@@ -82,6 +82,7 @@ struct PlacesListView: View {
     }
 
     private func delete(_ place: SavedPlace) {
+        if let pid = place.publicID { Task { try? await CommunityService.shared.unpublish(id: pid) } }
         context.delete(place)
         try? context.save()
     }
@@ -108,6 +109,10 @@ struct PlaceRow: View {
                 HStack {
                     Text(place.name).font(.body.weight(.semibold))
                     if place.isFavorite { Image(systemName: "star.fill").font(.caption).foregroundStyle(.yellow) }
+                    if place.isPublic {
+                        Label("عام", systemImage: "person.2").font(.caption2).labelStyle(.titleAndIcon)
+                            .padding(.horizontal, 6).background(Capsule().fill(Theme.sand))
+                    }
                 }
                 Text(CoordinateUtilities.format(place.coordinate, as: .decimal))
                     .font(.caption.monospaced())
@@ -193,6 +198,7 @@ struct PlaceDetailView: View {
         .sheet(item: Binding(get: { shareURL.map(ShareItem.init) }, set: { shareURL = $0?.url })) { ShareSheet(items: [$0.url]) }
         .confirmationDialog("حذف \(place.name)؟", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("حذف", role: .destructive) {
+                if let pid = place.publicID { Task { try? await CommunityService.shared.unpublish(id: pid) } }
                 context.delete(place); try? context.save(); dismiss()
             }
         }
@@ -217,9 +223,14 @@ struct PlaceEditorView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var location: LocationManager
+    @EnvironmentObject private var community: CommunityService
     @Query(sort: \PlaceCategory.sortOrder) private var categories: [PlaceCategory]
 
     let mode: Mode
+    @State private var isPublic = false
+    @State private var publicKind: PlaceKind = .rawdah
+    @State private var showTerms = false
+    @State private var saving = false
     @State private var name = ""
     @State private var notes = ""
     @State private var categoryID: UUID?
@@ -250,6 +261,34 @@ struct PlaceEditorView: View {
                 TextField("وصف الطريق، حالة الأرض، تنبيهات…", text: $notes, axis: .vertical)
                     .lineLimit(3...8)
             }
+            Section {
+                Picker("الخصوصية", selection: $isPublic) {
+                    Label("خاص", systemImage: "lock").tag(false)
+                    Label("عام", systemImage: "person.2").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .disabled(!community.isEnabled)
+                if isPublic {
+                    Picker("نوع المكان", selection: $publicKind) {
+                        ForEach([PlaceKind.rawdah, .valley, .shaib, .mountain, .camp, .water, .landmark]) { k in
+                            Label(k.title, systemImage: k.icon).tag(k)
+                        }
+                    }
+                }
+            } header: { Text("الخصوصية") } footer: {
+                if !community.isEnabled {
+                    Text("المشاركة العامة غير مفعّلة حاليًا. يُحفظ المكان على جهازك فقط.")
+                } else if isPublic {
+                    Text("عام: يظهر الاسم والإحداثيات والنوع والملاحظات لجميع مستخدمي التطبيق، دون أي معلومات عنك. يمكنك إلغاء المشاركة أو حذفها في أي وقت.")
+                } else {
+                    Text("خاص: يبقى المكان على جهازك فقط ولا يراه أحد غيرك.")
+                }
+            }
+        }
+        .disabled(saving)
+        .overlay { if saving { ProgressView("جارٍ الحفظ والمشاركة…").padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)) } }
+        .sheet(isPresented: $showTerms) {
+            NavigationStack { CommunityTermsView { community.termsAccepted = true; showTerms = false; save() } }
         }
         .navigationTitle(isEditing ? "تعديل الموقع" : "حفظ موقع")
         .navigationBarTitleDisplayMode(.inline)
@@ -275,6 +314,8 @@ struct PlaceEditorView: View {
         case .edit(let p):
             name = p.name; notes = p.notes; categoryID = p.category?.id
             coordinateText = CoordinateUtilities.shareString(p.coordinate)
+            isPublic = p.isPublic
+            publicKind = PlaceKind(rawValue: p.publicKind ?? "") ?? .rawdah
         }
     }
 
@@ -284,8 +325,10 @@ struct PlaceEditorView: View {
             self.error = (error as? LocalizedError)?.errorDescription ?? "إحداثيات غير صالحة"
             return
         }
+        if isPublic && community.isEnabled && !community.termsAccepted { showTerms = true; return }
         let category = categories.first { $0.id == categoryID }
         let trimmed = name.trimmingCharacters(in: .whitespaces)
+        let place: SavedPlace
         switch mode {
         case .create(let original):
             // إذا كانت النقطة هي الموقع الحالي نحفظ الارتفاع والدقة
@@ -296,13 +339,40 @@ struct PlaceEditorView: View {
             }
             let p = SavedPlace(name: trimmed, coordinate: coord, notes: notes, altitude: alt, horizontalAccuracy: acc, category: category)
             context.insert(p)
+            place = p
         case .edit(let p):
             p.name = trimmed; p.notes = notes; p.category = category
             p.coordinate = coord
             p.updatedAt = Date()
+            place = p
         }
         try? context.save()
-        dismiss()
+        guard community.isEnabled else { dismiss(); return }
+        Task { await syncSharing(place) }
+    }
+
+    /// ينشر أو يلغي نشر المكان حسب اختيار الخصوصية. أي تعديل على مكان عام يعيد نشره بالبيانات الجديدة.
+    private func syncSharing(_ place: SavedPlace) async {
+        saving = true
+        defer { saving = false }
+        do {
+            if let old = place.publicID {
+                try await community.unpublish(id: old)
+                place.publicID = nil
+            }
+            if isPublic {
+                place.publicID = try await community.publish(name: place.name, kind: publicKind,
+                                                             coordinate: place.coordinate, notes: place.notes)
+                place.publicKind = publicKind.rawValue
+            }
+            place.isPublic = isPublic && place.publicID != nil
+            try? context.save()
+            dismiss()
+        } catch {
+            place.isPublic = false
+            try? context.save()
+            self.error = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
     }
 }
 

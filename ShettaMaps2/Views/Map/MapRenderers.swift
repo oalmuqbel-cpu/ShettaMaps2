@@ -10,6 +10,7 @@ final class TaggedPolyline: MLNPolyline {
 
 final class TaggedPointAnnotation: MLNPointAnnotation {
     var kind: MapOverlaySet.PinKind = .saved
+    var symbol: String?
     var pinID: String = ""
 }
 
@@ -33,6 +34,7 @@ enum MapLibreOverlayRenderer {
             a.title = pin.title
             a.subtitle = pin.subtitle
             a.kind = pin.kind
+            a.symbol = pin.symbol
             a.pinID = pin.id
             items.append(a)
         }
@@ -52,9 +54,9 @@ enum MapLibreOverlayRenderer {
     /// صورة العلامة: دائرة ملونة حسب النوع.
     @MainActor static func image(for annotation: MLNAnnotation, mapView: MLNMapView) -> MLNAnnotationImage? {
         guard let a = annotation as? TaggedPointAnnotation else { return nil }
-        let reuse = "pin-\(a.kind)"
+        let reuse = "pin-\(a.kind)-\(a.symbol ?? "")"
         if let cached = mapView.dequeueReusableAnnotationImage(withIdentifier: reuse) { return cached }
-        let img = PinImageFactory.image(kind: a.kind)
+        let img = PinImageFactory.image(kind: a.kind, symbol: a.symbol)
         return MLNAnnotationImage(image: img, reuseIdentifier: reuse)
     }
 }
@@ -70,8 +72,9 @@ final class TaggedMKAnnotation: NSObject, MKAnnotation {
     let title: String?
     let subtitle: String?
     let kind: MapOverlaySet.PinKind
+    let symbol: String?
     init(pin: MapOverlaySet.Pin) {
-        coordinate = pin.coordinate; title = pin.title; subtitle = pin.subtitle; kind = pin.kind
+        coordinate = pin.coordinate; title = pin.title; subtitle = pin.subtitle; kind = pin.kind; symbol = pin.symbol
     }
 }
 
@@ -106,8 +109,12 @@ enum MapKitOverlayRenderer {
             ?? MKMarkerAnnotationView(annotation: a, reuseIdentifier: id)
         v.annotation = a
         v.markerTintColor = PinImageFactory.color(kind: a.kind)
-        v.glyphImage = UIImage(systemName: PinImageFactory.symbol(kind: a.kind))
-        v.displayPriority = a.kind == .destination ? .required : .defaultHigh
+        v.glyphImage = UIImage(systemName: a.symbol ?? PinImageFactory.symbol(kind: a.kind))
+        switch a.kind {
+        case .destination: v.displayPriority = .required
+        case .landmark: v.displayPriority = .defaultLow
+        default: v.displayPriority = .defaultHigh
+        }
         v.canShowCallout = true
         return v
     }
@@ -141,6 +148,8 @@ enum PinImageFactory {
         case .picked: return UIColor.systemPink
         case .start: return UIColor.systemGreen
         case .search: return Theme.brownUI
+        case .landmark: return UIColor(red: 0.45, green: 0.36, blue: 0.27, alpha: 1)
+        case .community: return UIColor(red: 0.18, green: 0.55, blue: 0.45, alpha: 1)
         }
     }
 
@@ -152,10 +161,12 @@ enum PinImageFactory {
         case .picked: return "scope"
         case .start: return "house"
         case .search: return "magnifyingglass"
+        case .landmark: return "mappin.circle"
+        case .community: return "person.2.fill"
         }
     }
 
-    @MainActor static func image(kind: MapOverlaySet.PinKind) -> UIImage {
+    @MainActor static func image(kind: MapOverlaySet.PinKind, symbol custom: String? = nil) -> UIImage {
         let size = CGSize(width: 30, height: 30)
         return UIGraphicsImageRenderer(size: size).image { ctx in
             let rect = CGRect(origin: .zero, size: size).insetBy(dx: 2, dy: 2)
@@ -165,7 +176,7 @@ enum PinImageFactory {
             let ring = UIBezierPath(ovalIn: rect)
             ring.lineWidth = 2.5
             ring.stroke()
-            if let glyph = UIImage(systemName: symbol(kind: kind),
+            if let glyph = UIImage(systemName: custom ?? symbol(kind: kind),
                                    withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .bold))?
                 .withTintColor(.white, renderingMode: .alwaysOriginal) {
                 let g = glyph.size

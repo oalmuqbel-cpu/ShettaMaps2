@@ -43,6 +43,10 @@ final class SavedPlace {
     var altitude: Double?
     var horizontalAccuracy: Double?
     var isFavorite: Bool = false
+    /// عام: منشور في المشاركة المجتمعية. خاص (الافتراضي): يبقى على الجهاز فقط.
+    var isPublic: Bool = false
+    var publicID: String?
+    var publicKind: String?
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
     var category: PlaceCategory?

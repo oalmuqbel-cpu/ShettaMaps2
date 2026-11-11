@@ -35,7 +35,7 @@ enum PlaceKind: String, CaseIterable, Identifiable, Codable {
 }
 
 struct SearchResult: Identifiable, Hashable {
-    enum Source: String { case saved, gazetteer, online }
+    enum Source: String { case saved, gazetteer, online, community }
     var id: String
     var name: String
     var subtitle: String
@@ -109,17 +109,21 @@ final class SearchService: ObservableObject {
     // MARK: - قاعدة البيانات الجغرافية
 
     func loadGazetteer() {
-        let url: URL?
-        if FileManager.default.fileExists(atPath: userGazetteerURL.path) {
-            url = userGazetteerURL
-            gazetteerSource = "قاعدة مستوردة"
-        } else {
-            url = Bundle.main.url(forResource: "gazetteer", withExtension: "geojson")
-            gazetteerSource = "القاعدة المضمنة"
+        let userURL = userGazetteerURL
+        let useUser = FileManager.default.fileExists(atPath: userURL.path)
+        gazetteerSource = useUser ? "قاعدة مستوردة" : "OpenStreetMap (مضمنة)"
+        guard let url = useUser ? userURL : Bundle.main.url(forResource: "gazetteer", withExtension: "geojson") else {
+            gazetteer = []; return
         }
-        guard let url, let data = try? Data(contentsOf: url) else { gazetteer = []; return }
-        gazetteer = (try? Self.parseGeoJSON(data)) ?? []
-        normalizedIndex = gazetteer.map { e in (e, ([e.name] + e.altNames).map(Self.searchKey)) }
+        // التحليل في الخلفية لأن القاعدة كبيرة
+        Task.detached(priority: .userInitiated) {
+            let entries = (try? Data(contentsOf: url)).flatMap { try? SearchService.parseGeoJSON($0) } ?? []
+            let index = entries.map { e in (e, ([e.name] + e.altNames).map(SearchService.searchKey)) }
+            await MainActor.run {
+                self.gazetteer = entries
+                self.normalizedIndex = index
+            }
+        }
     }
 
     func importGazetteer(from source: URL) throws -> Int {
@@ -128,7 +132,9 @@ final class SearchService: ObservableObject {
         let data = try Data(contentsOf: source)
         let entries = try Self.parseGeoJSON(data)
         try data.write(to: userGazetteerURL, options: .atomic)
-        loadGazetteer()
+        gazetteer = entries
+        normalizedIndex = entries.map { e in (e, ([e.name] + e.altNames).map(Self.searchKey)) }
+        gazetteerSource = "قاعدة مستوردة"
         return entries.count
     }
 
@@ -149,7 +155,7 @@ final class SearchService: ObservableObject {
                                          altNames: props["alt_names"] as? [String] ?? [],
                                          kind: kind, lat: lat, lon: lon,
                                          region: props["region"] as? String,
-                                         source: props["source"] as? String ?? "غير محدد"))
+                                         source: props["source"] as? String ?? "OpenStreetMap"))
         }
         return result
     }
@@ -179,6 +185,18 @@ final class SearchService: ObservableObject {
             results.sort { GeoMath.distance(near, $0.coordinate) < GeoMath.distance(near, $1.coordinate) }
         }
         return Array(results.prefix(limit))
+    }
+
+    /// أشهر الأماكن داخل منطقة ظاهرة لعرض أسمائها على الخريطة (عدد محدود لوضوح العرض).
+    func entries(sw: CLLocationCoordinate2D, ne: CLLocationCoordinate2D, limit: Int = 120) -> [GazetteerEntry] {
+        let priority: [PlaceKind: Int] = [.rawdah: 0, .valley: 1, .mountain: 2, .camp: 3, .water: 4, .shaib: 5, .landmark: 6]
+        var found: [GazetteerEntry] = []
+        for e in gazetteer where (sw.latitude...ne.latitude).contains(e.lat) && (sw.longitude...ne.longitude).contains(e.lon) {
+            found.append(e)
+            if found.count > limit * 6 { break }
+        }
+        found.sort { (priority[$0.kind] ?? 9) < (priority[$1.kind] ?? 9) }
+        return Array(found.prefix(limit))
     }
 
     /// بحث Apple Maps — يتطلب الإنترنت.
