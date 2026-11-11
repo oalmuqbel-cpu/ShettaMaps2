@@ -19,6 +19,12 @@ jobs:
       - name: Show Xcode
         run: xcodebuild -version
 
+      - name: Select latest Xcode 26
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
+          xcodebuild -version
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
