@@ -21,11 +21,11 @@ def call(method, path, body=None):
         except Exception: pass
         print(f"HTTP {e.code} {method} {path.split('?')[0]} -> {msg[:600]}"); return None
 
-builds = call("GET", f"/v1/builds?filter[app]={APP}&sort=-uploadedDate&limit=3&include=buildBetaDetail") or {}
-for b in builds.get("data", []):
-    a = b["attributes"]; print("build", a["version"], a["processingState"], "expired" if a.get("expired") else "")
+builds = call("GET", f"/v1/builds?filter[app]={APP}&sort=-uploadedDate&limit=8&include=buildBetaDetail") or {}
 inc = {i["id"]: i["attributes"] for i in builds.get("included", [])}
-for i, a in inc.items(): print("  external state:", a.get("externalBuildState"), "internal:", a.get("internalBuildState"))
+for b in builds.get("data", []):
+    a = b["attributes"]; d = (b.get("relationships", {}).get("buildBetaDetail", {}).get("data") or {}).get("id")
+    print("build", a["version"], a["processingState"], "external:", inc.get(d, {}).get("externalBuildState"))
 groups = call("GET", f"/v1/apps/{APP}/betaGroups?limit=20") or {}
 for g in groups.get("data", []):
     a = g["attributes"]; print("group", a["name"], "internal" if a["isInternalGroup"] else "external",
