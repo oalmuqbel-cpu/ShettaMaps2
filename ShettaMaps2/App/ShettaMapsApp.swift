@@ -51,6 +51,17 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
             MainActor.assumeIsolated {
                 let env = AppEnvironment.shared
                 guard let c = env.location.location?.coordinate else { return }
+                // مواقع عامة تجريبية حول الموقع الحالي لتظهر في قائمة الوجهات أثناء التقاط اللقطات
+                let ctx = env.container.mainContext
+                if ((try? ctx.fetchCount(FetchDescriptor<SavedPlace>())) ?? 0) == 0 {
+                    for (name, d, b, fav) in [("المخيم", 9_000.0, 60.0, true), ("نقطة التزود", 4_200.0, 200.0, false),
+                                              ("نقطة البداية", 1_500.0, 300.0, true), ("الاستراحة", 12_000.0, 120.0, false)] {
+                        let p = SavedPlace(name: name, coordinate: GeoMath.destination(from: c, distance: d, bearing: b))
+                        p.isFavorite = fav
+                        ctx.insert(p)
+                    }
+                    try? ctx.save()
+                }
                 let stop = GeoMath.destination(from: c, distance: 3_500, bearing: 35)
                 let dest = GeoMath.destination(from: c, distance: 9_000, bearing: 60)
                 env.navigation.start(NavigationPlan(origin: Waypoint(name: "موقعي", coordinate: c),

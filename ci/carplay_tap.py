@@ -16,7 +16,8 @@ title = 28
 scale = w / 800.0
 content_h = 480 * scale
 top = y + (h - content_h)  # المحتوى في أسفل النافذة بعد شريط العنوان
-tx, ty = int(x + 205 * scale), int(top + 280 * scale)
+cx, cy = (float(sys.argv[2]), float(sys.argv[3])) if len(sys.argv) > 3 else (205, 280)
+tx, ty = int(x + cx * scale), int(top + cy * scale)
 print("window", names[idx], x, y, w, h, "tap", tx, ty)
 subprocess.run(["osascript", "-e", 'tell application "Simulator" to activate'])
 subprocess.run(["cliclick", f"c:{tx},{ty}"])
