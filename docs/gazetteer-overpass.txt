@@ -1,0 +1,12 @@
+/* استعلام Overpass للأماكن البرية في المملكة العربية السعودية (عدّل المنطقة حسب الحاجة) */
+[out:json][timeout:300];
+area["ISO3166-1"="SA"][admin_level=2]->.sa;
+(
+  node["natural"~"peak|hill|ridge|volcano|spring|valley"]["name"](area.sa);
+  way["natural"~"valley|ridge"]["name"](area.sa);
+  way["waterway"="wadi"]["name"](area.sa);
+  node["tourism"~"camp_site|picnic_site"]["name"](area.sa);
+  node["man_made"="water_well"]["name"](area.sa);
+  node["place"~"locality|isolated_dwelling"]["name"](area.sa);
+);
+out center tags;

@@ -1,0 +1,55 @@
+# بناء المشروع وتشغيل الاختبارات على جهاز macOS من GitHub (بدون توقيع)
+name: Build and Test
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Resolve packages
+        run: xcodebuild -resolvePackageDependencies -project ShettaMaps2.xcodeproj -scheme ShettaMaps2
+
+      - name: Build for simulator
+        run: |
+          set -o pipefail
+          xcodebuild build -project ShettaMaps2.xcodeproj -scheme ShettaMaps2 \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee build.log
+
+      - name: Run unit tests
+        run: |
+          set -o pipefail
+          UDID=$(python3 ci/pick_simulator.py)
+          echo "Simulator: $UDID"
+          xcodebuild test -project ShettaMaps2.xcodeproj -scheme ShettaMaps2 \
+            -destination "id=$UDID" \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee test.log
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: |
+            build.log
+            test.log
+          if-no-files-found: ignore

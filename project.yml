@@ -1,0 +1,85 @@
+# خرائط شتة 2 — ملف توليد مشروع Xcode عبر XcodeGen
+# التوليد: brew install xcodegen && cd ShettaMaps2 && xcodegen generate
+name: ShettaMaps2
+options:
+  bundleIdPrefix: com.almuqbel
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: ar
+  createIntermediateGroups: true
+  xcodeVersion: "16.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # ضع معرف فريقك من Apple Developer هنا أو اختره من Xcode
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+
+packages:
+  MapLibre:
+    url: https://github.com/maplibre/maplibre-gl-native-distribution
+    from: "6.8.0"
+
+targets:
+  ShettaMaps2:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: ShettaMaps2
+        excludes:
+          - "**/*.md"
+    dependencies:
+      - package: MapLibre
+        product: MapLibre
+      - sdk: CarPlay.framework
+      - sdk: MapKit.framework
+      - sdk: CoreLocation.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.almuqbel.ShettaMaps2
+        PRODUCT_NAME: ShettaMaps2
+        INFOPLIST_FILE: ShettaMaps2/Resources/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        # الأجهزة الحقيقية: بدون صلاحية CarPlay حتى توافق Apple على الطلب
+        CODE_SIGN_ENTITLEMENTS: ShettaMaps2/Resources/ShettaMaps2.entitlements
+        # المحاكي: مع صلاحية CarPlay لاختبار CarPlay Simulator داخل Xcode
+        "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": ShettaMaps2/Resources/ShettaMaps2-CarPlay.entitlements
+        ENABLE_PREVIEWS: YES
+
+  ShettaMaps2Tests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: ShettaMaps2Tests
+    dependencies:
+      - target: ShettaMaps2
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.almuqbel.ShettaMaps2Tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/ShettaMaps2.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ShettaMaps2"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  ShettaMaps2:
+    build:
+      targets:
+        ShettaMaps2: all
+        ShettaMaps2Tests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - ShettaMaps2Tests
+      gatherCoverageData: true
