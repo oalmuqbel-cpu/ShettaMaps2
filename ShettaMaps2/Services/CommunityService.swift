@@ -5,8 +5,8 @@ import Security
 /// إعدادات خدمة المشاركة المجتمعية (Firebase). مفتاح Web API في Firebase ليس سرًا؛
 /// الحماية تتم عبر قواعد الأمان في Firestore (docs/firestore.rules).
 enum CommunityConfig {
-    static let apiKey = ""
-    static let projectID = ""
+    static let apiKey = "AIzaSyBAR0YbiZgooW7XuERAgAALJL7EpXikS8I"
+    static let projectID = "samt-maps"
     static var isConfigured: Bool { !apiKey.isEmpty && !projectID.isEmpty }
     /// حدود الخليج العربي التقريبية المقبولة للمشاركات.
     static let latRange = 12.0...33.0
