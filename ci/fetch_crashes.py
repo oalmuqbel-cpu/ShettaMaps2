@@ -23,9 +23,10 @@ for s in subs.get("data", []):
     for i, l in enumerate(lines):
         if any(k in l for k in ("Exception Type", "Exception Reason", "Termination Reason", "Crashed Thread", "Triggered by Thread", "Application Specific", "Last Exception")):
             print(l)
-    # أول 60 سطرًا من الخيط المتعطل
-    start = next((i for i, l in enumerate(lines) if "Crashed:" in l or "Triggered by Thread" in l), None)
-    if start is not None:
-        print("\n".join(lines[start:start + 60]))
-    else:
-        print("\n".join(lines[:150]))
+    import re
+    m = re.search(r"Triggered by Thread:\s+(\d+)", text)
+    if m:
+        t = m.group(1)
+        idx = next((i for i, l in enumerate(lines) if l.startswith(f"Thread {t}:") or l.startswith(f"Thread {t} Crashed")), None)
+        if idx is not None:
+            print("\n".join(lines[idx:idx + 45]))
