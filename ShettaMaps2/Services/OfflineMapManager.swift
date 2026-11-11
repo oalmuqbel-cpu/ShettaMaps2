@@ -49,9 +49,11 @@ struct LocalTileset: Identifiable, Codable, Equatable {
 }
 
 enum OfflineMapError: LocalizedError {
-    case invalidStyleURL, tooLarge(Int), invalidMBTiles(String), vectorNeedsStyle
+    case invalidStyleURL, tooLarge(Int), invalidMBTiles(String), vectorNeedsStyle, incompatibleStyle, styleUnreachable
     var errorDescription: String? {
         switch self {
+        case .incompatibleStyle: return "مصدر الخرائط هذا غير متوافق مع التنزيل دون إنترنت. استخدم المصدر الافتراضي من إعدادات مصدر الخرائط."
+        case .styleUnreachable: return "تعذّر الوصول إلى مصدر الخرائط. تأكد من الاتصال بالإنترنت ثم حاول مرة أخرى."
         case .invalidStyleURL: return "رابط نمط الخريطة غير صالح. راجعه في الإعدادات."
         case .tooLarge(let n): return "المنطقة كبيرة جدًا (\(n) مربع تقريبًا). صغّر المنطقة أو خفّض أعلى مستوى تكبير."
         case .invalidMBTiles(let m): return "تعذّر قراءة ملف MBTiles: \(m)"
@@ -70,12 +72,12 @@ final class OfflineMapManager: ObservableObject {
 
     /// النمط الافتراضي: OpenFreeMap (بيانات OpenStreetMap، مجاني بلا مفتاح).
     /// شروطه للتنزيل دون اتصال: حتى 3000 مربع أو 50 ميجابايت لكل تنزيل، و4 طلبات متوازية كحد أقصى، مع User-Agent يعرّف التطبيق.
-    static let defaultStyleURL = "https://tiles.openfreemap.org/styles/liberty"
+    nonisolated static let defaultStyleURL = "https://tiles.openfreemap.org/styles/liberty"
     static let defaultStyleTileLimit = 3_000
     static let customStyleTileLimit = 120_000
-    static let userAgent = "Samt/1.0 (iOS; com.almuqbel.ShettaMaps2; offline-navigation)"
+    nonisolated static let userAgent = "Samt/1.0 (iOS; com.almuqbel.ShettaMaps2; offline-navigation)"
     /// نمط MapLibre التجريبي يسبب انهيار التنزيل دون اتصال في MapLibre Native (خطأ في معالجة رابط الخطوط)، لذا يُمنع.
-    static let blockedStyleHosts = ["demotiles.maplibre.org"]
+    nonisolated static let blockedStyleHosts = ["demotiles.maplibre.org"]
 
     /// الحد الأقصى للمربعات حسب مصدر الخرائط الحالي.
     var maxTilesPerRegion: Int {
@@ -129,24 +131,88 @@ final class OfflineMapManager: ObservableObject {
                 self?.refreshRegions()
             }
         })
-        // MapLibre يحمّل الحزم المحفوظة بشكل غير متزامن بعد فتح التطبيق؛ نراقب اكتمال التحميل
-        // ثم نطلب تقدم كل حزمة ونستأنف التنزيلات التي انقطعت بإغلاق التطبيق.
+        // MapLibre يحمّل الحزم المحفوظة بشكل غير متزامن بعد فتح التطبيق، ويعيد تحميلها أحيانًا (فتصبح الكائنات
+        // القديمة غير صالحة). المعالجة تتم دائمًا لاحقًا على الخيط الرئيسي، لا داخل إشعار التغيير نفسه.
         packsObservation = MLNOfflineStorage.shared.observe(\.packs, options: [.initial, .new]) { [weak self] _, _ in
-            Self.onMain { self?.restorePacksIfNeeded() }
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.restorePacksIfNeeded() } }
         }
     }
 
+    // MARK: - الوصول الآمن للحزم
+    //
+    // قاعدة أساسية: أي حزمة حُذفت أو أُعيد تحميلها تصبح غير صالحة (invalid)، وأي استدعاء لـ region أو context
+    // أو resume عليها يرمي استثناء يُنهي التطبيق. لذلك لا نحتفظ بكائنات الحزم، ونقرأ بياناتها مرة واحدة
+    // في لقطة (PackInfo) بعد التحقق من صلاحيتها، ونعيد البحث عنها بالمعرّف قبل أي عملية.
+
+    private struct PackInfo {
+        let pack: MLNOfflinePack
+        let id: String
+        let name: String
+        let region: MLNTilePyramidOfflineRegion
+        var styleHost: String? { region.styleURL.host }
+        var isBlocked: Bool { styleHost.map { OfflineMapManager.blockedStyleHosts.contains($0) } ?? false }
+        var usesDefaultStyle: Bool { region.styleURL.absoluteString == OfflineMapManager.defaultStyleURL }
+    }
+
+    private static func isValid(_ pack: MLNOfflinePack) -> Bool { pack.state != .invalid }
+
+    private func info(_ pack: MLNOfflinePack) -> PackInfo? {
+        guard Self.isValid(pack), let region = pack.region as? MLNTilePyramidOfflineRegion else { return nil }
+        let meta = try? JSONDecoder().decode(PackContext.self, from: pack.context)
+        let fallbackID = String(format: "pack-%.5f-%.5f-%.5f-%.5f-%.0f-%.0f", region.bounds.sw.latitude, region.bounds.sw.longitude,
+                                region.bounds.ne.latitude, region.bounds.ne.longitude, region.minimumZoomLevel, region.maximumZoomLevel)
+        return PackInfo(pack: pack, id: meta?.id ?? fallbackID, name: meta?.name ?? "منطقة", region: region)
+    }
+
+    /// لقطة لكل الحزم الصالحة حاليًا.
+    private func snapshot() -> [PackInfo] {
+        (MLNOfflineStorage.shared.packs ?? []).compactMap { info($0) }
+    }
+
+    /// يعيد الحزمة الصالحة الحالية بهذا المعرّف (لا يُستخدم كائن قديم أبدًا).
+    private func livePack(id: String) -> MLNOfflinePack? {
+        snapshot().first { $0.id == id }?.pack
+    }
+
+    // MARK: - الاستعادة بعد فتح التطبيق
+
+    /// حماية من حلقة الانهيار: إن انتهى التطبيق أثناء الاستئناف التلقائي في المرة السابقة، لا نستأنف تلقائيًا هذه المرة.
+    private let resumeGuardKey = "offlineAutoResumeInProgress"
+
+    /// يعيد تنفيذ خطوات ما بعد فتح التطبيق (للاختبارات).
+    func runLaunchRestoreForTesting() {
+        didRestorePacks = false
+        restorePacksIfNeeded()
+    }
+
     private func restorePacksIfNeeded() {
-        guard let packs = MLNOfflineStorage.shared.packs else { return }
+        guard MLNOfflineStorage.shared.packs != nil else { return }
         if !didRestorePacks {
             didRestorePacks = true
-            let paused = pausedIDs
-            let removedBlocked = removeIncompatiblePacks()
-            for pack in packs where !Self.isBlocked(pack) {
-                if pack.state != .complete && !paused.contains(packID(pack)) { pack.resume() }
+            let infos = snapshot()
+            let blocked = infos.filter(\.isBlocked)
+            let previousLaunchCrashed = UserDefaults.standard.bool(forKey: resumeGuardKey)
+
+            if previousLaunchCrashed {
+                lastError = "توقف التنزيل التلقائي للمناطق لأن التطبيق أُغلق بشكل غير متوقع أثناءه. يمكنك استئناف كل منطقة يدويًا أو حذفها."
+            } else {
+                let paused = pausedIDs
+                // الاستئناف التلقائي فقط لمناطق المصدر الافتراضي المعروف أنه آمن
+                let toResume = infos.filter { !$0.isBlocked && $0.usesDefaultStyle && $0.pack.state != .complete && !paused.contains($0.id) }
+                if !toResume.isEmpty {
+                    UserDefaults.standard.set(true, forKey: resumeGuardKey)
+                    for i in toResume where Self.isValid(i.pack) { i.pack.resume() }
+                    let key = resumeGuardKey
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 20) { UserDefaults.standard.set(false, forKey: key) }
+                }
             }
-            if removedBlocked > 0 {
-                lastError = "حُذفت \(removedBlocked) منطقة نُزّلت بمصدر خرائط قديم غير متوافق. أعد تنزيلها من شاشة الخرائط المحفوظة."
+            if previousLaunchCrashed {
+                UserDefaults.standard.set(false, forKey: resumeGuardKey)
+            }
+            // الحذف آخرًا: بعده تصبح هذه الكائنات غير صالحة فلا نلمسها
+            for b in blocked { removePackSafely(b.pack) }
+            if !blocked.isEmpty {
+                lastError = "حُذفت \(blocked.count) منطقة نُزّلت بمصدر خرائط قديم غير متوافق. أعد تنزيلها من شاشة الخرائط المحفوظة."
             }
         }
         refreshRegions()
@@ -155,17 +221,22 @@ final class OfflineMapManager: ObservableObject {
     /// يحذف الحزم القديمة المنزّلة بنمط محظور دون تشغيلها؛ استئنافها يسبب انهيار MapLibre. يعيد عددها.
     @discardableResult
     func removeIncompatiblePacks() -> Int {
-        let blocked = (MLNOfflineStorage.shared.packs ?? []).filter(Self.isBlocked)
-        for pack in blocked {
-            MLNOfflineStorage.shared.removePack(pack) { [weak self] _ in Self.onMain { self?.refreshRegions() } }
-        }
+        let blocked = snapshot().filter(\.isBlocked)
+        for b in blocked { removePackSafely(b.pack) }
         return blocked.count
     }
 
-    /// هل الحزمة منزّلة بنمط من مضيف محظور؟
-    private static func isBlocked(_ pack: MLNOfflinePack) -> Bool {
-        guard let host = (pack.region as? MLNTilePyramidOfflineRegion)?.styleURL.host else { return false }
-        return blockedStyleHosts.contains(host)
+    private func removePackSafely(_ pack: MLNOfflinePack) {
+        guard Self.isValid(pack) else { return }
+        if pack.state == .active { pack.suspend() }
+        MLNOfflineStorage.shared.removePack(pack) { [weak self] error in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    if let error { self?.lastError = "تعذّر حذف المنطقة: \(error.localizedDescription)" }
+                    self?.refreshRegions()
+                }
+            }
+        }
     }
 
     // MARK: - النمط النشط
@@ -181,54 +252,64 @@ final class OfflineMapManager: ObservableObject {
     // MARK: - حزم التنزيل
 
     func refreshRegions() {
-        let packs = (MLNOfflineStorage.shared.packs ?? []).filter { !Self.isBlocked($0) }
-        for pack in packs where pack.state == .unknown && !progressRequested.contains(ObjectIdentifier(pack)) {
+        let infos = snapshot().filter { !$0.isBlocked }
+        for i in infos where i.pack.state == .unknown && !progressRequested.contains(ObjectIdentifier(i.pack)) {
             // بعد إعادة فتح التطبيق تكون حالة الحزمة وتقدمها غير معروفين حتى نطلبهما
-            progressRequested.insert(ObjectIdentifier(pack))
-            pack.requestProgress()
+            progressRequested.insert(ObjectIdentifier(i.pack))
+            i.pack.requestProgress()
         }
-        regions = packs.compactMap { item(from: $0) }
-    }
-
-    /// معرّف ثابت للحزمة: من بياناتها المحفوظة، أو من حدودها إن تعذّرت قراءتها.
-    private func packID(_ pack: MLNOfflinePack) -> String {
-        if let meta = try? JSONDecoder().decode(PackContext.self, from: pack.context) { return meta.id }
-        guard let r = pack.region as? MLNTilePyramidOfflineRegion else { return "pack-unknown" }
-        return String(format: "pack-%.5f-%.5f-%.5f-%.5f-%.0f-%.0f", r.bounds.sw.latitude, r.bounds.sw.longitude,
-                      r.bounds.ne.latitude, r.bounds.ne.longitude, r.minimumZoomLevel, r.maximumZoomLevel)
-    }
-
-    private func item(from pack: MLNOfflinePack) -> OfflineRegionItem? {
-        guard let region = pack.region as? MLNTilePyramidOfflineRegion else { return nil }
-        let meta = (try? JSONDecoder().decode(PackContext.self, from: pack.context))
-            ?? PackContext(id: packID(pack), name: "منطقة")
-        let p = pack.progress
-        let state: OfflineRegionItem.State
-        switch pack.state {
-        case .active: state = .downloading
-        case .inactive: state = pausedIDs.contains(meta.id) ? .paused : .interrupted
-        case .complete: state = .complete
-        case .invalid: state = .invalid
-        default: state = .unknown
+        let paused = pausedIDs
+        regions = infos.map { i in
+            let p = i.pack.progress
+            let state: OfflineRegionItem.State
+            switch i.pack.state {
+            case .active: state = .downloading
+            case .inactive: state = paused.contains(i.id) ? .paused : .interrupted
+            case .complete: state = .complete
+            case .invalid: state = .invalid
+            default: state = .unknown
+            }
+            return OfflineRegionItem(id: i.id, name: i.name,
+                                     sw: i.region.bounds.sw, ne: i.region.bounds.ne,
+                                     minZoom: i.region.minimumZoomLevel, maxZoom: i.region.maximumZoomLevel,
+                                     styleURL: i.region.styleURL.absoluteString,
+                                     completed: p.countOfResourcesCompleted, expected: p.countOfResourcesExpected,
+                                     bytes: p.countOfBytesCompleted, state: state)
         }
-        return OfflineRegionItem(id: meta.id, name: meta.name,
-                                 sw: region.bounds.sw, ne: region.bounds.ne,
-                                 minZoom: region.minimumZoomLevel, maxZoom: region.maximumZoomLevel,
-                                 styleURL: region.styleURL.absoluteString,
-                                 completed: p.countOfResourcesCompleted, expected: p.countOfResourcesExpected,
-                                 bytes: p.countOfBytesCompleted, state: state)
     }
 
     private struct PackContext: Codable { var id: String; var name: String }
 
+    /// قاعدة MapLibre الافتراضية: أي رابط خطوط يبدأ بها يُعالَج بتعبير نمطي معطوب فينهار التنزيل.
+    nonisolated static let crashingGlyphsPrefix = "https://demotiles.maplibre.org"
+
+    /// يتحقق من ملف النمط قبل التنزيل: يجب أن يكون JSON صالحًا ولا يستخدم خطوط demotiles.
+    nonisolated static func validateStyleForOffline(_ data: Data) throws {
+        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              obj["sources"] != nil else { throw OfflineMapError.invalidStyleURL }
+        if let glyphs = obj["glyphs"] as? String, glyphs.hasPrefix(crashingGlyphsPrefix) {
+            throw OfflineMapError.incompatibleStyle
+        }
+        if let sprite = obj["sprite"] as? String, sprite.hasPrefix(crashingGlyphsPrefix) {
+            throw OfflineMapError.incompatibleStyle
+        }
+    }
+
     func download(name: String, sw: CLLocationCoordinate2D, ne: CLLocationCoordinate2D,
-                  minZoom: Int, maxZoom: Int) throws {
+                  minZoom: Int, maxZoom: Int) async throws {
         guard let style = URL(string: styleURLString), style.scheme?.hasPrefix("http") == true else {
             throw OfflineMapError.invalidStyleURL
         }
         let estimate = GeoMath.estimatedTileCount(sw: sw, ne: ne, minZoom: minZoom, maxZoom: maxZoom)
         guard estimate <= maxTilesPerRegion else { throw OfflineMapError.tooLarge(estimate) }
-        if let host = style.host, Self.blockedStyleHosts.contains(host) { throw OfflineMapError.invalidStyleURL }
+        if let host = style.host, Self.blockedStyleHosts.contains(host) { throw OfflineMapError.incompatibleStyle }
+
+        // فحص النمط قبل إعطائه لـ MapLibre
+        var request = URLRequest(url: style, timeoutInterval: 20)
+        request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
+        let styleData: Data
+        do { styleData = try await URLSession.shared.data(for: request).0 } catch { throw OfflineMapError.styleUnreachable }
+        try Self.validateStyleForOffline(styleData)
 
         // حدود صالحة دائمًا (خطوط العرض والطول ضمن المدى)
         let safeSW = CLLocationCoordinate2D(latitude: max(-85, min(85, sw.latitude)), longitude: max(-180, min(180, sw.longitude)))
@@ -239,63 +320,44 @@ final class OfflineMapManager: ObservableObject {
         let ctx = PackContext(id: UUID().uuidString, name: name.isEmpty ? "منطقة" : name)
         let data = (try? JSONEncoder().encode(ctx)) ?? Data()
         MLNOfflineStorage.shared.addPack(for: region, withContext: data) { [weak self] pack, error in
-            Self.onMain {
-                if let error {
-                    self?.lastError = "تعذّر بدء التنزيل: \(error.localizedDescription)"
-                    return
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    if let error {
+                        self?.lastError = "تعذّر بدء التنزيل: \(error.localizedDescription)"
+                        return
+                    }
+                    if let pack, Self.isValid(pack) { pack.resume() }
+                    self?.refreshRegions()
                 }
-                pack?.resume()
-                self?.refreshRegions()
             }
         }
     }
 
     func toggle(_ item: OfflineRegionItem) {
-        guard let pack = pack(for: item), !Self.isBlocked(pack) else { refreshRegions(); return }
-        if pack.state == .active {
-            pack.suspend()
+        guard let i = snapshot().first(where: { $0.id == item.id }), !i.isBlocked else { refreshRegions(); return }
+        if i.pack.state == .active {
+            i.pack.suspend()
             pausedIDs.insert(item.id)
-        } else {
+        } else if i.pack.state != .complete {
             pausedIDs.remove(item.id)
-            pack.resume()
+            i.pack.resume()
         }
         refreshRegions()
     }
 
     func delete(_ item: OfflineRegionItem) {
-        guard let pack = pack(for: item) else { refreshRegions(); return }
-        remove(pack, id: item.id)
+        pausedIDs.remove(item.id)
+        regions.removeAll { $0.id == item.id }   // إخفاء فوري
+        if let pack = livePack(id: item.id) { removePackSafely(pack) } else { refreshRegions() }
     }
 
     /// حذف كل المناطق المنزلة.
     func deleteAll() {
-        for pack in MLNOfflineStorage.shared.packs ?? [] { remove(pack, id: packID(pack)) }
-    }
-
-    private func remove(_ pack: MLNOfflinePack, id: String) {
-        if pack.state == .active { pack.suspend() }
-        pausedIDs.remove(id)
-        // إخفاء فوري من القائمة حتى لا تبقى ظاهرة أثناء الحذف
-        regions.removeAll { $0.id == id }
-        MLNOfflineStorage.shared.removePack(pack) { [weak self] error in
-            Self.onMain {
-                if let error { self?.lastError = "تعذّر حذف المنطقة: \(error.localizedDescription)" }
-                self?.refreshRegions()
-            }
-        }
-    }
-
-    private func pack(for item: OfflineRegionItem) -> MLNOfflinePack? {
-        (MLNOfflineStorage.shared.packs ?? []).first { packID($0) == item.id }
-    }
-
-    /// ينفذ على الخيط الرئيسي بأمان سواء استُدعي منه أو من خيط آخر.
-    nonisolated private static func onMain(_ work: @escaping @MainActor () -> Void) {
-        if Thread.isMainThread {
-            MainActor.assumeIsolated { work() }
-        } else {
-            DispatchQueue.main.async { MainActor.assumeIsolated { work() } }
-        }
+        let ids = snapshot().map(\.id)
+        regions = []
+        pausedIDs = []
+        // نعيد البحث عن كل حزمة قبل حذفها، لأن حذف واحدة قد يعيد تحميل القائمة
+        for id in ids { if let pack = livePack(id: id) { removePackSafely(pack) } }
     }
 
     /// يعرّف التطبيق لخوادم الخرائط ويحدّ الاتصالات المتوازية بأربعة (شروط OpenFreeMap).

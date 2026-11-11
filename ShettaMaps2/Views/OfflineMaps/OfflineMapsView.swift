@@ -16,6 +16,7 @@ struct OfflineMapsView: View {
     @State private var importing = false
     @State private var confirmDelete: OfflineRegionItem?
     @State private var confirmDeleteAll = false
+    @State private var isStarting = false
 
     private var estimate: Int? {
         guard let b = mapManager.visibleBounds else { return nil }
@@ -50,15 +51,23 @@ struct OfflineMapsView: View {
                     }
                 }
                 Button {
-                    guard let b = mapManager.visibleBounds else { return }
-                    do {
-                        try offline.download(name: regionName, sw: b.sw, ne: b.ne, minZoom: Int(minZoom), maxZoom: Int(maxZoom))
-                        regionName = ""
-                    } catch { self.error = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription }
+                    guard let b = mapManager.visibleBounds, !isStarting else { return }
+                    isStarting = true
+                    let name = regionName
+                    Task {
+                        defer { isStarting = false }
+                        do {
+                            try await offline.download(name: name, sw: b.sw, ne: b.ne, minZoom: Int(minZoom), maxZoom: Int(maxZoom))
+                            regionName = ""
+                        } catch { self.error = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription }
+                    }
                 } label: {
-                    Label("تنزيل المنطقة الظاهرة على الخريطة", systemImage: "arrow.down.circle.fill")
+                    HStack {
+                        Label("تنزيل المنطقة الظاهرة على الخريطة", systemImage: "arrow.down.circle.fill")
+                        if isStarting { Spacer(); ProgressView() }
+                    }
                 }
-                .disabled(mapManager.visibleBounds == nil || !network.isOnline || offline.selectedTilesetID != nil)
+                .disabled(mapManager.visibleBounds == nil || !network.isOnline || offline.selectedTilesetID != nil || isStarting)
             } header: { Text("تنزيل منطقة") } footer: {
                 Text("حرّك الخريطة الرئيسية إلى المنطقة المطلوبة قبل فتح هذه الشاشة. يُفضّل التنزيل عبر Wi-Fi، وتحقق من أن ترخيص مزوّد الخرائط يسمح بالتنزيل.")
             }
