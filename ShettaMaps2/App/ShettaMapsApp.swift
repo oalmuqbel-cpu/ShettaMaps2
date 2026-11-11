@@ -27,6 +27,9 @@ struct ShettaMapsApp: App {
                 .environment(\.locale, Locale(identifier: "ar"))
                 .tint(Theme.desertOrange)
                 .onOpenURL { url in router.handleIncomingFile(url) }
+                #if DEBUG
+                .task { await GuideScreens.applyIfRequested(router: router, mapManager: mapManager) }
+                #endif
         }
         .modelContainer(env.container)
     }

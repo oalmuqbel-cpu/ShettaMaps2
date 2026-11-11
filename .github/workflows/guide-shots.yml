@@ -1,0 +1,67 @@
+# صور دليل الاستخدام: يفتح كل شاشة في المحاكي ويلتقطها ويحفظها في docs/guide
+name: Guide Screenshots
+
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        default: macos-15-intel
+
+permissions:
+  contents: write
+
+jobs:
+  shots:
+    runs-on: ${{ inputs.runner || 'macos-15-intel' }}
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select latest Xcode 26
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
+      - name: Build for simulator
+        run: |
+          set -o pipefail
+          brew install xcodegen >/dev/null
+          xcodegen generate
+          UDID=$(python3 ci/pick_simulator.py)
+          echo "UDID=$UDID" >> $GITHUB_ENV
+          xcodebuild build -project ShettaMaps2.xcodeproj -scheme ShettaMaps2 -configuration Debug \
+            -destination "id=$UDID" -derivedDataPath build CODE_SIGNING_ALLOWED=NO | tail -3
+      - name: Capture
+        run: |
+          mkdir -p shots
+          APP=$(find build/Build/Products -name "ShettaMaps2.app" -maxdepth 3 | head -1)
+          BID=com.almuqbel.ShettaMaps2
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 || true
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl privacy "$UDID" grant location-always $BID || xcrun simctl privacy "$UDID" grant location $BID || true
+          xcrun simctl location "$UDID" set 24.7136,46.6753
+          open -a Simulator --args -CurrentDeviceUDID "$UDID" || true
+          sleep 10
+          # تشغيل أول لتهيئة البيانات وقاعدة الأماكن
+          xcrun simctl launch "$UDID" $BID; sleep 15; xcrun simctl terminate "$UDID" $BID || true
+          i=1
+          for s in map filter pick search coords save offline trips tracks settings; do
+            xcrun simctl launch "$UDID" $BID -GuideScreen $s
+            sleep 2; xcrun simctl location "$UDID" set 24.7136,46.6753
+            sleep 14
+            xcrun simctl io "$UDID" screenshot "shots/$(printf %02d $i)-$s.png"
+            xcrun simctl terminate "$UDID" $BID || true
+            i=$((i+1)); sleep 2
+          done
+          xcrun simctl launch "$UDID" $BID -DemoNavigation
+          sleep 2; xcrun simctl location "$UDID" set 24.7136,46.6753
+          sleep 18
+          xcrun simctl io "$UDID" screenshot "shots/$(printf %02d $i)-navigation.png"
+      - name: Commit
+        run: |
+          mkdir -p docs/guide; rm -f docs/guide/*
+          for f in shots/*.png; do sips -s format jpeg -s formatOptions 85 "$f" --out "docs/guide/$(basename "${f%.png}").jpg" >/dev/null; done
+          ls docs/guide
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git add docs/guide; git commit -m "صور دليل الاستخدام" || true
+          git pull --rebase -q && git push

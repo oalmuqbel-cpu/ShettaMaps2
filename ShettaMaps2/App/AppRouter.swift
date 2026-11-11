@@ -55,6 +55,8 @@ final class AppRouter: ObservableObject {
     @Published var mapSheet: MapSheet?
     /// نص يُمرَّر من فلتر الخريطة إلى شاشة البحث الشامل.
     @Published var pendingSearchQuery = ""
+    /// نص إحداثيات يُمرَّر إلى شاشة الإدخال.
+    @Published var pendingCoordinateText = ""
     @Published var incomingGPX: URL?
     @Published var plannerDraft = RoutePlannerDraft()
 

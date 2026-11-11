@@ -84,6 +84,9 @@ struct CoordinateInputView: View {
             }
         }
         .navigationTitle("إدخال الإحداثيات")
+        .onAppear {
+            if !router.pendingCoordinateText.isEmpty { vm.text = router.pendingCoordinateText; router.pendingCoordinateText = "" }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("إغلاق") { dismiss() } } }
     }
