@@ -45,7 +45,8 @@ desc = ("تطبيق ملاحة برية للمملكة العربية السعو
         "تسجيل المسارات، حفظ المواقع والإحداثيات، والعودة لنقطة البداية. جرّب تنزيل خريطة منطقة، وحفظ موقع، "
         "وتسجيل مسار قصير، والبحث عن روضة أو جبل.")
 ar = [l for l in loc.get("data", []) if l["attributes"]["locale"] in ("ar-SA", "ar")]
-attrs = {"description": desc, "feedbackEmail": E["CONTACT_EMAIL"]}
+attrs = {"description": desc}
+if E.get("CONTACT_EMAIL"): attrs["feedbackEmail"] = E["CONTACT_EMAIL"]
 if ar: call("PATCH", f"/v1/betaAppLocalizations/{ar[0]['id']}", {"data": {"type": "betaAppLocalizations", "id": ar[0]["id"], "attributes": attrs}})
 else:
     r = call("POST", "/v1/betaAppLocalizations", {"data": {"type": "betaAppLocalizations", "attributes": {"locale": "ar-SA", **attrs},
@@ -54,7 +55,7 @@ else:
         call("POST", "/v1/betaAppLocalizations", {"data": {"type": "betaAppLocalizations", "attributes": {"locale": "en-US", **attrs},
              "relationships": {"app": {"data": {"type": "apps", "id": APP}}}}})
 print("localization ok")
-if rd.get("data"):
+if rd.get("data") and E.get("CONTACT_PHONE"):
     r = call("PATCH", f"/v1/betaAppReviewDetails/{rd['data']['id']}", {"data": {"type": "betaAppReviewDetails", "id": rd["data"]["id"], "attributes": {
         "contactFirstName": E["CONTACT_FIRST"], "contactLastName": E["CONTACT_LAST"], "contactPhone": E["CONTACT_PHONE"],
         "contactEmail": E["CONTACT_EMAIL"], "demoAccountRequired": False,
