@@ -5,7 +5,7 @@ import CoreLocation
 /// اختبار تكامل: تنزيل منطقة صغيرة فعليًا من مصدر الخرائط الافتراضي ثم إيقافها واستئنافها وحذفها.
 @MainActor
 final class OfflineDownloadTests: XCTestCase {
-    private let name = "اختبار-تنزيل"
+    private let regionName = "اختبار-تنزيل"
 
     private func waitFor(_ seconds: Double, _ condition: () -> Bool) async throws {
         let deadline = Date().addingTimeInterval(seconds)
@@ -18,13 +18,13 @@ final class OfflineDownloadTests: XCTestCase {
 
     func testDownloadPauseResumeDelete() async throws {
         let m = OfflineMapManager.shared
-        for r in m.regions where r.name == name { m.delete(r) }
+        for r in m.regions where r.name == regionName { m.delete(r) }
         let sw = CLLocationCoordinate2D(latitude: 24.70, longitude: 46.65)
         let ne = CLLocationCoordinate2D(latitude: 24.73, longitude: 46.68)
-        try m.download(name: name, sw: sw, ne: ne, minZoom: 9, maxZoom: 12)
+        try m.download(name: regionName, sw: sw, ne: ne, minZoom: 9, maxZoom: 12)
 
-        try await waitFor(30) { m.regions.contains { $0.name == name } }
-        guard let started = m.regions.first(where: { $0.name == name }) else { return XCTFail("لم تظهر المنطقة") }
+        try await waitFor(30) { m.regions.contains { $0.name == regionName } }
+        guard let started = m.regions.first(where: { $0.name == regionName }) else { return XCTFail("لم تظهر المنطقة") }
 
         // إيقاف ثم استئناف بنفس المعرّف
         if started.state == .downloading {
@@ -42,7 +42,7 @@ final class OfflineDownloadTests: XCTestCase {
 
         // المعرّف ثابت بين مرات التحديث (كان سبب تعذّر الحذف)
         m.refreshRegions()
-        XCTAssertEqual(m.regions.first { $0.name == name }?.id, started.id)
+        XCTAssertEqual(m.regions.first { $0.name == regionName }?.id, started.id)
 
         if let done { m.delete(done) }
         try await waitFor(20) { !m.regions.contains { $0.id == started.id } }
