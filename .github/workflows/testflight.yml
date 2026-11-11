@@ -1,9 +1,13 @@
 # رفع نسخة إلى TestFlight لتثبيتها على الآيفون والآيباد.
-# يتطلب أسرار المستودع: ASC_KEY_ID و ASC_ISSUER_ID و ASC_KEY_P8 و APPLE_TEAM_ID
+# يتطلب سرّين في المستودع: ASC_KEY_ID و ASC_KEY_P8 (معرّف الفريق والجهة المصدرة ليست أسرارًا ومثبتة أدناه)
 name: Upload to TestFlight
 
 on:
   workflow_dispatch:
+
+env:
+  APPLE_TEAM_ID: T75JK869U7
+  ASC_ISSUER_ID: ed50eb85-3437-4876-9fa3-1f3fcc29123a
 
 jobs:
   testflight:
@@ -29,8 +33,6 @@ jobs:
       - name: Archive
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -o pipefail
           xcodebuild archive -project ShettaMaps2.xcodeproj -scheme ShettaMaps2 \
@@ -46,8 +48,6 @@ jobs:
       - name: Upload to App Store Connect
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -o pipefail
           sed "s/TEAM_ID_PLACEHOLDER/$APPLE_TEAM_ID/" ci/ExportOptions.plist > "$RUNNER_TEMP/ExportOptions.plist"
