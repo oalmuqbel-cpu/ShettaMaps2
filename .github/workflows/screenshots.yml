@@ -64,15 +64,15 @@ jobs:
           osascript -e 'tell application "Simulator" to activate' \
                     -e 'delay 2' \
                     -e 'tell application "System Events" to tell process "Simulator" to click menu item "CarPlay" of menu 1 of menu item "External Displays" of menu 1 of menu bar item "I/O" of menu bar 1'
-          sleep 25
+          sleep 45
           xcrun simctl io "$UDID" screenshot --display=external shots/03-carplay-home.png
           brew install cliclick >/dev/null 2>&1 || true
           osascript -e 'tell application "System Events" to tell process "Simulator" to get {name, position, size} of every window' > shots/windows.txt
           # فتح التطبيق على CarPlay (أيقونة التطبيق)
-          python3 ci/carplay_tap.py shots/windows.txt 205 280 && sleep 12
+          python3 ci/carplay_tap.py shots/windows.txt 205 280 && sleep 30
           xcrun simctl io "$UDID" screenshot --display=external shots/04-carplay-navigation.png
           # زر «الوجهات»
-          python3 ci/carplay_tap.py shots/windows.txt 185 45 && sleep 6
+          python3 ci/carplay_tap.py shots/windows.txt 185 45 && sleep 10
           xcrun simctl io "$UDID" screenshot --display=external shots/05-carplay-destinations.png
 
       - name: Convert to JPG and commit
