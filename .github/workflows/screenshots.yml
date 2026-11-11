@@ -66,19 +66,6 @@ jobs:
                     -e 'tell application "System Events" to tell process "Simulator" to click menu item "CarPlay" of menu 1 of menu item "External Displays" of menu 1 of menu bar item "I/O" of menu bar 1'
           sleep 15
           xcrun simctl io "$UDID" screenshot --display=external shots/03-carplay-home.png
-          # فتح التطبيق على شاشة CarPlay بالنقر على أيقونته (الموضع من لقطة الشاشة الرئيسية لـ CarPlay 800x480)
-          osascript <<'OSA'
-          tell application "System Events" to tell process "Simulator"
-            set w to (first window whose name contains "CarPlay")
-            set {wx, wy} to position of w
-            set {ww, wh} to size of w
-            set titleH to 28
-            set sc to ww / 800
-            click at {wx + 205 * sc, wy + titleH + 280 * sc}
-          end tell
-          OSA
-          sleep 12
-          xcrun simctl io "$UDID" screenshot --display=external shots/04-carplay-app.png
 
       - name: Convert to JPG and commit
         run: |
