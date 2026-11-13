@@ -24,6 +24,9 @@ struct MapScreen: View {
     @Query(sort: \SavedPlace.name) private var places: [SavedPlace]
 
     @State private var showPickedOptions = false
+    @State private var sendingLocation = false
+    @State private var shareLocationText: String?
+    @AppStorage(SettingsKeys.emergencyNumber) private var emergencyNumber = ""
     @State private var showStopRecordingConfirm = false
 
     private var overlays: MapOverlaySet {
@@ -120,6 +123,15 @@ struct MapScreen: View {
             }
         }
         .sheet(item: $router.mapSheet) { sheet in sheetContent(sheet) }
+        .sheet(isPresented: $sendingLocation) {
+            if let loc = location.location {
+                MessageComposer(recipients: emergencyNumber.isEmpty ? [] : [emergencyNumber], body: LocationMessage.text(for: loc))
+                    .ignoresSafeArea()
+            }
+        }
+        .sheet(item: Binding(get: { shareLocationText.map { ShareText(text: $0) } }, set: { shareLocationText = $0?.text })) {
+            ShareSheet(items: [$0.text])
+        }
         .onChange(of: mapManager.visibleRegion?.center.latitude) { _, _ in refreshCommunity() }
         .onChange(of: mapManager.visibleRegion?.center.longitude) { _, _ in refreshCommunity() }
         .onChange(of: mapManager.pickedCoordinate?.latitude) { _, new in
@@ -159,8 +171,12 @@ struct MapScreen: View {
 
     @ViewBuilder
     private var mapLayer: some View {
-        if mapManager.layer == .offline {
-            OfflineMapView(styleURL: offlineMaps.activeStyleURL, overlays: overlays, mapManager: mapManager)
+        if mapManager.layer == .dirt {
+            // نفس مصدر الخرائط المجاني مع إبراز الطرق الترابية؛ يعمل دون إنترنت في المناطق المنزّلة
+            OfflineMapView(styleURL: URL(string: OfflineMapManager.defaultStyleURL), overlays: overlays, mapManager: mapManager,
+                           highlightDirtRoads: true)
+        } else if mapManager.layer == .offline {
+            OfflineMapView(styleURL: offlineMaps.activeStyleURL, overlays: overlays, mapManager: mapManager, highlightDirtRoads: true)
         } else {
             OnlineMapView(overlays: overlays, mapManager: mapManager)
         }
@@ -181,6 +197,8 @@ struct MapScreen: View {
                 if community.isEnabled {
                     Toggle(isOn: $showCommunity) { Label("مشاركات المجتمع", systemImage: "person.2") }
                 }
+                Divider()
+                Button { sendLocation() } label: { Label("إرسال موقعي برسالة", systemImage: "message") }
             } label: {
                 Image(systemName: "square.3.layers.3d")
                     .font(.title3.weight(.semibold))
@@ -297,6 +315,12 @@ struct MapScreen: View {
         }
     }
 
+    /// رسالة SMS بالموقع (تصل بإشارة الجوال دون إنترنت)، أو مشاركة النص إن تعذّرت الرسائل.
+    private func sendLocation() {
+        guard let loc = location.location else { location.requestWhenInUse(); return }
+        if MessageComposer.canSend { sendingLocation = true } else { shareLocationText = LocationMessage.text(for: loc) }
+    }
+
     private func refreshCommunity() {
         guard showCommunity, community.isEnabled, network.isOnline,
               let b = mapManager.visibleBounds, let r = mapManager.visibleRegion, r.span.latitudeDelta < 4 else { return }
@@ -360,4 +384,9 @@ struct Banner: View {
         }
         .hudCard()
     }
+}
+
+struct ShareText: Identifiable {
+    let text: String
+    var id: String { text }
 }

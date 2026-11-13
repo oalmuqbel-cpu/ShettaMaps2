@@ -7,8 +7,13 @@ struct OfflineMapView: UIViewRepresentable {
     let styleURL: URL?
     let overlays: MapOverlaySet
     @ObservedObject var mapManager: MapManager
+    var highlightDirtRoads = false
 
-    func makeCoordinator() -> Coordinator { Coordinator(mapManager: mapManager) }
+    func makeCoordinator() -> Coordinator {
+        let c = Coordinator(mapManager: mapManager)
+        c.highlightDirtRoads = highlightDirtRoads
+        return c
+    }
 
     func makeUIView(context: Context) -> MLNMapView {
         let map = MLNMapView(frame: .zero, styleURL: styleURL)
@@ -54,8 +59,39 @@ struct OfflineMapView: UIViewRepresentable {
         var currentStyle: URL?
         var lastOverlays: MapOverlaySet?
         var lastCommandID = 0
+        var highlightDirtRoads = false
 
         init(mapManager: MapManager) { self.mapManager = mapManager }
+
+        /// إبراز الطرق الترابية والردميات من بيانات OpenStreetMap (طبقة transportation: class=track أو surface=unpaved).
+        nonisolated func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
+            MainActor.assumeIsolated {
+                guard highlightDirtRoads, style.layer(withIdentifier: "samt-dirt-roads") == nil else { return }
+                let vectorSources = style.sources.compactMap { $0 as? MLNVectorTileSource }
+                guard let source = vectorSources.first(where: { $0.identifier == "openmaptiles" }) ?? vectorSources.first else { return }
+                let casing = MLNLineStyleLayer(identifier: "samt-dirt-roads-casing", source: source)
+                casing.sourceLayerIdentifier = "transportation"
+                casing.predicate = NSPredicate(format: "%K == %@ OR %K == %@", "class", "track", "surface", "unpaved")
+                casing.lineColor = NSExpression(forConstantValue: UIColor.white.withAlphaComponent(0.8))
+                casing.lineWidth = NSExpression(forConstantValue: 4.5)
+                casing.minimumZoomLevel = 9
+                let line = MLNLineStyleLayer(identifier: "samt-dirt-roads", source: source)
+                line.sourceLayerIdentifier = "transportation"
+                line.predicate = casing.predicate
+                line.lineColor = NSExpression(forConstantValue: UIColor(red: 0.62, green: 0.33, blue: 0.10, alpha: 1))
+                line.lineWidth = NSExpression(forConstantValue: 2.6)
+                line.lineDashPattern = NSExpression(forConstantValue: [2.2, 1.2])
+                line.minimumZoomLevel = 9
+                // تحت الأسماء: قبل أول طبقة رموز إن وجدت
+                if let firstSymbol = style.layers.first(where: { $0 is MLNSymbolStyleLayer }) {
+                    style.insertLayer(casing, below: firstSymbol)
+                    style.insertLayer(line, below: firstSymbol)
+                } else {
+                    style.addLayer(casing)
+                    style.addLayer(line)
+                }
+            }
+        }
 
         func perform(_ cmd: MapCommand, on map: MLNMapView) {
             switch cmd {

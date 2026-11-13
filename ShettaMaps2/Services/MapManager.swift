@@ -5,7 +5,7 @@ import SwiftUI
 /// طبقات الخريطة المتاحة. طبقات MapKit تحتاج إلى الإنترنت (مع تخزين مؤقت محدود يديره النظام)،
 /// وطبقة "دون إنترنت" تعرض حزم MapLibre أو ملفات MBTiles المحملة مسبقًا.
 enum MapLayer: String, CaseIterable, Identifiable {
-    case standard, terrain, satellite, hybrid, offline
+    case standard, terrain, satellite, hybrid, dirt, offline
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -13,6 +13,7 @@ enum MapLayer: String, CaseIterable, Identifiable {
         case .terrain: return "تضاريس"
         case .satellite: return "أقمار صناعية"
         case .hybrid: return "هجينة"
+        case .dirt: return "طرق ترابية وردميات"
         case .offline: return "دون إنترنت"
         }
     }
@@ -22,15 +23,18 @@ enum MapLayer: String, CaseIterable, Identifiable {
         case .terrain: return "mountain.2"
         case .satellite: return "globe.asia.australia"
         case .hybrid: return "square.2.layers.3d"
+        case .dirt: return "road.lanes"
         case .offline: return "arrow.down.circle"
         }
     }
     var needsInternet: Bool { self != .offline }
+    /// الطبقات التي تُعرض بمحرك MapLibre بدل MapKit.
+    var usesMapLibre: Bool { self == .offline || self == .dirt }
 
     /// نمط MapKit المقابل. "تضاريس" تستخدم الارتفاعات الواقعية حيث توفرها Apple.
     var mapStyle: MapStyle {
         switch self {
-        case .standard, .offline: return .standard(elevation: .flat, pointsOfInterest: .all)
+        case .standard, .offline, .dirt: return .standard(elevation: .flat, pointsOfInterest: .all)
         case .terrain: return .standard(elevation: .realistic, emphasis: .muted, pointsOfInterest: .excludingAll)
         case .satellite: return .imagery(elevation: .realistic)
         case .hybrid: return .hybrid(elevation: .realistic)
@@ -39,7 +43,7 @@ enum MapLayer: String, CaseIterable, Identifiable {
 
     var mkMapType: MKMapType {
         switch self {
-        case .standard, .offline, .terrain: return .standard
+        case .standard, .offline, .terrain, .dirt: return .standard
         case .satellite: return .satellite
         case .hybrid: return .hybrid
         }

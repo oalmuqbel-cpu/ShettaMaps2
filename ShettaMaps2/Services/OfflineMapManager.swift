@@ -410,6 +410,11 @@ final class OfflineMapManager: ObservableObject {
         }
     }
 
+    func fileSize(of t: LocalTileset) -> Int64 {
+        let url = tilesDirectory.appendingPathComponent(t.fileName)
+        return Int64((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+    }
+
     func deleteTileset(_ t: LocalTileset) {
         try? FileManager.default.removeItem(at: tilesDirectory.appendingPathComponent(t.fileName))
         if let style = styleFileURL(for: t) { try? FileManager.default.removeItem(at: style) }

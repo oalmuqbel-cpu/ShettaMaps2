@@ -155,6 +155,16 @@ struct TripDetailView: View {
                 }
             }
 
+            if let here = location.location?.coordinate {
+                Section("الشمس اليوم") {
+                    if let r = SunCalculator.time(.sunrise, on: Date(), at: here) { LabeledContent("الشروق", value: Fmt.time.string(from: r)) }
+                    if let s = SunCalculator.time(.sunset, on: Date(), at: here) {
+                        LabeledContent("الغروب", value: Fmt.time.string(from: s))
+                        if s > Date() { LabeledContent("المتبقي على الغروب", value: Fmt.duration(s.timeIntervalSinceNow)) }
+                    }
+                }
+            }
+
             Section("آخر موقع معروف") {
                 if let c = trip.lastKnownCoordinate {
                     Text(CoordinateUtilities.format(c, as: .decimal)).font(.footnote.monospaced())

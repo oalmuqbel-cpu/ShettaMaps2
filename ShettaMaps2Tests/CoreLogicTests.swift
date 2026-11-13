@@ -319,3 +319,24 @@ final class PolylineAndTrimTests: XCTestCase {
         XCTAssertEqual(TrackAccumulator.segments(of: removed).count, 2, "الجزء المحذوف لا يُرسم كخط واصل")
     }
 }
+
+final class SunCalculatorTests: XCTestCase {
+    func testEquinoxSunsetAtEquatorNearSixUTC() throws {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(identifier: "UTC")!
+        let d = cal.date(from: DateComponents(year: 2026, month: 3, day: 20, hour: 12))!
+        let s = try XCTUnwrap(SunCalculator.time(.sunset, on: d, at: .init(latitude: 0, longitude: 0)))
+        let h = Double(cal.component(.hour, from: s)) + Double(cal.component(.minute, from: s)) / 60
+        XCTAssertEqual(h, 18.1, accuracy: 0.25)
+    }
+
+    func testRiyadhSunsetBeforeSunriseOrderAndRange() throws {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(identifier: "Asia/Riyadh")!
+        let d = cal.date(from: DateComponents(year: 2026, month: 11, day: 13, hour: 12))!
+        let c = CLLocationCoordinate2D(latitude: 24.7136, longitude: 46.6753)
+        let rise = try XCTUnwrap(SunCalculator.time(.sunrise, on: d, at: c))
+        let set = try XCTUnwrap(SunCalculator.time(.sunset, on: d, at: c))
+        XCTAssertLessThan(rise, set)
+        let h = Double(cal.component(.hour, from: set)) + Double(cal.component(.minute, from: set)) / 60
+        XCTAssertEqual(h, 17.1, accuracy: 0.4, "غروب الرياض منتصف نوفمبر قرابة الخامسة وست دقائق مساءً")
+    }
+}

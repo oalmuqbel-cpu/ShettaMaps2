@@ -10,6 +10,9 @@ struct SettingsView: View {
     @AppStorage(SettingsKeys.batteryMode) private var batteryRaw = BatteryMode.balanced.rawValue
     @AppStorage(SettingsKeys.autoRecordTrips) private var autoRecord = true
     @AppStorage(SettingsKeys.autoPauseMinutes) private var autoPauseMinutes = 15.0
+    @AppStorage(SettingsKeys.sunsetReminder) private var sunsetReminder = true
+    @AppStorage(SettingsKeys.emergencyNumber) private var emergencyNumber = ""
+    @EnvironmentObject private var offlineStorage: OfflineMapManager
     @AppStorage(SettingsKeys.highContrast) private var highContrast = false
     @AppStorage(SettingsKeys.coordinateFormat) private var formatRaw = CoordinateFormat.decimal.rawValue
     @AppStorage(SettingsKeys.iCloudSync) private var iCloudSync = false
@@ -42,6 +45,7 @@ struct SettingsView: View {
 
             Section("الرحلات والعرض") {
                 Toggle("تسجيل المسار تلقائيًا عند بدء رحلة", isOn: $autoRecord)
+                Toggle("تنبيه قبل الغروب بـ 45 دقيقة أثناء الرحلة", isOn: $sunsetReminder)
                 Picker("إيقاف التسجيل عند الوقوف", selection: $autoPauseMinutes) {
                     Text("بدون").tag(0.0)
                     ForEach([5.0, 10, 15, 30], id: \.self) { Text("بعد \(Int($0)) دقيقة").tag($0) }
@@ -65,6 +69,22 @@ struct SettingsView: View {
                 Text("اختيارية وتعمل عبر حسابك الخاص في iCloud (CloudKit)؛ تبقى البيانات على جهازك وتعمل دون إنترنت، وتُزامن عند توفر الاتصال. يتطلب تفعيلها إعادة تشغيل التطبيق وإضافة قدرة iCloud في المشروع.")
             }
 
+            Section {
+                TextField("رقم جوال لإرسال موقعك إليه", text: $emergencyNumber)
+                    .keyboardType(.phonePad)
+                    .environment(\.layoutDirection, .leftToRight)
+            } header: { Text("الطوارئ") } footer: {
+                Text("من زر الطبقات في الخريطة اختر «إرسال موقعي برسالة»: تُجهَّز رسالة SMS بموقعك ورابط خرائط، وتصل بإشارة الجوال حتى دون إنترنت. يبقى الرقم على جهازك فقط.")
+            }
+
+            Section {
+                NavigationLink { StorageUsageView() } label: {
+                    LabeledContent("الخرائط المنزّلة", value: Fmt.bytes(Int64(offlineStorage.totalDownloadedBytes)))
+                }
+            } header: { Text("التخزين") } footer: {
+                Text("الخرائط المنزّلة هي أكبر ما يستهلك المساحة. المواقع والمسارات صغيرة، وتُنسخ إلى iCloud إذا فعّلت المزامنة.")
+            }
+
             Section("النسخ الاحتياطي") {
                 Button { makeBackup() } label: { Label("إنشاء نسخة احتياطية ومشاركتها", systemImage: "externaldrive.badge.plus") }
                 Button { restoring = true } label: { Label("استعادة من نسخة احتياطية", systemImage: "externaldrive.badge.timemachine") }
@@ -80,7 +100,7 @@ struct SettingsView: View {
             }
 
             Section("الخصوصية") {
-                Text("تُحفظ مواقعك ومساراتك ورحلاتك على جهازك فقط. لا يُرسل أي مكان إلى خادم إلا إذا اخترت له «عام» عند الحفظ، وحينها يُرسل الاسم والإحداثيات والنوع والملاحظات فقط دون أي معلومات عنك. عند استخدام خرائط الإنترنت أو البحث عبر الإنترنت أو توجيهات الطرق، تُرسل Apple أو مزوّد الخرائط الطلبات اللازمة لتلك الخدمة فقط.")
+                Text("تُحفظ مواقعك ومساراتك ورحلاتك وصورك على جهازك فقط. لا يُرسل أي مكان إلى خادم إلا إذا اخترت له «عام» عند الحفظ، وحينها يُرسل الاسم والإحداثيات والنوع والملاحظات فقط دون أي معلومات عنك. وعند مشاركة مسار مع المجتمع يُرسل خطه بعد إخفاء أول وآخر 400 متر، مع الاسم والملاحظات التي تكتبها. عند استخدام خرائط الإنترنت أو البحث عبر الإنترنت أو توجيهات الطرق، تُرسل Apple أو مزوّد الخرائط الطلبات اللازمة لتلك الخدمة فقط.")
                     .font(.footnote)
             }
 
@@ -150,5 +170,60 @@ struct SatelliteInfoView: View {
             }
         }
         .navigationTitle("الأقمار الصناعية")
+    }
+}
+
+/// استهلاك التخزين: ما الذي يأخذ مساحة على الجهاز، مع اختصارات للتنظيف.
+struct StorageUsageView: View {
+    @Environment(\.modelContext) private var context
+    @EnvironmentObject private var offline: OfflineMapManager
+    @State private var photoCount = 0
+    @State private var photoBytes: Int64 = 0
+    @State private var trackCount = 0
+    @State private var placeCount = 0
+    @State private var cacheBytes: Int64 = 0
+
+    var body: some View {
+        List {
+            Section("الخرائط") {
+                LabeledContent("المناطق المنزّلة (\(offline.regions.count))", value: Fmt.bytes(Int64(offline.totalDownloadedBytes)))
+                ForEach(offline.tilesets) { t in LabeledContent("ملف: \(t.name)", value: Fmt.bytes(offline.fileSize(of: t))) }
+                NavigationLink("إدارة الخرائط المحفوظة") { OfflineMapsView() }
+            }
+            Section("بياناتك") {
+                LabeledContent("المواقع", value: "\(placeCount)")
+                LabeledContent("المسارات", value: "\(trackCount)")
+                LabeledContent("صور الأماكن (\(photoCount))", value: Fmt.bytes(photoBytes))
+            }
+            Section {
+                LabeledContent("ذاكرة مؤقتة للمشاركات", value: Fmt.bytes(cacheBytes))
+                Button("مسح الذاكرة المؤقتة") { clearCaches() }
+            } footer: {
+                Text("الذاكرة المؤقتة تحفظ مشاركات المجتمع لتظهر دون إنترنت، وتُعاد تعبئتها تلقائيًا.")
+            }
+        }
+        .navigationTitle("التخزين")
+        .task { await measure() }
+    }
+
+    private func measure() async {
+        placeCount = (try? context.fetchCount(FetchDescriptor<SavedPlace>())) ?? 0
+        trackCount = (try? context.fetchCount(FetchDescriptor<RecordedTrack>())) ?? 0
+        let photos = (try? context.fetch(FetchDescriptor<PlacePhoto>())) ?? []
+        photoCount = photos.count
+        photoBytes = photos.reduce(Int64(0)) { $0 + Int64(($1.imageData?.count ?? 0) + ($1.thumbnailData?.count ?? 0)) }
+        cacheBytes = Self.cacheFiles.reduce(Int64(0)) { sum, url in
+            sum + Int64((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+        }
+    }
+
+    private static var cacheFiles: [URL] {
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return ["community-cache.json", "community-tracks-cache.json"].map { dir.appendingPathComponent($0) }
+    }
+
+    private func clearCaches() {
+        Self.cacheFiles.forEach { try? FileManager.default.removeItem(at: $0) }
+        cacheBytes = 0
     }
 }

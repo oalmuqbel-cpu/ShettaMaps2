@@ -50,6 +50,9 @@ final class TripManager: ObservableObject {
         if autoRecord, !recorder.isActive {
             recorder.start(name: trip.name, trip: trip)
         }
+        if UserDefaults.standard.object(forKey: SettingsKeys.sunsetReminder) as? Bool ?? true, let c = location.location?.coordinate {
+            SunsetReminder.schedule(at: c)
+        }
         if let d = destination {
             navigation.start(NavigationPlan(origin: startWaypoint(of: trip), waypoints: trip.stops,
                                             destination: d, mode: .direct, tripID: trip.id))
@@ -58,6 +61,7 @@ final class TripManager: ObservableObject {
     }
 
     func endTrip() {
+        SunsetReminder.cancel()
         guard let trip = activeTrip else { return }
         if recorder.isActive, recorder.currentTrack?.trip?.id == trip.id { recorder.finish() }
         if navigation.plan?.tripID == trip.id { navigation.stop() }
