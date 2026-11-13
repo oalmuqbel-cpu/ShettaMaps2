@@ -27,6 +27,18 @@ final class RouteRecordingManager: ObservableObject {
     @Published private(set) var liveSegments: [[CLLocationCoordinate2D]] = []
     @Published private(set) var recoveredNotice: String?
     @Published private(set) var lastRejection: TrackAccumulator.Rejection?
+    /// إيقاف تلقائي بسبب الوقوف؛ يُستأنف التسجيل تلقائيًا عند الحركة.
+    @Published private(set) var isAutoPaused = false
+
+    /// مسافة الحركة التي تُعد خروجًا من مكان الوقوف، ومدة الوقوف قبل الإيقاف التلقائي.
+    static let stationaryRadius: Double = 35
+    static let resumeRadius: Double = 60
+    private var anchor: CLLocation?
+    private var lastMoveTime = Date()
+    var autoPauseSeconds: TimeInterval {
+        let minutes = UserDefaults.standard.object(forKey: SettingsKeys.autoPauseMinutes) as? Double ?? 15
+        return minutes * 60
+    }
 
     private(set) var currentTrack: RecordedTrack?
     private var accumulator = TrackAccumulator()
@@ -66,6 +78,9 @@ final class RouteRecordingManager: ObservableObject {
         pausedAt = nil
         resetPublished()
         state = .recording
+        anchor = location.location
+        lastMoveTime = Date()
+        isAutoPaused = false
 
         location.requestAlwaysIfNeeded()
         location.requestFullAccuracyIfNeeded()
@@ -78,6 +93,7 @@ final class RouteRecordingManager: ObservableObject {
 
     func pause() {
         guard state == .recording else { return }
+        isAutoPaused = false
         state = .paused
         pausedAt = Date()
         accumulator.markPaused()
@@ -88,7 +104,20 @@ final class RouteRecordingManager: ObservableObject {
         guard state == .paused else { return }
         if let p = pausedAt { pausedTotal += Date().timeIntervalSince(p) }
         pausedAt = nil
+        isAutoPaused = false
+        lastMoveTime = Date()
+        anchor = location.location
         state = .recording
+    }
+
+    /// يوقف التسجيل تلقائيًا بعد الوقوف مدة محددة، بلا نقاط ولا وقت إضافي حتى تتحرك.
+    private func autoPauseIfStationary(now: Date = Date()) {
+        guard state == .recording, autoPauseSeconds > 0, now.timeIntervalSince(lastMoveTime) >= autoPauseSeconds else { return }
+        state = .paused
+        isAutoPaused = true
+        pausedAt = now
+        accumulator.markPaused()
+        checkpoint(force: true)
     }
 
     /// ينهي التسجيل ويحفظ المسار. يحذف المسار إن كان أقل من نقطتين.
@@ -125,7 +154,21 @@ final class RouteRecordingManager: ObservableObject {
 
     private func ingest(_ loc: CLLocation) {
         currentSpeed = loc.speed >= 0 ? loc.speed : nil
+        let accurate = loc.horizontalAccuracy >= 0 && loc.horizontalAccuracy <= 50
+        if state == .paused, isAutoPaused {
+            // استئناف تلقائي عند الابتعاد عن مكان الوقوف
+            if accurate, let a = anchor, loc.distance(from: a) > Self.resumeRadius { resume() } else { return }
+        }
         guard state == .recording else { return }
+        if accurate {
+            if let a = anchor, loc.distance(from: a) <= Self.stationaryRadius {
+                autoPauseIfStationary()
+                if state != .recording { return }
+            } else {
+                anchor = loc
+                lastMoveTime = Date()
+            }
+        }
         let point = TrackPoint(location: loc, segment: accumulator.segment)
         lastRejection = accumulator.append(point)
         guard lastRejection == nil else { return }
@@ -165,7 +208,10 @@ final class RouteRecordingManager: ObservableObject {
     private func startTimer() {
         timer?.invalidate()
         let t = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.elapsed = self?.computeElapsed() ?? 0 }
+            MainActor.assumeIsolated {
+                self?.elapsed = self?.computeElapsed() ?? 0
+                self?.autoPauseIfStationary()
+            }
         }
         RunLoop.main.add(t, forMode: .common)
         timer = t
@@ -183,6 +229,7 @@ final class RouteRecordingManager: ObservableObject {
         currentTrack = nil
         state = .idle
         startedAt = nil; pausedAt = nil; pausedTotal = 0
+        isAutoPaused = false; anchor = nil
         liveSegments = []
         location.endBackgroundUpdates(reason: Self.backgroundReason)
     }

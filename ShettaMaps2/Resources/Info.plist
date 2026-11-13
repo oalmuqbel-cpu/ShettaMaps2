@@ -29,6 +29,8 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 
+	<key>NSCameraUsageDescription</key>
+	<string>Samt uses the camera to take photos of places you save. Photos stay on your device.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>يستخدم تطبيق سَمْت موقعك لعرضه على الخريطة، وحساب المسافة والاتجاه إلى وجهتك، وحفظ المواقع. تبقى بياناتك على جهازك ولا تُرسل إلى أي خادم.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>

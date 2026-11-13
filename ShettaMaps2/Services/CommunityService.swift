@@ -67,7 +67,7 @@ final class CommunityService: ObservableObject {
     private var tokenExpiry = Date.distantPast
     private var lastFetchBox: (Double, Double, Double, Double)?
     private var lastFetch = Date.distantPast
-    private let session: URLSession
+    let session: URLSession
 
     var isEnabled: Bool { CommunityConfig.isConfigured }
     var myUid: String? { Keychain.get("community.uid") }
@@ -90,7 +90,7 @@ final class CommunityService: ObservableObject {
 
     // MARK: - المصادقة المجهولة
 
-    private func token() async throws -> String {
+    func token() async throws -> String {
         guard isEnabled else { throw CommunityError.notConfigured }
         if let t = idToken, Date() < tokenExpiry { return t }
         if let refresh = Keychain.get("community.refresh") {
@@ -129,7 +129,7 @@ final class CommunityService: ObservableObject {
 
     // MARK: - العمليات
 
-    private var base: String { "https://firestore.googleapis.com/v1/projects/\(CommunityConfig.projectID)/databases/(default)/documents" }
+    var base: String { "https://firestore.googleapis.com/v1/projects/\(CommunityConfig.projectID)/databases/(default)/documents" }
 
     /// ينشر مكانًا علنًا ويعيد معرّفه.
     func publish(name: String, kind: PlaceKind, coordinate c: CLLocationCoordinate2D, notes: String) async throws -> String {
@@ -256,7 +256,7 @@ final class CommunityService: ObservableObject {
 
     // MARK: - أدوات
 
-    private func post(_ url: URL, body: [String: Any], auth: String?) async throws -> [String: Any] {
+    func post(_ url: URL, body: [String: Any], auth: String?) async throws -> [String: Any] {
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -272,7 +272,7 @@ final class CommunityService: ObservableObject {
         }
     }
 
-    private static func message(_ data: Data, _ code: Int) -> String {
+    static func message(_ data: Data, _ code: Int) -> String {
         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let err = json["error"] as? [String: Any], let m = err["message"] as? String { return "\(code) \(m)" }
         return "رمز \(code)"

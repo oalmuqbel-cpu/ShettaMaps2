@@ -18,7 +18,7 @@ struct MapOverlaySet: Equatable {
         }
     }
     enum PinKind: Equatable { case saved, destination, waypoint, picked, start, search, landmark, community }
-    enum LineKind: Equatable { case track, direct, road, importedTrack }
+    enum LineKind: Equatable { case track, direct, road, importedTrack, community }
 
     struct Line: Equatable {
         var kind: LineKind
@@ -49,6 +49,9 @@ struct MapOverlaySet: Equatable {
             Pin(id: "p-\($0.id.uuidString)", title: $0.name, subtitle: $0.category?.name, coordinate: $0.coordinate, kind: .saved)
         }
         set.lines = liveSegments.map { Line(kind: .track, coordinates: $0) }
+        if let first = liveSegments.first?.first {
+            set.pins.append(Pin(id: "rec-start", title: "بداية التسجيل", subtitle: nil, coordinate: first, kind: .start, symbol: "flag.fill"))
+        }
 
         if let plan = navigation.plan, navigation.isNavigating {
             let targetIndex = navigation.progress?.targetIndex ?? 0

@@ -190,7 +190,7 @@ struct RecordingPanel: View {
                 .fill(recorder.state == .recording ? Color.red : Color.orange)
                 .frame(width: 12, height: 12)
             VStack(alignment: .leading, spacing: 2) {
-                Text(recorder.state.title).font(.caption.weight(.semibold))
+                Text(recorder.isAutoPaused ? "متوقف تلقائيًا — يكمل عند الحركة" : recorder.state.title).font(.caption.weight(.semibold))
                 HStack(spacing: 10) {
                     Text(Fmt.distance(recorder.distance))
                     Text(Fmt.duration(recorder.elapsed))

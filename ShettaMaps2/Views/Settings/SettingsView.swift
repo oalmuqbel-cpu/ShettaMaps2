@@ -9,6 +9,7 @@ struct SettingsView: View {
     @EnvironmentObject private var carPlay: CarPlayConnectionMonitor
     @AppStorage(SettingsKeys.batteryMode) private var batteryRaw = BatteryMode.balanced.rawValue
     @AppStorage(SettingsKeys.autoRecordTrips) private var autoRecord = true
+    @AppStorage(SettingsKeys.autoPauseMinutes) private var autoPauseMinutes = 15.0
     @AppStorage(SettingsKeys.highContrast) private var highContrast = false
     @AppStorage(SettingsKeys.coordinateFormat) private var formatRaw = CoordinateFormat.decimal.rawValue
     @AppStorage(SettingsKeys.iCloudSync) private var iCloudSync = false
@@ -41,6 +42,10 @@ struct SettingsView: View {
 
             Section("الرحلات والعرض") {
                 Toggle("تسجيل المسار تلقائيًا عند بدء رحلة", isOn: $autoRecord)
+                Picker("إيقاف التسجيل عند الوقوف", selection: $autoPauseMinutes) {
+                    Text("بدون").tag(0.0)
+                    ForEach([5.0, 10, 15, 30], id: \.self) { Text("بعد \(Int($0)) دقيقة").tag($0) }
+                }
                 Toggle("تباين عالٍ للاستخدام تحت الشمس", isOn: $highContrast)
                 Picker("صيغة الإحداثيات", selection: $formatRaw) {
                     ForEach(CoordinateFormat.allCases) { Text($0.title).tag($0.rawValue) }

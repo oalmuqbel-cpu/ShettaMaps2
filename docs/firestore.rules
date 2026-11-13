@@ -25,5 +25,34 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reportCount'])
         && request.resource.data.reportCount == resource.data.reportCount + 1;
     }
+
+    // مسارات المجتمع: خط المسار مرمّز ومبسّط، بعد إخفاء أول وآخر 400 م لحماية الخصوصية
+    match /tracks/{trackId} {
+      allow read: if true;
+
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['name','notes','authorUid','createdAt','reportCount','distance','polyline','minLat','maxLat','minLon','maxLon'])
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 60
+        && request.resource.data.notes is string && request.resource.data.notes.size() <= 500
+        && request.resource.data.polyline is string
+        && request.resource.data.polyline.size() >= 4 && request.resource.data.polyline.size() <= 60000
+        && request.resource.data.distance is number && request.resource.data.distance >= 0 && request.resource.data.distance <= 3000000
+        && request.resource.data.minLat is number && request.resource.data.minLat >= 12
+        && request.resource.data.maxLat is number && request.resource.data.maxLat <= 33
+        && request.resource.data.minLat <= request.resource.data.maxLat
+        && request.resource.data.minLon is number && request.resource.data.minLon >= 34
+        && request.resource.data.maxLon is number && request.resource.data.maxLon <= 60
+        && request.resource.data.minLon <= request.resource.data.maxLon
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.reportCount == 0;
+
+      allow delete: if request.auth != null && resource.data.authorUid == request.auth.uid;
+
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reportCount'])
+        && request.resource.data.reportCount == resource.data.reportCount + 1;
+    }
   }
 }

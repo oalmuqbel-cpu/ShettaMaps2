@@ -129,6 +129,8 @@ struct TripDetailView: View {
     @EnvironmentObject private var recorder: RouteRecordingManager
     @Bindable var trip: Trip
     @State private var confirmEnd = false
+    @State private var confirmClearStart = false
+    @State private var stopToDelete: Int?
 
     var body: some View {
         List {
@@ -148,6 +150,9 @@ struct TripDetailView: View {
                 if let here = location.location?.coordinate {
                     Button("تعيين موقعي الحالي كنقطة بداية") { trips.setStart(here, for: trip) }
                 }
+                if trip.startCoordinate != nil {
+                    Button("حذف نقطة البداية", role: .destructive) { confirmClearStart = true }
+                }
             }
 
             Section("آخر موقع معروف") {
@@ -159,11 +164,17 @@ struct TripDetailView: View {
             }
 
             Section {
-                ForEach(trip.stops) { s in
-                    VStack(alignment: .leading) {
-                        Text(s.name)
-                        Text(CoordinateUtilities.format(s.coordinate, as: .decimal)).font(.caption.monospaced())
-                            .foregroundStyle(.secondary).environment(\.layoutDirection, .leftToRight)
+                ForEach(Array(trip.stops.enumerated()), id: \.element.id) { i, s in
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text(s.name)
+                            Text(CoordinateUtilities.format(s.coordinate, as: .decimal)).font(.caption.monospaced())
+                                .foregroundStyle(.secondary).environment(\.layoutDirection, .leftToRight)
+                        }
+                        Spacer()
+                        Button(role: .destructive) { stopToDelete = i } label: { Image(systemName: "trash") }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel("حذف نقطة التوقف")
                     }
                 }
                 .onDelete { trips.removeStops(at: $0, from: trip) }
@@ -208,6 +219,16 @@ struct TripDetailView: View {
             }
             Section("ملاحظات") {
                 TextField("ملاحظات الرحلة", text: $trip.notes, axis: .vertical).lineLimit(2...6)
+            }
+        }
+        .confirmationDialog("حذف نقطة البداية؟", isPresented: $confirmClearStart, titleVisibility: .visible) {
+            Button("حذف", role: .destructive) { trips.clearStart(of: trip) }
+        }
+        .confirmationDialog("حذف نقطة التوقف؟", isPresented: Binding(get: { stopToDelete != nil }, set: { if !$0 { stopToDelete = nil } }),
+                            titleVisibility: .visible) {
+            Button("حذف", role: .destructive) {
+                if let i = stopToDelete, trip.stops.indices.contains(i) { trips.removeStops(at: IndexSet(integer: i), from: trip) }
+                stopToDelete = nil
             }
         }
         .navigationTitle(trip.name)

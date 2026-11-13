@@ -50,6 +50,15 @@ enum Fmt {
         return f
     }()
 
+    static let time: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = arabic
+        f.calendar = Calendar(identifier: .gregorian)
+        f.dateStyle = .none
+        f.timeStyle = .short
+        return f
+    }()
+
     static func bytes(_ b: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: b, countStyle: .file)
     }

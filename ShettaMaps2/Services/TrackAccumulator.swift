@@ -69,6 +69,23 @@ struct TrackAccumulator {
 
     var coordinates: [CLLocationCoordinate2D] { points.map(\.coordinate) }
 
+    enum TrimMode { case keepRange, removeRange }
+
+    /// قص المسار: الإبقاء على النقاط من from إلى to، أو حذفها (مع فصل ما قبلها عما بعدها حتى لا يُرسم خط بينهما).
+    static func trimmed(_ points: [TrackPoint], from: Int, to: Int, mode: TrimMode) -> [TrackPoint] {
+        guard !points.isEmpty else { return [] }
+        let a = max(0, min(from, to)), b = min(points.count - 1, max(from, to))
+        switch mode {
+        case .keepRange:
+            return Array(points[a...b])
+        case .removeRange:
+            let before = Array(points[..<a])
+            let maxSeg = (before.map(\.segment).max() ?? 0) + 1
+            let after = points[(b + 1)...].map { p -> TrackPoint in var q = p; q.segment += maxSeg; return q }
+            return before + after
+        }
+    }
+
     /// المقاطع منفصلة لرسم كل مقطع كخط مستقل.
     var segments: [[CLLocationCoordinate2D]] { Self.segments(of: points) }
 

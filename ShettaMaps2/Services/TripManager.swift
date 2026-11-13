@@ -75,6 +75,13 @@ final class TripManager: ObservableObject {
         try? context.save()
     }
 
+    /// حذف نقطة البداية (مثلًا إذا حُفظت في مكان خاطئ).
+    func clearStart(of trip: Trip) {
+        trip.startLatitude = nil
+        trip.startLongitude = nil
+        try? context.save()
+    }
+
     func addStop(_ w: Waypoint, to trip: Trip) {
         var s = trip.stops
         s.append(w)

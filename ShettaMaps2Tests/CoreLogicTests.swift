@@ -279,3 +279,43 @@ final class RoadStepTests: XCTestCase {
         XCTAssertNil(steps[1].turnAngle)
     }
 }
+
+final class PolylineAndTrimTests: XCTestCase {
+    func testPolylineRoundTrip() {
+        let pts = [CLLocationCoordinate2D(latitude: 24.71361, longitude: 46.67532),
+                   CLLocationCoordinate2D(latitude: 24.72001, longitude: 46.69999),
+                   CLLocationCoordinate2D(latitude: 23.5, longitude: 45.0)]
+        let back = PolylineCodec.decode(PolylineCodec.encode(pts))
+        XCTAssertEqual(back.count, 3)
+        for (a, b) in zip(pts, back) {
+            XCTAssertEqual(a.latitude, b.latitude, accuracy: 1e-5)
+            XCTAssertEqual(a.longitude, b.longitude, accuracy: 1e-5)
+        }
+    }
+
+    func testSimplifyCapsPointsAndKeepsEnds() {
+        var pts: [CLLocationCoordinate2D] = []
+        for i in 0..<5000 { pts.append(.init(latitude: 24 + Double(i) * 0.0001, longitude: 46 + sin(Double(i) / 50) * 0.01)) }
+        let s = PolylineCodec.simplify(pts, maxPoints: 1500)
+        XCTAssertLessThanOrEqual(s.count, 1500)
+        XCTAssertEqual(s.first?.latitude, pts.first?.latitude)
+        XCTAssertEqual(s.last?.latitude, pts.last?.latitude)
+    }
+
+    func testPrivacyTrimRemovesEnds() {
+        // خط مستقيم ~2.2 كم: بعد حذف 400 م من كل طرف يبقى ~1.4 كم
+        let pts = (0...200).map { CLLocationCoordinate2D(latitude: 24 + Double($0) * 0.0001, longitude: 46) }
+        let t = PolylineCodec.trimEnds(pts, meters: 400)
+        XCTAssertGreaterThan(GeoMath.distance(pts[0], t.first!), 390)
+        XCTAssertGreaterThan(GeoMath.distance(pts.last!, t.last!), 390)
+        XCTAssertTrue(PolylineCodec.trimEnds(Array(pts.prefix(5)), meters: 400).isEmpty)
+    }
+
+    func testTrackTrimKeepAndRemove() {
+        let pts = (0..<10).map { TrackPoint(lat: 24 + Double($0) * 0.001, lon: 46, time: Date(timeIntervalSince1970: Double($0) * 10)) }
+        XCTAssertEqual(TrackAccumulator.trimmed(pts, from: 2, to: 5, mode: .keepRange).count, 4)
+        let removed = TrackAccumulator.trimmed(pts, from: 3, to: 6, mode: .removeRange)
+        XCTAssertEqual(removed.count, 6)
+        XCTAssertEqual(TrackAccumulator.segments(of: removed).count, 2, "الجزء المحذوف لا يُرسم كخط واصل")
+    }
+}

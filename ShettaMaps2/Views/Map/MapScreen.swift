@@ -14,6 +14,7 @@ struct MapScreen: View {
     @EnvironmentObject private var trips: TripManager
     @EnvironmentObject private var search: SearchService
     @EnvironmentObject private var community: CommunityService
+    @EnvironmentObject private var communityTracks: CommunityTrackStore
     @AppStorage(SettingsKeys.showLandmarks) private var showLandmarks = true
     @AppStorage(SettingsKeys.showCommunity) private var showCommunity = true
     @AppStorage(SettingsKeys.landmarkKinds) private var landmarkKindsRaw = ""
@@ -31,7 +32,9 @@ struct MapScreen: View {
                             navigation: navigation.snapshot,
                             currentLocation: location.location?.coordinate,
                             picked: mapManager.pickedCoordinate,
-                            extraPins: landmarkPins + communityPins)
+                            extraPins: landmarkPins + communityPins + shownTrackPins,
+                            extraLines: (router.shownTrack?.segments ?? []).map { .init(kind: .importedTrack, coordinates: $0) }
+                                + communityTrackLines)
     }
 
     /// أسماء الأماكن المعروفة (OpenStreetMap) ضمن المنطقة الظاهرة، عند تكبير كافٍ.
@@ -46,6 +49,18 @@ struct MapScreen: View {
             .init(id: "g-\($0.id)", title: $0.name, subtitle: $0.kind.title, coordinate: .init(latitude: $0.lat, longitude: $0.lon),
                   kind: .landmark, symbol: $0.kind.icon)
         }
+    }
+
+    private var shownTrackPins: [MapOverlaySet.Pin] {
+        guard let t = router.shownTrack, let s = t.segments.first?.first, let e = t.segments.last?.last else { return [] }
+        return [.init(id: "st-start", title: "البداية", subtitle: t.name, coordinate: s, kind: .start, symbol: "flag.fill"),
+                .init(id: "st-end", title: "النهاية", subtitle: t.name, coordinate: e, kind: .destination, symbol: "flag.checkered")]
+    }
+
+    /// مسارات المجتمع ضمن المنطقة الظاهرة (عند تكبير كافٍ لتبقى الخريطة واضحة).
+    private var communityTrackLines: [MapOverlaySet.Line] {
+        guard showCommunity, let b = mapManager.visibleBounds, let r = mapManager.visibleRegion, r.span.latitudeDelta < 4 else { return [] }
+        return communityTracks.tracks(in: b.sw, b.ne).prefix(40).map { .init(kind: .community, coordinates: communityTracks.coordinates(of: $0)) }
     }
 
     private var communityPins: [MapOverlaySet.Pin] {
@@ -212,6 +227,11 @@ struct MapScreen: View {
         if let err = offlineMaps.lastError {
             Banner(icon: "exclamationmark.triangle", text: err, actionTitle: "إخفاء", tint: .red) { offlineMaps.clearError() }
         }
+        if let t = router.shownTrack {
+            Banner(icon: "point.topleft.down.to.point.bottomright.curvepath", text: "معروض: \(t.name)", actionTitle: "إخفاء", tint: Theme.brown) {
+                router.shownTrack = nil
+            }
+        }
         if let n = recorder.recoveredNotice {
             Banner(icon: "arrow.uturn.backward.circle", text: n, actionTitle: "حسنًا", tint: Theme.brown) { recorder.clearRecoveredNotice() }
         }
@@ -280,7 +300,10 @@ struct MapScreen: View {
     private func refreshCommunity() {
         guard showCommunity, community.isEnabled, network.isOnline,
               let b = mapManager.visibleBounds, let r = mapManager.visibleRegion, r.span.latitudeDelta < 4 else { return }
-        Task { await community.refresh(sw: b.sw, ne: b.ne) }
+        Task {
+            await community.refresh(sw: b.sw, ne: b.ne)
+            await communityTracks.refresh(sw: b.sw, ne: b.ne)
+        }
     }
 
     private func toggleRecording() {

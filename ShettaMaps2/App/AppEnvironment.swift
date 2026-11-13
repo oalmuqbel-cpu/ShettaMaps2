@@ -17,6 +17,7 @@ enum SettingsKeys {
     static let showLandmarks = "showLandmarks"
     static let showCommunity = "showCommunity"
     static let landmarkKinds = "landmarkKinds"
+    static let autoPauseMinutes = "autoPauseMinutes"
 }
 
 let appLog = Logger(subsystem: "com.almuqbel.ShettaMaps2", category: "app")

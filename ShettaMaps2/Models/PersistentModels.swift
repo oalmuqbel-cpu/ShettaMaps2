@@ -50,6 +50,8 @@ final class SavedPlace {
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
     var category: PlaceCategory?
+    /// صور المكان (خاصة): تُحفظ على الجهاز وتُزامن مع iCloud إن كانت المزامنة مفعّلة.
+    @Relationship(deleteRule: .cascade, inverse: \PlacePhoto.place) var photos: [PlacePhoto]? = []
 
     init(name: String, coordinate: CLLocationCoordinate2D, notes: String = "", altitude: Double? = nil,
          horizontalAccuracy: Double? = nil, category: PlaceCategory? = nil) {
@@ -84,6 +86,8 @@ final class RecordedTrack {
     /// false أثناء التسجيل؛ يسمح باستعادة مسار غير مكتمل بعد إغلاق مفاجئ للتطبيق.
     var isComplete: Bool = false
     var isImported: Bool = false
+    /// معرّف المسار إن كان منشورًا في مسارات المجتمع.
+    var publicID: String?
     @Attribute(.externalStorage) var pointsData: Data?
     var trip: Trip?
 
@@ -160,6 +164,20 @@ final class Trip {
     }
 }
 
+@Model
+final class PlacePhoto {
+    var id: UUID = UUID()
+    var createdAt: Date = Date()
+    @Attribute(.externalStorage) var imageData: Data?
+    @Attribute(.externalStorage) var thumbnailData: Data?
+    var place: SavedPlace?
+
+    init(imageData: Data, thumbnailData: Data?) {
+        self.imageData = imageData
+        self.thumbnailData = thumbnailData
+    }
+}
+
 enum AppSchema {
-    static let models: [any PersistentModel.Type] = [PlaceCategory.self, SavedPlace.self, RecordedTrack.self, Trip.self]
+    static let models: [any PersistentModel.Type] = [PlaceCategory.self, SavedPlace.self, PlacePhoto.self, RecordedTrack.self, Trip.self]
 }

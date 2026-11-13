@@ -146,6 +146,7 @@ struct PlaceDetailView: View {
 
     var body: some View {
         List {
+            PlacePhotosSection(place: place)
             Section("الإحداثيات") {
                 ForEach(CoordinateFormat.allCases) { f in
                     LabeledContent(f.title) {

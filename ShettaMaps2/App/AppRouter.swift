@@ -57,6 +57,8 @@ final class AppRouter: ObservableObject {
     @Published var pendingSearchQuery = ""
     /// نص إحداثيات يُمرَّر إلى شاشة الإدخال.
     @Published var pendingCoordinateText = ""
+    /// مسار معروض على الخريطة الرئيسية مع علامتي البداية والنهاية.
+    @Published var shownTrack: ShownTrack?
     @Published var incomingGPX: URL?
     @Published var plannerDraft = RoutePlannerDraft()
 
@@ -79,4 +81,10 @@ struct RoutePlannerDraft: Equatable {
     var origin: Waypoint?
     var waypoints: [Waypoint] = []
     var destination: Waypoint?
+}
+
+struct ShownTrack: Equatable {
+    var name: String
+    var segments: [[CLLocationCoordinate2D]]
+    static func == (a: ShownTrack, b: ShownTrack) -> Bool { a.name == b.name && a.segments.count == b.segments.count }
 }

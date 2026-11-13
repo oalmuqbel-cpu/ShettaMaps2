@@ -61,6 +61,10 @@ struct OnlineMapView: View {
         case .importedTrack:
             MapPolyline(coordinates: line.coordinates)
                 .stroke(Color.purple, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+        case .community:
+            MapPolyline(coordinates: line.coordinates)
+                .stroke(Color(red: 0.55, green: 0.30, blue: 0.12).opacity(0.85),
+                        style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round, dash: [6, 5]))
         }
     }
 

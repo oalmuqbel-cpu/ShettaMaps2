@@ -48,7 +48,12 @@ struct TracksListView: View {
         }
         .navigationTitle("المسارات")
         .toolbar {
-            Button { importing = true } label: { Label("استيراد GPX", systemImage: "square.and.arrow.down") }
+            ToolbarItem(placement: .primaryAction) {
+                Button { importing = true } label: { Label("استيراد GPX", systemImage: "square.and.arrow.down") }
+            }
+            ToolbarItem(placement: .topBarLeading) {
+                NavigationLink { CommunityTracksListView() } label: { Label("مسارات المجتمع", systemImage: "person.2") }
+            }
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.gpx, .xml], allowsMultipleSelection: true) { result in
             switch result {
@@ -130,6 +135,9 @@ struct TrackDetailView: View {
     @State private var shareURL: URL?
     @State private var renaming = false
     @State private var newName = ""
+    @State private var sharing = false
+    @State private var shareError: String?
+    @EnvironmentObject private var communityTracks: CommunityTrackStore
 
     private var segments: [[CLLocationCoordinate2D]] { TrackAccumulator.segments(of: points) }
 
@@ -159,7 +167,10 @@ struct TrackDetailView: View {
                 if let trip = track.trip { LabeledContent("الرحلة", value: trip.name) }
             }
             Section {
-                Button { mapManager.send(.fit(points.map(\.coordinate))); router.showOnMap() } label: {
+                Button {
+                    router.shownTrack = ShownTrack(name: track.name, segments: segments)
+                    mapManager.send(.fit(points.map(\.coordinate))); router.showOnMap()
+                } label: {
                     Label("عرض على الخريطة الرئيسية", systemImage: "map")
                 }
                 if let start = points.first {
@@ -169,7 +180,24 @@ struct TrackDetailView: View {
                     } label: { Label("العودة إلى بداية المسار", systemImage: "arrow.uturn.backward") }
                 }
                 Button { exportGPX() } label: { Label("تصدير GPX", systemImage: "square.and.arrow.up") }
+                if let pid = track.publicID {
+                    Label("منشور في مسارات المجتمع", systemImage: "person.2.fill").foregroundStyle(.secondary)
+                    Button("إلغاء المشاركة", role: .destructive) {
+                        Task {
+                            do { try await communityTracks.unpublish(id: pid); track.publicID = nil; try? context.save() }
+                            catch { shareError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription }
+                        }
+                    }
+                } else if !track.isImported, points.count > 2 {
+                    Button { sharing = true } label: { Label("مشاركة المسار مع المجتمع", systemImage: "person.2") }
+                }
+                if let shareError { Text(shareError).font(.footnote).foregroundStyle(.red) }
                 Button { newName = track.name; renaming = true } label: { Label("إعادة التسمية", systemImage: "pencil") }
+                if points.count > 2 {
+                    NavigationLink { TrackTrimView(track: track, points: points) } label: {
+                        Label("قص المسار أو حذف جزء منه", systemImage: "scissors")
+                    }
+                }
                 Button("حذف المسار", role: .destructive) {
                     context.delete(track); try? context.save(); dismiss()
                 }
@@ -178,6 +206,8 @@ struct TrackDetailView: View {
         .navigationTitle(track.name)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { points = track.points }
+        .onChange(of: track.pointCount) { _, _ in points = track.points }
+        .sheet(isPresented: $sharing) { NavigationStack { ShareTrackView(track: track, points: points) } }
         .sheet(item: Binding(get: { shareURL.map(ShareItem.init) }, set: { shareURL = $0?.url })) { ShareSheet(items: [$0.url]) }
         .alert("إعادة التسمية", isPresented: $renaming) {
             TextField("الاسم", text: $newName)
@@ -204,5 +234,100 @@ struct TrackDetailView: View {
     private func exportGPX() {
         let xml = GPXService.export(trackName: track.name, points: points)
         shareURL = try? GPXService.writeTemporaryFile(xml, baseName: track.name)
+    }
+}
+
+/// قص المسار: حذف بدايته أو نهايته (مثلًا إذا نسيت إيقاف التسجيل) أو حذف جزء من وسطه.
+struct TrackTrimView: View {
+    @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
+    @Bindable var track: RecordedTrack
+    let original: [TrackPoint]
+    @State private var from: Double = 0
+    @State private var to: Double = 0
+    @State private var mode: TrackAccumulator.TrimMode = .keepRange
+    @State private var confirm = false
+
+    init(track: RecordedTrack, points: [TrackPoint]) {
+        self.track = track
+        self.original = points
+        _to = State(initialValue: Double(max(0, points.count - 1)))
+    }
+
+    private var lastIndex: Double { Double(max(1, original.count - 1)) }
+    private var result: [TrackPoint] { TrackAccumulator.trimmed(original, from: Int(from), to: Int(to), mode: mode) }
+    private var selected: [CLLocationCoordinate2D] {
+        guard !original.isEmpty else { return [] }
+        let a = Int(min(from, to)), b = Int(max(from, to))
+        return original[a...b].map(\.coordinate)
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                Map {
+                    ForEach(Array(TrackAccumulator.segments(of: original).enumerated()), id: \.offset) { _, seg in
+                        MapPolyline(coordinates: seg).stroke(.gray.opacity(0.6), lineWidth: 4)
+                    }
+                    MapPolyline(coordinates: selected).stroke(mode == .keepRange ? Theme.track : .red, lineWidth: 5)
+                    if let f = selected.first { Marker("من", systemImage: "scissors", coordinate: f).tint(.blue) }
+                    if let l = selected.last { Marker("إلى", systemImage: "scissors", coordinate: l).tint(.blue) }
+                }
+                .frame(height: 260)
+                .listRowInsets(EdgeInsets())
+            }
+            Section {
+                Picker("العملية", selection: $mode) {
+                    Text("الإبقاء على المحدد").tag(TrackAccumulator.TrimMode.keepRange)
+                    Text("حذف المحدد").tag(TrackAccumulator.TrimMode.removeRange)
+                }
+                .pickerStyle(.segmented)
+                VStack(alignment: .leading) {
+                    Text("من: \(timeLabel(Int(from)))").font(.subheadline)
+                    Slider(value: $from, in: 0...lastIndex, step: 1)
+                    Text("إلى: \(timeLabel(Int(to)))").font(.subheadline)
+                    Slider(value: $to, in: 0...lastIndex, step: 1)
+                }
+            } footer: {
+                Text(mode == .keepRange
+                     ? "يُحذف ما قبل «من» وما بعد «إلى». مفيد إذا نسيت إيقاف التسجيل."
+                     : "يُحذف الجزء الأحمر فقط، ويبقى ما قبله وما بعده.")
+            }
+            Section("بعد التعديل") {
+                LabeledContent("المسافة", value: Fmt.distance(TrackAccumulator(existing: result).distance))
+                LabeledContent("عدد النقاط", value: "\(result.count) من \(original.count)")
+            }
+        }
+        .navigationTitle("قص المسار")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("حفظ") { confirm = true }.disabled(result.count < 2 || result.count == original.count)
+            }
+        }
+        .confirmationDialog("حفظ التعديل على المسار؟", isPresented: $confirm, titleVisibility: .visible) {
+            Button("حفظ", role: .destructive) { apply() }
+        } message: { Text("لا يمكن التراجع عن حذف النقاط.") }
+    }
+
+    private func timeLabel(_ i: Int) -> String {
+        guard original.indices.contains(i) else { return "—" }
+        return Fmt.time.string(from: original[i].time)
+    }
+
+    private func apply() {
+        let pts = result
+        let acc = TrackAccumulator(existing: pts)
+        track.points = pts
+        track.distanceMeters = acc.distance
+        track.movingSeconds = acc.movingSeconds
+        track.maxSpeed = acc.maxSpeed
+        if let f = pts.first, let l = pts.last {
+            track.startedAt = f.time
+            track.endedAt = l.time
+            track.elapsedSeconds = l.time.timeIntervalSince(f.time)
+        }
+        try? context.save()
+        dismiss()
     }
 }
