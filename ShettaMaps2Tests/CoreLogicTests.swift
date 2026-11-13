@@ -262,3 +262,20 @@ final class PlaceKindFilterTests: XCTestCase {
         XCTAssertTrue(PlaceKind.decodeSet("").isEmpty)
     }
 }
+
+final class RoadStepTests: XCTestCase {
+    func testStepsCarryNextManeuverWithTurnAngle() {
+        let a = CLLocationCoordinate2D(latitude: 24.0, longitude: 46.0)
+        let b = CLLocationCoordinate2D(latitude: 24.01, longitude: 46.0)
+        let c = CLLocationCoordinate2D(latitude: 24.01, longitude: 46.01)
+        let steps = RoadRoutingService.buildSteps([
+            (instruction: "", distance: 1100, coords: [a, b]),
+            (instruction: "انعطف يمينًا إلى طريق الملك فهد", distance: 1000, coords: [b, c])
+        ])
+        XCTAssertEqual(steps.count, 2)
+        XCTAssertEqual(steps[0].instruction, "انعطف يمينًا إلى طريق الملك فهد")
+        XCTAssertEqual(steps[0].turnAngle ?? 0, 90, accuracy: 5)
+        XCTAssertEqual(steps[1].instruction, "الوصول إلى الوجهة")
+        XCTAssertNil(steps[1].turnAngle)
+    }
+}

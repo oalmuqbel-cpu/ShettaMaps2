@@ -66,6 +66,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
                     }
                     try? ctx.save()
                 }
+                if ProcessInfo.processInfo.arguments.contains("-DemoRoad") {
+                    // طريق معبّد عبر Apple Maps لعرض التوجيه منعطفًا بمنعطف
+                    let dest = GeoMath.destination(from: c, distance: 6_000, bearing: 20)
+                    env.navigation.start(NavigationPlan(origin: Waypoint(name: "موقعي", coordinate: c), waypoints: [],
+                                                        destination: Waypoint(name: "نقطة اللقاء", coordinate: dest), mode: .road))
+                    return
+                }
                 let stop = GeoMath.destination(from: c, distance: 3_500, bearing: 35)
                 let dest = GeoMath.destination(from: c, distance: 9_000, bearing: 60)
                 env.navigation.start(NavigationPlan(origin: Waypoint(name: "موقعي", coordinate: c),

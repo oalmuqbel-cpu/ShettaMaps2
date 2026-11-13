@@ -127,7 +127,7 @@ final class CarPlayTemplateManager: NSObject {
         if snap.status == .arrived {
             if !arrivedAlertShown {
                 arrivedAlertShown = true
-                let m = makeManeuver(text: "وصلت إلى \(plan.destination.name)", detail: nil, relative: nil, distance: 0)
+                let m = makeManeuver(text: "وصلت إلى \(plan.destination.name)", detail: nil, symbol: Self.turnImage(nil), distance: 0)
                 session.upcomingManeuvers = [m]
                 presentAlert(title: "وصلت إلى الوجهة", subtitle: plan.destination.name, duration: 8)
             }
@@ -156,7 +156,19 @@ final class CarPlayTemplateManager: NSObject {
         let key = "\(snap.instruction)|\(p.targetIndex)|\(snap.roadStepIndex)|\(Int((relative ?? 0) / 20))"
         if key != lastInstruction {
             lastInstruction = key
-            session.upcomingManeuvers = [makeManeuver(text: snap.instruction, detail: detail, relative: relative, distance: stepDistance)]
+            if let route = snap.roadRoute, let step = snap.currentRoadStep {
+                // توجيه منعطف بمنعطف: المناورة الحالية والتي تليها
+                var list = [makeManeuver(text: step.instruction, detail: nil, symbol: Self.turnImage(step.turnAngle), distance: stepDistance)]
+                let ni = snap.roadStepIndex + 1
+                if ni < route.steps.count {
+                    let n = route.steps[ni]
+                    list.append(makeManeuver(text: n.instruction, detail: nil, symbol: Self.turnImage(n.turnAngle), distance: n.distance))
+                }
+                session.upcomingManeuvers = list
+            } else {
+                session.upcomingManeuvers = [makeManeuver(text: snap.instruction, detail: detail,
+                                                          symbol: Self.arrowImage(relative: relative ?? 0), distance: stepDistance)]
+            }
         }
         if Date().timeIntervalSince(lastEstimateUpdate) > 1, let maneuver = session.upcomingManeuvers.first {
             lastEstimateUpdate = Date()
@@ -184,28 +196,43 @@ final class CarPlayTemplateManager: NSObject {
         return CPTrip(origin: origin, destination: dest, routeChoices: [choice])
     }
 
-    private func makeManeuver(text: String, detail: String?, relative: Double?, distance: Double) -> CPManeuver {
+    private func makeManeuver(text: String, detail: String?, symbol: UIImage, distance: Double) -> CPManeuver {
         let m = CPManeuver()
         var variants = [text]
         if let detail { variants = [text + " — " + detail, text] }
         m.instructionVariants = variants
-        m.symbolImage = Self.arrowImage(relative: relative)
+        m.symbolImage = symbol
         m.initialTravelEstimates = CPTravelEstimates(distanceRemaining: Measurement(value: distance, unit: UnitLength.meters),
                                                      timeRemaining: 0)
         return m
     }
 
-    /// سهم يدور حسب الاتجاه النسبي للهدف.
-    static func arrowImage(relative: Double?) -> UIImage {
+    /// رمز المناورة على الطريق حسب زاوية الانعطاف (موجبة لليمين)، وعلم الوصول عند nil.
+    static func turnImage(_ angle: Double?) -> UIImage {
+        let name: String
+        switch angle {
+        case nil: name = "flag.checkered"
+        case let a? where abs(a) < 20: name = "arrow.up"
+        case let a? where abs(a) < 60: name = a > 0 ? "arrow.up.right" : "arrow.up.left"
+        case let a? where abs(a) < 150: name = a > 0 ? "arrow.turn.up.right" : "arrow.turn.up.left"
+        case let a?: name = a > 0 ? "arrow.uturn.right" : "arrow.uturn.left"
+        }
+        let config = UIImage.SymbolConfiguration(pointSize: 44, weight: .bold)
+        let img = UIImage(systemName: name, withConfiguration: config) ?? UIImage(systemName: "arrow.up", withConfiguration: config)!
+        return img.withTintColor(.white, renderingMode: .alwaysOriginal)
+    }
+
+    /// سهم يدور حسب الاتجاه النسبي للهدف (للإرشاد بالخط المباشر).
+    static func arrowImage(relative: Double) -> UIImage {
         let size = CGSize(width: 64, height: 64)
         let config = UIImage.SymbolConfiguration(pointSize: 44, weight: .bold)
-        let symbol = UIImage(systemName: relative == nil ? "flag.checkered" : "arrow.up", withConfiguration: config)?
+        let symbol = UIImage(systemName: "arrow.up", withConfiguration: config)?
             .withTintColor(.white, renderingMode: .alwaysOriginal)
         return UIGraphicsImageRenderer(size: size).image { ctx in
             guard let symbol else { return }
             let cg = ctx.cgContext
             cg.translateBy(x: size.width / 2, y: size.height / 2)
-            cg.rotate(by: CGFloat((relative ?? 0) * .pi / 180))
+            cg.rotate(by: CGFloat(relative * .pi / 180))
             let s = symbol.size
             symbol.draw(in: CGRect(x: -s.width / 2, y: -s.height / 2, width: s.width, height: s.height))
         }

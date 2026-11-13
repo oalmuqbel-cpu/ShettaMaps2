@@ -1,10 +1,13 @@
 import Foundation
 import MapKit
 
+/// مقطع من الطريق. التعليمة هي المناورة التي تُنفَّذ عند نهاية المقطع (مثل «انعطف يمينًا إلى …»)،
+/// والمسافة حتى تلك المناورة، وزاوية الانعطاف عندها (موجبة لليمين، nil عند الوصول).
 struct RoadStep: Equatable {
     var instruction: String
     var distance: Double
     var endCoordinate: CLLocationCoordinate2D
+    var turnAngle: Double? = nil
 
     static func == (a: RoadStep, b: RoadStep) -> Bool {
         a.instruction == b.instruction && a.distance == b.distance
@@ -45,13 +48,7 @@ enum RoadRoutingService {
         do {
             let response = try await MKDirections(request: request).calculate()
             guard let r = response.routes.first else { throw RoadRoutingError.noRoute }
-            let steps = r.steps.compactMap { step -> RoadStep? in
-                let n = step.polyline.pointCount
-                guard n > 0, !step.instructions.isEmpty else { return nil }
-                var end = CLLocationCoordinate2D()
-                step.polyline.getCoordinates(&end, range: NSRange(location: n - 1, length: 1))
-                return RoadStep(instruction: step.instructions, distance: step.distance, endCoordinate: end)
-            }
+            let steps = buildSteps(r.steps.map { (instruction: $0.instructions, distance: $0.distance, coords: $0.polyline.coordinates) })
             return RoadRoute(coordinates: r.polyline.coordinates, steps: steps,
                              distance: r.distance, expectedTravelTime: r.expectedTravelTime)
         } catch let e as RoadRoutingError {
@@ -60,6 +57,33 @@ enum RoadRoutingService {
             throw RoadRoutingError.offline
         } catch {
             throw RoadRoutingError.noRoute
+        }
+    }
+}
+
+extension RoadRoutingService {
+    /// يحوّل مقاطع Apple (تعليمة كل مقطع تخص بدايته) إلى مقاطع تحمل المناورة القادمة عند نهايتها مع زاوية الانعطاف.
+    static func buildSteps(_ raw: [(instruction: String, distance: Double, coords: [CLLocationCoordinate2D])]) -> [RoadStep] {
+        let legs = raw.filter { $0.coords.count >= 2 && $0.distance > 0 }
+        guard !legs.isEmpty else { return [] }
+        func startBearing(_ c: [CLLocationCoordinate2D]) -> Double? {
+            guard let a = c.first, let b = c.dropFirst().first(where: { GeoMath.distance(a, $0) > 3 }) else { return nil }
+            return GeoMath.bearing(from: a, to: b)
+        }
+        func endBearing(_ c: [CLLocationCoordinate2D]) -> Double? {
+            guard let b = c.last, let a = c.dropLast().last(where: { GeoMath.distance($0, b) > 3 }) else { return nil }
+            return GeoMath.bearing(from: a, to: b)
+        }
+        return legs.indices.map { i in
+            let end = legs[i].coords.last!
+            if i + 1 < legs.count {
+                let next = legs[i + 1]
+                var angle: Double?
+                if let e = endBearing(legs[i].coords), let s = startBearing(next.coords) { angle = GeoMath.angleDelta(from: e, to: s) }
+                let text = next.instruction.isEmpty ? "استمر في الطريق" : next.instruction
+                return RoadStep(instruction: text, distance: legs[i].distance, endCoordinate: end, turnAngle: angle ?? 0)
+            }
+            return RoadStep(instruction: "الوصول إلى الوجهة", distance: legs[i].distance, endCoordinate: end, turnAngle: nil)
         }
     }
 }

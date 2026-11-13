@@ -3,13 +3,19 @@ name: Screenshots
 
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        default: macos-15-intel
+      demo_args:
+        description: "وسائط الملاحة التجريبية"
+        default: "-DemoNavigation"
 
 permissions:
   contents: write
 
 jobs:
   shots:
-    runs-on: macos-26
+    runs-on: ${{ inputs.runner || 'macos-15-intel' }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -52,7 +58,7 @@ jobs:
           sleep 10
           xcrun simctl io "$UDID" screenshot shots/01-map.png
           xcrun simctl terminate "$UDID" $BID || true
-          xcrun simctl launch "$UDID" $BID -DemoNavigation
+          xcrun simctl launch "$UDID" $BID ${{ inputs.demo_args || '-DemoNavigation' }}
           sleep 2
           xcrun simctl location "$UDID" set 24.7136,46.6753
           sleep 18
@@ -77,15 +83,17 @@ jobs:
 
       - name: Convert to JPG and commit
         run: |
-          mkdir -p docs/screenshots
-          rm -f docs/screenshots/*
+          OUT=docs/screenshots
+          case "${{ inputs.demo_args }}" in *DemoRoad*) OUT=docs/screenshots/road;; esac
+          mkdir -p $OUT
+          rm -f $OUT/*.jpg
           for f in shots/*.png; do
             [ -f "$f" ] || continue
-            sips -s format jpeg -s formatOptions 80 "$f" --out "docs/screenshots/$(basename "${f%.png}").jpg" >/dev/null
+            sips -s format jpeg -s formatOptions 80 "$f" --out "$OUT/$(basename "${f%.png}").jpg" >/dev/null
           done
-          ls -la docs/screenshots
+          ls -la $OUT
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
           git add docs/screenshots
           git commit -m "لقطات شاشة آلية" || echo "no changes"
-          git push
+          git pull --rebase -q && git push
