@@ -161,13 +161,15 @@ final class SharedNavigationState: ObservableObject {
     }
 
     private func offRoute(_ route: RoadRoute, _ c: CLLocationCoordinate2D) -> Bool {
-        // تحقق تقريبي: أقرب رأس على الخط أبعد من 150 م
-        guard !route.coordinates.isEmpty else { return false }
-        let stride = max(1, route.coordinates.count / 400)
-        var best = Double.greatestFiniteMagnitude
-        for i in Swift.stride(from: 0, to: route.coordinates.count, by: stride) {
-            best = min(best, GeoMath.distance(c, route.coordinates[i]))
-            if best < 150 { return false }
+        // أقرب مسافة إلى أي قطعة من خط الطريق أبعد من 150 م
+        let pts = route.coordinates
+        guard pts.count > 1 else { return false }
+        let stride = max(1, pts.count / 600)
+        var i = 0
+        while i < pts.count - 1 {
+            let j = min(pts.count - 1, i + stride)
+            if RoadRoutingService.segmentDistance(c, pts[i], pts[j]) < 150 { return false }
+            i = j
         }
         return true
     }
@@ -183,15 +185,20 @@ final class SharedNavigationState: ObservableObject {
                 let route = try await RoadRoutingService.route(from: from, to: target.coordinate)
                 guard let self, !Task.isCancelled, self.snapshot.planRevision == revision else { return }
                 self.snapshot.roadRoute = route
-                self.snapshot.roadStepIndex = 0
+                self.snapshot.roadStepIndex = self.location?.location.map {
+                    RoadRoutingService.currentStepIndex(steps: route.steps, from: 0, at: $0.coordinate)
+                } ?? 0
                 self.snapshot.notice = nil
             } catch {
                 guard let self, !Task.isCancelled, self.snapshot.planRevision == revision else { return }
                 #if DEBUG
                 // لقطات الشاشة على المحاكي فقط: خدمة اتجاهات Apple غير متاحة هناك، فيُستخدم مسار نموذجي
                 if ProcessInfo.processInfo.arguments.contains("-DemoRoad") {
-                    self.snapshot.roadRoute = RoadRoutingService.sampleRoute()
-                    self.snapshot.roadStepIndex = 0
+                    let sample = RoadRoutingService.sampleRoute()
+                    self.snapshot.roadRoute = sample
+                    self.snapshot.roadStepIndex = self.location?.location.map {
+                        RoadRoutingService.currentStepIndex(steps: sample.steps, from: 0, at: $0.coordinate)
+                    } ?? 0
                     self.snapshot.notice = nil
                     return
                 }
