@@ -100,21 +100,32 @@ con = duckdb.connect()
 con.execute("INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial;")
 con.execute("SET s3_region='us-west-2'; SET s3_url_style='path'; SET s3_endpoint='s3.us-west-2.amazonaws.com';")
 base = "s3://us-west-2.opendata.source.coop/nlebovits/microsoft-ml-road-detections/road-detections/by_country"
-cur = con.execute(f"""SELECT ST_AsText(geometry::GEOMETRY) FROM read_parquet('{base}/*/*.parquet', hive_partitioning=true)
-                      WHERE country IN ('SAU','ARE','KWT','QAT','BHR','OMN')""")
+files = [r[0] for r in con.execute(f"SELECT file FROM glob('{base}/*/*.parquet')").fetchall()]
+files = [f for f in files if any(f"country={c}/" in f for c in ("SAU", "ARE", "KWT", "QAT", "BHR", "OMN"))]
+print("ms files", len(files), files[:3], flush=True)
+assert files, "no Microsoft files matched"
+local = "ms.parquet"
+if not os.path.exists(local):
+    flist = ",".join(f"'{f}'" for f in files)
+    con.execute(f"COPY (SELECT ST_AsText(geometry::GEOMETRY) AS wkt FROM read_parquet([{flist}])) TO '{local}' (FORMAT parquet)")
+print("ms downloaded", round(os.path.getsize(local) / 1e6), "MB", round(time.time() - t0), "s", flush=True)
+reader = con.execute(f"SELECT wkt FROM read_parquet('{local}')").fetch_record_batch(100_000)
 ms_total = ms_kept = 0
 shifts = np.array([(dy << 24) + dx for dy in (-1, 0, 1) for dx in (-1, 0, 1)], dtype=np.int64)
-while True:
-    rows = cur.fetchmany(50_000)
-    if not rows:
-        break
-    for (wkt,) in rows:
+for batch in reader:
+    for wkt in batch.column(0).to_pylist():
         ms_total += 1
+        if not wkt:
+            continue
         try:
-            pts = [tuple(map(float, xy.split()[:2])) for xy in wkt[wkt.index("(") + 1:-1].split(",")]
+            pts = [tuple(map(float, xy.split()[:2])) for xy in wkt[wkt.index("(") + 1:-1].replace("(", "").replace(")", "").split(",")]
         except Exception:
             continue
-        if len(pts) < 2 or sum(hav(pts[i], pts[i + 1]) for i in range(len(pts) - 1)) < 80:
+        if len(pts) < 2:
+            continue
+        a = np.asarray(pts)
+        km = np.hypot(np.diff(a[:, 0]) * K * math.cos(math.radians(a[0, 1])), np.diff(a[:, 1]) * 110_540).sum()
+        if km < 80:
             continue
         ids = cell_ids(pts)
         near = np.isin((ids[:, None] + shifts[None, :]).ravel(), cov).reshape(len(ids), -1).any(axis=1)

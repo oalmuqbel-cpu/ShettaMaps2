@@ -6,6 +6,6 @@ mkdir -p work out && cd work
 [ -f gcc.osm.pbf ] || wget -q https://download.geofabrik.de/asia/gcc-states-latest.osm.pbf -O gcc.osm.pbf
 osmium tags-filter gcc.osm.pbf w/highway -o roads.osm.pbf --overwrite
 osmium export roads.osm.pbf -f geojsonseq -o roads.geojsonseq --overwrite --geometry-types=linestring
-pip install --quiet duckdb numpy
+pip install --quiet duckdb numpy pyarrow
 python3 ../tools/dirtroads/build.py roads.geojsonseq ../out
 ls -la ../out | head; du -sh ../out
