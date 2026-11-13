@@ -100,7 +100,7 @@ con = duckdb.connect()
 con.execute("INSTALL httpfs; LOAD httpfs; INSTALL spatial; LOAD spatial;")
 con.execute("SET s3_region='us-west-2'; SET s3_url_style='path'; SET s3_endpoint='s3.us-west-2.amazonaws.com';")
 base = "s3://us-west-2.opendata.source.coop/nlebovits/microsoft-ml-road-detections/road-detections/by_country"
-cur = con.execute(f"""SELECT ST_AsText(ST_GeomFromWKB(geometry)) FROM read_parquet('{base}/*/*.parquet', hive_partitioning=true)
+cur = con.execute(f"""SELECT ST_AsText(geometry::GEOMETRY) FROM read_parquet('{base}/*/*.parquet', hive_partitioning=true)
                       WHERE country IN ('SAU','ARE','KWT','QAT','BHR','OMN')""")
 ms_total = ms_kept = 0
 shifts = np.array([(dy << 24) + dx for dy in (-1, 0, 1) for dx in (-1, 0, 1)], dtype=np.int64)
