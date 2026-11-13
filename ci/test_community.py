@@ -33,4 +33,23 @@ s, r = req("POST", f"{BASE}:commit", commit, tok2); check("report by another use
 s, r = req("PATCH", f"{BASE}/places/{doc}?updateMask.fieldPaths=name", {"fields": {"name": {"stringValue": "تخريب"}}}, tok2); check("reject editing others' place", s == 403)
 s, r = req("DELETE", f"{BASE}/places/{doc}", None, tok2); check("reject deleting others' place", s == 403)
 s, r = req("DELETE", f"{BASE}/places/{doc}", None, tok); check("owner deletes own place", s == 200)
+# مسارات المجتمع
+def tfields(uid, minLat=24.6, maxLat=24.8, poly="_p~iF~ps|U_ulLnnqC_mqNvxq`@", name="مسار اختبار"):
+    f = {"name": name, "notes": "اختبار آلي", "authorUid": uid, "polyline": poly}
+    out = {k: {"stringValue": v} for k, v in f.items()}
+    out.update({"createdAt": {"timestampValue": datetime.datetime.utcnow().isoformat() + "Z"}, "reportCount": {"integerValue": "0"},
+                "distance": {"doubleValue": 1234.5}, "minLat": {"doubleValue": minLat}, "maxLat": {"doubleValue": maxLat},
+                "minLon": {"doubleValue": 46.5}, "maxLon": {"doubleValue": 46.8}})
+    return {"fields": out}
+tdoc = str(uuid.uuid4())
+s, r = req("POST", f"{BASE}/tracks?documentId={tdoc}", tfields(uid), tok); check("create valid track", s == 200)
+s, r = req("POST", f"{BASE}/tracks?documentId={uuid.uuid4()}", tfields(uid, minLat=5, maxLat=6), tok); check("reject track outside Gulf", s == 403)
+s, r = req("POST", f"{BASE}/tracks?documentId={uuid.uuid4()}", tfields("someone-else"), tok); check("reject spoofed track author", s == 403)
+s, r = req("POST", f"{BASE}/tracks?documentId={uuid.uuid4()}", tfields(uid, poly="x" * 70000), tok); check("reject oversized track", s == 403)
+tq = {"structuredQuery": {"from": [{"collectionId": "tracks"}], "where": {"compositeFilter": {"op": "AND", "filters": [
+    {"fieldFilter": {"field": {"fieldPath": "minLat"}, "op": "GREATER_THAN_OR_EQUAL", "value": {"doubleValue": 22.0}}},
+    {"fieldFilter": {"field": {"fieldPath": "minLat"}, "op": "LESS_THAN_OR_EQUAL", "value": {"doubleValue": 25.5}}}]}}, "limit": 50}}
+s, rows = req("POST", f"{BASE}:runQuery?key={KEY}", tq); check("public track query", s == 200 and any(tdoc in json.dumps(x) for x in rows))
+s, r = req("DELETE", f"{BASE}/tracks/{tdoc}", None, tok2); check("reject deleting others' track", s == 403)
+s, r = req("DELETE", f"{BASE}/tracks/{tdoc}", None, tok); check("owner deletes own track", s == 200)
 sys.exit(0 if ok else 1)
