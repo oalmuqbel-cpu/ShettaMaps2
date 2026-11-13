@@ -129,7 +129,9 @@ for batch in reader:
         if km < 80:
             continue
         ids = cell_ids(pts)
-        near = np.isin((ids[:, None] + shifts[None, :]).ravel(), cov).reshape(len(ids), -1).any(axis=1)
+        q = (ids[:, None] + shifts[None, :]).ravel()
+        pos = np.minimum(np.searchsorted(cov, q), len(cov) - 1)  # cov مرتّبة من np.unique: بحث ثنائي بدل isin
+        near = (cov[pos] == q).reshape(len(ids), -1).any(axis=1)
         if near.mean() > 0.5:
             continue  # موجود في OSM
         roads.append(("ms_detected", "", simplify(pts, 6)))
