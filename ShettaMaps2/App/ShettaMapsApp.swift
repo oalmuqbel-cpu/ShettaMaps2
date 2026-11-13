@@ -20,6 +20,7 @@ struct ShettaMapsApp: App {
                 .environmentObject(SearchService.shared)
                 .environmentObject(CommunityService.shared)
                 .environmentObject(CommunityTrackStore.shared)
+                .environmentObject(DirtRoadsStore.shared)
                 .environmentObject(CarPlayConnectionMonitor.shared)
                 .environmentObject(router)
                 .environmentObject(mapManager)

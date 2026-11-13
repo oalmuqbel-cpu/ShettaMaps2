@@ -8,6 +8,7 @@ struct OfflineMapView: UIViewRepresentable {
     let overlays: MapOverlaySet
     @ObservedObject var mapManager: MapManager
     var highlightDirtRoads = false
+    var dirtRoads: [DirtRoad] = []
 
     func makeCoordinator() -> Coordinator {
         let c = Coordinator(mapManager: mapManager)
@@ -46,6 +47,12 @@ struct OfflineMapView: UIViewRepresentable {
             c.lastOverlays = overlays
             MapLibreOverlayRenderer.apply(overlays, to: map)
         }
+        let ids = dirtRoads.map(\.id)
+        if c.lastDirtIDs != ids {
+            c.lastDirtIDs = ids
+            c.pendingDirt = dirtRoads
+            c.applyDirt(on: map)
+        }
         if c.lastCommandID != mapManager.commandID, let cmd = mapManager.command {
             c.lastCommandID = mapManager.commandID
             c.perform(cmd, on: map)
@@ -60,12 +67,54 @@ struct OfflineMapView: UIViewRepresentable {
         var lastOverlays: MapOverlaySet?
         var lastCommandID = 0
         var highlightDirtRoads = false
+        var lastDirtIDs: [String] = []
+        var pendingDirt: [DirtRoad] = []
 
         init(mapManager: MapManager) { self.mapManager = mapManager }
+
+        /// ردميات بيانات سَمْت: مصدر أشكال مع طبقة خطوط وطبقة نصوص على امتداد الطريق.
+        func applyDirt(on map: MLNMapView) {
+            guard let style = map.style else { return }
+            let features: [MLNPolylineFeature] = pendingDirt.map { r in
+                var coords = r.coordinates
+                let f = MLNPolylineFeature(coordinates: &coords, count: UInt(coords.count))
+                f.attributes = ["kind": r.kind.rawValue, "label": r.label]
+                return f
+            }
+            let shape = MLNShapeCollectionFeature(shapes: features)
+            if let src = style.source(withIdentifier: "samt-dirt-data") as? MLNShapeSource {
+                src.shape = shape
+                return
+            }
+            let src = MLNShapeSource(identifier: "samt-dirt-data", shape: shape, options: nil)
+            style.addSource(src)
+            let line = MLNLineStyleLayer(identifier: "samt-dirt-data-line", source: src)
+            line.lineColor = NSExpression(format: "TERNARY(kind == 'ms_detected', %@, %@)",
+                                          UIColor(red: 0.93, green: 0.62, blue: 0.25, alpha: 0.95),
+                                          UIColor(red: 0.55, green: 0.29, blue: 0.08, alpha: 1))
+            line.lineWidth = NSExpression(format: "TERNARY(kind == 'ms_detected', 2, 3)")
+            line.lineDashPattern = NSExpression(forConstantValue: [2, 1.5])
+            let text = MLNSymbolStyleLayer(identifier: "samt-dirt-data-label", source: src)
+            text.text = NSExpression(forKeyPath: "label")
+            text.symbolPlacement = NSExpression(forConstantValue: "line")
+            text.textFontSize = NSExpression(forConstantValue: 12)
+            text.textFontNames = NSExpression(forConstantValue: ["Noto Sans Regular"])
+            text.textColor = NSExpression(forConstantValue: UIColor(red: 0.40, green: 0.20, blue: 0.05, alpha: 1))
+            text.textHaloColor = NSExpression(forConstantValue: UIColor.white)
+            text.textHaloWidth = NSExpression(forConstantValue: 1.5)
+            text.minimumZoomLevel = 12
+            if let firstSymbol = style.layers.first(where: { $0 is MLNSymbolStyleLayer }) {
+                style.insertLayer(line, below: firstSymbol)
+            } else {
+                style.addLayer(line)
+            }
+            style.addLayer(text)
+        }
 
         /// إبراز الطرق الترابية والردميات من بيانات OpenStreetMap (طبقة transportation: class=track أو surface=unpaved).
         nonisolated func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
             MainActor.assumeIsolated {
+                applyDirt(on: mapView)
                 guard highlightDirtRoads, style.layer(withIdentifier: "samt-dirt-roads") == nil else { return }
                 let vectorSources = style.sources.compactMap { $0 as? MLNVectorTileSource }
                 guard let source = vectorSources.first(where: { $0.identifier == "openmaptiles" }) ?? vectorSources.first else { return }

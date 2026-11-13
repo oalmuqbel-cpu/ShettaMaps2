@@ -8,6 +8,7 @@ struct OfflineMapsView: View {
     @EnvironmentObject private var mapManager: MapManager
     @EnvironmentObject private var network: NetworkMonitor
     @EnvironmentObject private var router: AppRouter
+    @EnvironmentObject private var dirt: DirtRoadsStore
 
     @State private var regionName = ""
     @State private var minZoom = 6.0
@@ -59,6 +60,8 @@ struct OfflineMapsView: View {
                         do {
                             try await offline.download(name: name, sw: b.sw, ne: b.ne, minZoom: Int(minZoom), maxZoom: Int(maxZoom))
                             regionName = ""
+                            // ردميات المنطقة نفسها لتظهر دون إنترنت
+                            await dirt.download(sw: b.sw, ne: b.ne)
                         } catch { self.error = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription }
                     }
                 } label: {
@@ -125,6 +128,34 @@ struct OfflineMapsView: View {
                 if offline.regions.count > 1 {
                     Button("حذف كل المناطق", role: .destructive) { confirmDeleteAll = true }
                 }
+            }
+
+            Section {
+                if let b = mapManager.visibleBounds {
+                    Button {
+                        Task { await dirt.download(sw: b.sw, ne: b.ne) }
+                    } label: {
+                        HStack {
+                            Label("تنزيل ردميات المنطقة الظاهرة", systemImage: "road.lanes")
+                            if !dirt.downloading.isEmpty { Spacer(); ProgressView() }
+                        }
+                    }
+                    .disabled(!network.isOnline || !dirt.downloading.isEmpty)
+                }
+                ForEach(dirt.installed.sorted(), id: \.self) { key in
+                    HStack {
+                        Text("منطقة \(key.replacingOccurrences(of: "_", with: "°، "))°").font(.subheadline)
+                        Spacer()
+                        Button(role: .destructive) { dirt.delete(key: key) } label: { Image(systemName: "trash") }
+                            .buttonStyle(.borderless)
+                    }
+                }
+                if !dirt.installed.isEmpty {
+                    LabeledContent("المساحة", value: Fmt.bytes(dirt.installedBytes))
+                }
+                if let e = dirt.lastError { Text(e).font(.caption).foregroundStyle(.red) }
+            } header: { Text("الردميات والطرق الترابية") } footer: {
+                Text("تُنزَّل تلقائيًا أثناء تصفح الخريطة عند توفر الإنترنت، وتُنزَّل مع أي منطقة تحفظها لتعمل دون إنترنت. المصادر: © OpenStreetMap contributors، وطرق رصدتها Microsoft من صور الأقمار الصناعية (Microsoft Road Detections) وتظهر بلون برتقالي منقّط لأنها غير مؤكدة.")
             }
 
             if let err = offline.lastError {

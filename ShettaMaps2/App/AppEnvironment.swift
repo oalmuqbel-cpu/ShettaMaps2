@@ -19,6 +19,8 @@ enum SettingsKeys {
     static let landmarkKinds = "landmarkKinds"
     static let autoPauseMinutes = "autoPauseMinutes"
     static let sunsetReminder = "sunsetReminder"
+    static let showDirtRoads = "showDirtRoads"
+    static let showDetectedRoads = "showDetectedRoads"
     static let emergencyNumber = "emergencyNumber"
 }
 

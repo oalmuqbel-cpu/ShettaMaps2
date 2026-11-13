@@ -27,6 +27,10 @@ struct MapScreen: View {
     @State private var sendingLocation = false
     @State private var shareLocationText: String?
     @AppStorage(SettingsKeys.emergencyNumber) private var emergencyNumber = ""
+    @AppStorage(SettingsKeys.showDirtRoads) private var showDirtRoads = true
+    @AppStorage(SettingsKeys.showDetectedRoads) private var showDetectedRoads = true
+    @EnvironmentObject private var dirt: DirtRoadsStore
+    @State private var dirtRoads: [DirtRoad] = []
     @State private var showStopRecordingConfirm = false
 
     private var overlays: MapOverlaySet {
@@ -94,11 +98,13 @@ struct MapScreen: View {
             .padding(.horizontal, 12)
             .padding(.bottom, 8)
 
-            if showLandmarks || showCommunity {
+            if showLandmarks || showCommunity || !dirtRoads.isEmpty {
                 VStack {
                     Spacer()
                     HStack {
-                        Text("بيانات الأماكن: © OpenStreetMap contributors")
+                        Text(dirtRoads.contains { $0.kind == .detected }
+                             ? "البيانات: © OpenStreetMap contributors، Microsoft Road Detections"
+                             : "البيانات: © OpenStreetMap contributors")
                             .font(.system(size: 9))
                             .padding(.horizontal, 6).padding(.vertical, 2)
                             .background(.thinMaterial, in: Capsule())
@@ -132,8 +138,12 @@ struct MapScreen: View {
         .sheet(item: Binding(get: { shareLocationText.map { ShareText(text: $0) } }, set: { shareLocationText = $0?.text })) {
             ShareSheet(items: [$0.text])
         }
-        .onChange(of: mapManager.visibleRegion?.center.latitude) { _, _ in refreshCommunity() }
-        .onChange(of: mapManager.visibleRegion?.center.longitude) { _, _ in refreshCommunity() }
+        .onChange(of: mapManager.visibleRegion?.center.latitude) { _, _ in refreshCommunity(); refreshDirt() }
+        .onChange(of: mapManager.visibleRegion?.center.longitude) { _, _ in refreshCommunity(); refreshDirt() }
+        .onChange(of: mapManager.visibleRegion?.span.latitudeDelta) { _, _ in refreshDirt() }
+        .onChange(of: dirt.revision) { _, _ in refreshDirt() }
+        .onChange(of: showDirtRoads) { _, _ in refreshDirt() }
+        .onChange(of: showDetectedRoads) { _, _ in refreshDirt() }
         .onChange(of: mapManager.pickedCoordinate?.latitude) { _, new in
             if new != nil { showPickedOptions = true }
         }
@@ -174,11 +184,12 @@ struct MapScreen: View {
         if mapManager.layer == .dirt {
             // نفس مصدر الخرائط المجاني مع إبراز الطرق الترابية؛ يعمل دون إنترنت في المناطق المنزّلة
             OfflineMapView(styleURL: URL(string: OfflineMapManager.defaultStyleURL), overlays: overlays, mapManager: mapManager,
-                           highlightDirtRoads: true)
+                           highlightDirtRoads: true, dirtRoads: dirtRoads)
         } else if mapManager.layer == .offline {
-            OfflineMapView(styleURL: offlineMaps.activeStyleURL, overlays: overlays, mapManager: mapManager, highlightDirtRoads: true)
+            OfflineMapView(styleURL: offlineMaps.activeStyleURL, overlays: overlays, mapManager: mapManager, highlightDirtRoads: true,
+                           dirtRoads: dirtRoads)
         } else {
-            OnlineMapView(overlays: overlays, mapManager: mapManager)
+            OnlineMapView(overlays: overlays, mapManager: mapManager, dirtRoads: dirtRoads, dirtLabels: dirtLabels)
         }
     }
 
@@ -196,6 +207,10 @@ struct MapScreen: View {
                 Toggle(isOn: $showLandmarks) { Label("أسماء الأماكن المعروفة", systemImage: "mappin.circle") }
                 if community.isEnabled {
                     Toggle(isOn: $showCommunity) { Label("مشاركات المجتمع", systemImage: "person.2") }
+                }
+                Toggle(isOn: $showDirtRoads) { Label("الردميات والطرق الترابية", systemImage: "road.lanes") }
+                if showDirtRoads {
+                    Toggle(isOn: $showDetectedRoads) { Label("طرق مرصودة من الأقمار الصناعية", systemImage: "globe.asia.australia") }
                 }
                 Divider()
                 Button { sendLocation() } label: { Label("إرسال موقعي برسالة", systemImage: "message") }
@@ -319,6 +334,27 @@ struct MapScreen: View {
     private func sendLocation() {
         guard let loc = location.location else { location.requestWhenInUse(); return }
         if MessageComposer.canSend { sendingLocation = true } else { shareLocationText = LocationMessage.text(for: loc) }
+    }
+
+    /// الردميات ضمن المنطقة الظاهرة، مع تنزيل تلقائي لبيانات المنطقة عند توفر الإنترنت.
+    private func refreshDirt() {
+        guard showDirtRoads, let b = mapManager.visibleBounds, let r = mapManager.visibleRegion, r.span.latitudeDelta < 0.45 else {
+            if !dirtRoads.isEmpty { dirtRoads = [] }
+            return
+        }
+        if network.isOnline, r.span.latitudeDelta < 1 { Task { await dirt.download(sw: b.sw, ne: b.ne, auto: true) } }
+        let limit = r.span.latitudeDelta < 0.1 ? 1500 : 700
+        dirtRoads = dirt.roads(sw: b.sw, ne: b.ne, limit: limit, includeDetected: showDetectedRoads && r.span.latitudeDelta < 0.25)
+    }
+
+    /// النصوص المكتوبة على الردميات: المسماة أولًا، ثم غير المسماة الطويلة عند التكبير.
+    private var dirtLabels: [DirtRoad] {
+        guard let r = mapManager.visibleRegion else { return [] }
+        let named = dirtRoads.filter { !$0.name.isEmpty }.prefix(30)
+        guard r.span.latitudeDelta < 0.08 else { return Array(named) }
+        let unnamed = dirtRoads.filter { $0.name.isEmpty && $0.coordinates.count > 2 }
+            .map { ($0, $0.length) }.filter { $0.1 > 700 }.sorted { $0.1 > $1.1 }.prefix(20).map(\.0)
+        return Array(named) + unnamed
     }
 
     private func refreshCommunity() {

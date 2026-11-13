@@ -5,6 +5,8 @@ import MapKit
 struct OnlineMapView: View {
     let overlays: MapOverlaySet
     @ObservedObject var mapManager: MapManager
+    var dirtRoads: [DirtRoad] = []
+    var dirtLabels: [DirtRoad] = []
 
     @State private var position: MapCameraPosition = .userLocation(fallback: .region(
         MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 24.7136, longitude: 46.6753),
@@ -14,6 +16,26 @@ struct OnlineMapView: View {
     var body: some View {
         MapReader { proxy in
             Map(position: $position, interactionModes: .all) {
+                ForEach(dirtRoads) { road in
+                    if road.kind == .detected {
+                        MapPolyline(coordinates: road.coordinates)
+                            .stroke(Color(red: 0.93, green: 0.62, blue: 0.25).opacity(0.9),
+                                    style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [2, 4]))
+                    } else {
+                        MapPolyline(coordinates: road.coordinates)
+                            .stroke(Color(red: 0.55, green: 0.29, blue: 0.08),
+                                    style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round, dash: [7, 4]))
+                    }
+                }
+                ForEach(dirtLabels) { road in
+                    Annotation("", coordinate: road.coordinates[road.coordinates.count / 2], anchor: .center) {
+                        Text(road.label)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(road.kind == .detected ? Color.orange : Color(red: 0.45, green: 0.22, blue: 0.05))
+                            .padding(.horizontal, 5).padding(.vertical, 2)
+                            .background(.regularMaterial, in: Capsule())
+                    }
+                }
                 UserAnnotation()
                 ForEach(Array(overlays.lines.enumerated()), id: \.offset) { _, line in
                     lineContent(line)
