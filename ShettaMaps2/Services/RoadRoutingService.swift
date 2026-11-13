@@ -8,6 +8,7 @@ struct RoadStep: Equatable {
     var distance: Double
     var endCoordinate: CLLocationCoordinate2D
     var turnAngle: Double? = nil
+    var startCoordinate: CLLocationCoordinate2D? = nil
 
     static func == (a: RoadStep, b: RoadStep) -> Bool {
         a.instruction == b.instruction && a.distance == b.distance
@@ -62,6 +63,32 @@ enum RoadRoutingService {
 }
 
 extension RoadRoutingService {
+    /// يحدد المقطع الحالي: أقرب مقطع للموقع من المقطع الحالي فما بعده (لا يرجع للخلف)،
+    /// حتى لا تعلق التعليمات إذا فاتت نقطة الانعطاف أو انقطعت إشارة GPS.
+    static func currentStepIndex(steps: [RoadStep], from index: Int, at p: CLLocationCoordinate2D) -> Int {
+        guard index < steps.count else { return index }
+        var best = index, bestD = Double.greatestFiniteMagnitude
+        for j in index..<steps.count {
+            let s = steps[j]
+            let d = s.startCoordinate.map { segmentDistance(p, $0, s.endCoordinate) } ?? GeoMath.distance(p, s.endCoordinate)
+            if d < bestD - 1 { bestD = d; best = j }
+        }
+        // عند الوصول لنهاية المقطع ننتقل للتالي
+        if best < steps.count, GeoMath.distance(p, steps[best].endCoordinate) < 40 { best += 1 }
+        return max(index, best)
+    }
+
+    /// المسافة التقريبية (م) من نقطة إلى قطعة مستقيمة.
+    static func segmentDistance(_ p: CLLocationCoordinate2D, _ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Double {
+        let k = cos(a.latitude * .pi / 180) * 111_320.0
+        let ax = a.longitude * k, ay = a.latitude * 110_540, bx = b.longitude * k, by = b.latitude * 110_540
+        let px = p.longitude * k, py = p.latitude * 110_540
+        let dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy
+        guard len2 > 0 else { return hypot(px - ax, py - ay) }
+        let t = max(0, min(1, ((px - ax) * dx + (py - ay) * dy) / len2))
+        return hypot(px - (ax + t * dx), py - (ay + t * dy))
+    }
+
     /// يحوّل مقاطع Apple (تعليمة كل مقطع تخص بدايته) إلى مقاطع تحمل المناورة القادمة عند نهايتها مع زاوية الانعطاف.
     static func buildSteps(_ raw: [(instruction: String, distance: Double, coords: [CLLocationCoordinate2D])]) -> [RoadStep] {
         let legs = raw.filter { $0.coords.count >= 2 && $0.distance > 0 }
@@ -81,9 +108,11 @@ extension RoadRoutingService {
                 var angle: Double?
                 if let e = endBearing(legs[i].coords), let s = startBearing(next.coords) { angle = GeoMath.angleDelta(from: e, to: s) }
                 let text = next.instruction.isEmpty ? "استمر في الطريق" : next.instruction
-                return RoadStep(instruction: text, distance: legs[i].distance, endCoordinate: end, turnAngle: angle ?? 0)
+                return RoadStep(instruction: text, distance: legs[i].distance, endCoordinate: end, turnAngle: angle ?? 0,
+                                startCoordinate: legs[i].coords.first)
             }
-            return RoadStep(instruction: "الوصول إلى الوجهة", distance: legs[i].distance, endCoordinate: end, turnAngle: nil)
+            return RoadStep(instruction: "الوصول إلى الوجهة", distance: legs[i].distance, endCoordinate: end, turnAngle: nil,
+                            startCoordinate: legs[i].coords.first)
         }
     }
 }

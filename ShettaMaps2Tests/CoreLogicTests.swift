@@ -340,3 +340,31 @@ final class SunCalculatorTests: XCTestCase {
         XCTAssertEqual(h, 17.1, accuracy: 0.4, "غروب الرياض منتصف نوفمبر قرابة الخامسة وست دقائق مساءً")
     }
 }
+
+final class RoadStepProgressTests: XCTestCase {
+    private let a = CLLocationCoordinate2D(latitude: 24.0, longitude: 46.0)
+    private let b = CLLocationCoordinate2D(latitude: 24.01, longitude: 46.0)
+    private let c = CLLocationCoordinate2D(latitude: 24.01, longitude: 46.01)
+    private let d = CLLocationCoordinate2D(latitude: 24.02, longitude: 46.01)
+
+    private var steps: [RoadStep] {
+        RoadRoutingService.buildSteps([(instruction: "", distance: 1100, coords: [a, b]),
+                                       (instruction: "انعطف يمينًا", distance: 1000, coords: [b, c]),
+                                       (instruction: "انعطف يسارًا", distance: 1100, coords: [c, d])])
+    }
+
+    func testAdvancesWhenPositionJumpsPastTurn() {
+        // على المقطع الثاني دون المرور قرب نهاية الأول (فقدان إشارة مثلًا)
+        let p = CLLocationCoordinate2D(latitude: 24.0101, longitude: 46.005)
+        XCTAssertEqual(RoadRoutingService.currentStepIndex(steps: steps, from: 0, at: p), 1)
+        XCTAssertEqual(steps[1].instruction, "انعطف يسارًا")
+    }
+
+    func testNeverGoesBackward() {
+        XCTAssertEqual(RoadRoutingService.currentStepIndex(steps: steps, from: 2, at: a), 2)
+    }
+
+    func testStaysOnFirstStepAtStart() {
+        XCTAssertEqual(RoadRoutingService.currentStepIndex(steps: steps, from: 0, at: a), 0)
+    }
+}

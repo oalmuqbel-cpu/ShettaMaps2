@@ -156,10 +156,7 @@ final class SharedNavigationState: ObservableObject {
     private func speed(of loc: CLLocation) -> Double? { loc.speed >= 0 ? loc.speed : nil }
 
     private func advanceRoadStep(route: RoadRoute, current: CLLocationCoordinate2D) {
-        var i = snapshot.roadStepIndex
-        while i < route.steps.count, GeoMath.distance(current, route.steps[i].endCoordinate) < 40 {
-            i += 1
-        }
+        let i = RoadRoutingService.currentStepIndex(steps: route.steps, from: snapshot.roadStepIndex, at: current)
         if i != snapshot.roadStepIndex { snapshot.roadStepIndex = i }
     }
 
