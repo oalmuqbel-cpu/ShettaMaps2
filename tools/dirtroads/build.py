@@ -109,7 +109,8 @@ if not os.path.exists(local):
     flist = ",".join(f"'{f}'" for f in files)
     con.execute(f"COPY (SELECT ST_AsText(geometry::GEOMETRY) AS wkt FROM read_parquet([{flist}])) TO '{local}' (FORMAT parquet)")
 print("ms downloaded", round(os.path.getsize(local) / 1e6), "MB", round(time.time() - t0), "s", flush=True)
-reader = con.execute(f"SELECT wkt FROM read_parquet('{local}')").fetch_record_batch(100_000)
+import pyarrow.parquet as pq
+reader = pq.ParquetFile(local).iter_batches(batch_size=100_000, columns=["wkt"])
 ms_total = ms_kept = 0
 shifts = np.array([(dy << 24) + dx for dy in (-1, 0, 1) for dx in (-1, 0, 1)], dtype=np.int64)
 for batch in reader:
