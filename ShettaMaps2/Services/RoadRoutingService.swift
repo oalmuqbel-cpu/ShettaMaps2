@@ -88,6 +88,25 @@ extension RoadRoutingService {
     }
 }
 
+#if DEBUG
+extension RoadRoutingService {
+    static let sampleDestination = CLLocationCoordinate2D(latitude: 24.7530, longitude: 46.6990)
+    /// مسار نموذجي في الرياض لالتقاط لقطات التوجيه منعطفًا بمنعطف على المحاكي (نسخة التطوير فقط).
+    static func sampleRoute() -> RoadRoute {
+        typealias C = CLLocationCoordinate2D
+        let legs: [(instruction: String, distance: Double, coords: [C])] = [
+            ("", 820, [C(latitude: 24.7136, longitude: 46.6753), C(latitude: 24.7210, longitude: 46.6745)]),
+            ("انعطف يمينًا إلى طريق العروبة", 1260, [C(latitude: 24.7210, longitude: 46.6745), C(latitude: 24.7215, longitude: 46.6870)]),
+            ("انعطف يسارًا إلى طريق الملك عبدالعزيز", 3400, [C(latitude: 24.7215, longitude: 46.6870), C(latitude: 24.7520, longitude: 46.6890)]),
+            ("انعطف يمينًا نحو نقطة اللقاء", 1010, [C(latitude: 24.7520, longitude: 46.6890), sampleDestination])
+        ]
+        let steps = buildSteps(legs)
+        return RoadRoute(coordinates: legs.flatMap(\.coords), steps: steps, distance: legs.reduce(0) { $0 + $1.distance },
+                         expectedTravelTime: 720)
+    }
+}
+#endif
+
 extension MKPolyline {
     var coordinates: [CLLocationCoordinate2D] {
         var coords = [CLLocationCoordinate2D](repeating: kCLLocationCoordinate2DInvalid, count: pointCount)

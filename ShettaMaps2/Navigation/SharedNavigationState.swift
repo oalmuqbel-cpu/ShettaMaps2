@@ -190,6 +190,15 @@ final class SharedNavigationState: ObservableObject {
                 self.snapshot.notice = nil
             } catch {
                 guard let self, !Task.isCancelled, self.snapshot.planRevision == revision else { return }
+                #if DEBUG
+                // لقطات الشاشة على المحاكي فقط: خدمة اتجاهات Apple غير متاحة هناك، فيُستخدم مسار نموذجي
+                if ProcessInfo.processInfo.arguments.contains("-DemoRoad") {
+                    self.snapshot.roadRoute = RoadRoutingService.sampleRoute()
+                    self.snapshot.roadStepIndex = 0
+                    self.snapshot.notice = nil
+                    return
+                }
+                #endif
                 self.snapshot.roadRoute = nil
                 self.snapshot.notice = error.localizedDescription
             }

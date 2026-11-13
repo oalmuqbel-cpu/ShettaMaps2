@@ -69,7 +69,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
                 }
                 if ProcessInfo.processInfo.arguments.contains("-DemoRoad") {
                     // طريق معبّد عبر Apple Maps لعرض التوجيه منعطفًا بمنعطف
+                    #if DEBUG
+                    let dest = RoadRoutingService.sampleDestination
+                    #else
                     let dest = GeoMath.destination(from: c, distance: 6_000, bearing: 20)
+                    #endif
                     env.navigation.start(NavigationPlan(origin: Waypoint(name: "موقعي", coordinate: c), waypoints: [],
                                                         destination: Waypoint(name: "نقطة اللقاء", coordinate: dest), mode: .road))
                     return
