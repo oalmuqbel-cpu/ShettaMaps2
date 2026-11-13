@@ -77,6 +77,11 @@ jobs:
           # فتح التطبيق على CarPlay (أيقونة التطبيق)
           python3 ci/carplay_tap.py shots/windows.txt 205 280 && sleep 30
           xcrun simctl io "$UDID" screenshot --display=external shots/04-carplay-navigation.png
+          # محاكاة التقدم على المسار لإظهار المناورات التالية
+          xcrun simctl location "$UDID" set 24.7213,46.6820 && sleep 15
+          xcrun simctl io "$UDID" screenshot --display=external shots/06-carplay-next-maneuver.png
+          xcrun simctl location "$UDID" set 24.7400,46.6882 && sleep 15
+          xcrun simctl io "$UDID" screenshot --display=external shots/07-carplay-later-maneuver.png
           # زر «الوجهات»
           python3 ci/carplay_tap.py shots/windows.txt 185 45 && sleep 10
           xcrun simctl io "$UDID" screenshot --display=external shots/05-carplay-destinations.png
