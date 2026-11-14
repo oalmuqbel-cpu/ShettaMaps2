@@ -109,28 +109,25 @@ struct MapScreen: View {
     }
 
     var body: some View {
+        withDialogs(withPinDialogs(withObservers(withSheets(mainStack))))
+    }
+
+    private var coverageNote: String? {
+        guard let r = mapManager.visibleRegion, r.span.latitudeDelta > 0.6 else { return nil }
+        return "قرّب للعرض"
+    }
+
+    private var selectedPinTitle: String { mapManager.selectedPin?.title ?? "" }
+
+    private var pinDialogShown: Binding<Bool> {
+        Binding(get: { mapManager.selectedPin != nil }, set: { if !$0 { mapManager.selectedPin = nil } })
+    }
+
+    private var mainStack: some View {
         ZStack {
             mapLayer.ignoresSafeArea(edges: [.top, .horizontal])
 
-            VStack(spacing: 8) {
-                StatusHUD()
-                if showLandmarks && !navigation.snapshot.isNavigating && !mapManager.isPickingPoint { placeFilterBar }
-                banners
-                if navigation.snapshot.isNavigating { NavigationPanel() }
-                if recorder.isActive { RecordingPanel(onStop: { showStopRecordingConfirm = true }) }
-                Spacer()
-                if showCoverage {
-                    CoverageLegend(note: mapManager.visibleRegion.map { $0.span.latitudeDelta > 0.6 ? "قرّب للعرض" : nil } ?? nil)
-                }
-                HStack(alignment: .bottom) {
-                    secondaryControls
-                    Spacer()
-                    controls
-                }
-                ActionBar(onRecordTap: toggleRecording)
-            }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 8)
+            overlayColumn
 
             if showLandmarks || showCommunity || !dirtRoads.isEmpty {
                 VStack {
@@ -162,6 +159,32 @@ struct MapScreen: View {
                 .allowsHitTesting(false)
             }
         }
+    }
+
+    private var overlayColumn: some View {
+        VStack(spacing: 8) {
+            StatusHUD()
+            if showLandmarks && !navigation.snapshot.isNavigating && !mapManager.isPickingPoint { placeFilterBar }
+            banners
+            if navigation.snapshot.isNavigating { NavigationPanel() }
+            if recorder.isActive { RecordingPanel(onStop: { showStopRecordingConfirm = true }) }
+            Spacer()
+            if showCoverage {
+                CoverageLegend(note: coverageNote)
+            }
+            HStack(alignment: .bottom) {
+                secondaryControls
+                Spacer()
+                controls
+            }
+            ActionBar(onRecordTap: toggleRecording)
+        }
+        .padding(.horizontal, 12)
+        .padding(.bottom, 8)
+    }
+
+    private func withSheets<V: View>(_ v: V) -> some View {
+        v
         .sheet(item: $router.mapSheet) { sheet in sheetContent(sheet) }
         .sheet(isPresented: $sendingLocation) {
             if let loc = location.location {
@@ -172,6 +195,10 @@ struct MapScreen: View {
         .sheet(item: Binding(get: { shareLocationText.map { ShareText(text: $0) } }, set: { shareLocationText = $0?.text })) {
             ShareSheet(items: [$0.text])
         }
+    }
+
+    private func withObservers<V: View>(_ v: V) -> some View {
+        v
         .onChange(of: mapManager.visibleRegion?.center.latitude) { _, _ in refreshCommunity(); refreshDirt() }
         .onChange(of: mapManager.visibleRegion?.center.longitude) { _, _ in refreshCommunity(); refreshDirt() }
         .onChange(of: mapManager.visibleRegion?.span.latitudeDelta) { _, _ in refreshDirt() }
@@ -186,6 +213,10 @@ struct MapScreen: View {
         .onChange(of: mapManager.pickedCoordinate?.latitude) { _, new in
             if new != nil { showPickedOptions = true }
         }
+    }
+
+    private func withPinDialogs<V: View>(_ v: V) -> some View {
+        v
         .confirmationDialog("نقطة محددة", isPresented: $showPickedOptions, titleVisibility: .visible) {
             if let c = mapManager.pickedCoordinate {
                 Button("حفظ الموقع") { router.mapSheet = .savePlace(c) }
@@ -209,13 +240,16 @@ struct MapScreen: View {
                 Text(CoordinateUtilities.format(c, as: .decimal))
             }
         }
-        .confirmationDialog(mapManager.selectedPin?.title ?? "", isPresented: Binding(
-            get: { mapManager.selectedPin != nil }, set: { if !$0 { mapManager.selectedPin = nil } }),
-                            titleVisibility: .visible, presenting: mapManager.selectedPin) { pin in
+        .confirmationDialog(selectedPinTitle, isPresented: pinDialogShown,
+                            titleVisibility: .visible, presenting: mapManager.selectedPin) { (pin: MapOverlaySet.Pin) in
             pinActions(pin)
-        } message: { pin in
+        } message: { (pin: MapOverlaySet.Pin) in
             Text(pinMessage(pin))
         }
+    }
+
+    private func withDialogs<V: View>(_ v: V) -> some View {
+        v
         .confirmationDialog("حالة الشبكة في موقعك الآن", isPresented: $showCoverageReport, titleVisibility: .visible) {
             ForEach(CoverageLevel.allCases, id: \.self) { l in
                 Button(l.title) {
