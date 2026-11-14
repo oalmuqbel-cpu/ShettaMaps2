@@ -125,7 +125,7 @@ struct MapScreen: View {
     }
 
     var body: some View {
-        withDialogs(withPinDialogs(withObservers(withSheets(mainStack))))
+        withFuelDialog(withDialogs(withPinDialogs(withMoreObservers(withObservers(withSheets(mainStack))))))
     }
 
     private var coverageNote: String? {
@@ -215,29 +215,29 @@ struct MapScreen: View {
 
     private func withObservers<V: View>(_ v: V) -> some View {
         v
-        .onChange(of: mapManager.visibleRegion?.center.latitude) { _, _ in refreshCommunity(); refreshDirt() }
-        .onChange(of: mapManager.visibleRegion?.center.longitude) { _, _ in refreshCommunity(); refreshDirt() }
-        .onChange(of: mapManager.visibleRegion?.span.latitudeDelta) { _, _ in refreshDirt() }
+        .onChange(of: mapManager.visibleRegion?.center.latitude) { _, _ in regionChanged(moved: true) }
+        .onChange(of: mapManager.visibleRegion?.center.longitude) { _, _ in regionChanged(moved: true) }
+        .onChange(of: mapManager.visibleRegion?.span.latitudeDelta) { _, _ in regionChanged(moved: false) }
         .onChange(of: dirt.revision) { _, _ in refreshDirt() }
-        .onChange(of: mapManager.visibleRegion?.center.latitude) { _, _ in refreshCoverage() }
-        .onChange(of: mapManager.visibleRegion?.span.latitudeDelta) { _, _ in refreshCoverage() }
-        .onChange(of: showCoverage) { _, _ in refreshCoverage() }
-        .onChange(of: coverageOnlyMine) { _, _ in refreshCoverage() }
-        .onChange(of: coverage.cells.count) { _, _ in refreshCoverage(fetch: false) }
         .onChange(of: showDirtRoads) { _, _ in refreshDirt() }
         .onChange(of: showDetectedRoads) { _, _ in refreshDirt() }
         .onChange(of: mapManager.pickedCoordinate?.latitude) { _, new in
             if new != nil { showPickedOptions = true }
         }
+    }
+
+    private func withMoreObservers<V: View>(_ v: V) -> some View {
+        v
+        .onChange(of: showCoverage) { _, _ in refreshCoverage() }
+        .onChange(of: coverageOnlyMine) { _, _ in refreshCoverage() }
+        .onChange(of: coverage.cells.count) { _, _ in refreshCoverage(fetch: false) }
+        .onChange(of: location.location?.coordinate.latitude) { _, _ in refreshWeather() }
+        .onChange(of: network.isOnline) { _, on in if on { refreshWeather(); refreshRain() } }
+        .onChange(of: showRainMap) { _, on in rainHour = 0; if on { refreshRain() } }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             Task { await follow.refresh() }
             refreshWeather()
         }
-        .onChange(of: location.location?.coordinate.latitude) { _, _ in refreshWeather() }
-        .onChange(of: network.isOnline) { _, on in if on { refreshWeather(); refreshRain() } }
-        .onChange(of: showRainMap) { _, on in rainHour = 0; if on { refreshRain() } }
-        .onChange(of: mapManager.visibleRegion?.center.latitude) { _, _ in refreshRain() }
-        .onChange(of: mapManager.visibleRegion?.span.latitudeDelta) { _, _ in refreshRain() }
         .task {
             // متابعة الرحلات الآمنة لمن أضافوني: كل 5 دقائق أثناء فتح التطبيق
             while !Task.isCancelled {
@@ -245,6 +245,30 @@ struct MapScreen: View {
                 try? await Task.sleep(nanoseconds: 300_000_000_000)
             }
         }
+    }
+
+    private func withFuelDialog<V: View>(_ v: V) -> some View {
+        v
+        .confirmationDialog("أقرب محطات الوقود", isPresented: $showFuel, titleVisibility: .visible) {
+            ForEach(Array(nearestFuel.enumerated()), id: \.offset) { _, item in
+                Button("\(item.0.name) · \(Fmt.distance(item.1))") {
+                    navigation.navigate(to: Waypoint(name: item.0.name, coordinate: .init(latitude: item.0.lat, longitude: item.0.lon)),
+                                        mode: .road)
+                }
+            }
+            Button("إلغاء", role: .cancel) {}
+        } message: {
+            Text(nearestFuel.isEmpty ? "لا توجد محطات معروفة قريبة في قاعدة الأماكن، أو لم يتحدد موقعك بعد."
+                                     : "من بيانات OpenStreetMap، وقد لا تشمل كل المحطات. تأكد من عمل المحطة قبل الاعتماد عليها.")
+        }
+    }
+
+    /// كل ما يتحدث عند تحريك الخريطة أو تكبيرها.
+    private func regionChanged(moved: Bool) {
+        if moved { refreshCommunity() }
+        refreshDirt()
+        refreshCoverage()
+        refreshRain()
     }
 
     private func withPinDialogs<V: View>(_ v: V) -> some View {
@@ -294,18 +318,6 @@ struct MapScreen: View {
             Button("إلغاء", role: .cancel) {}
         } message: {
             Text("شركتك: \(Carrier(rawValue: carrierRaw)?.title ?? "")")
-        }
-        .confirmationDialog("أقرب محطات الوقود", isPresented: $showFuel, titleVisibility: .visible) {
-            ForEach(Array(nearestFuel.enumerated()), id: \.offset) { _, item in
-                Button("\(item.0.name) · \(Fmt.distance(item.1))") {
-                    navigation.navigate(to: Waypoint(name: item.0.name, coordinate: .init(latitude: item.0.lat, longitude: item.0.lon)),
-                                        mode: .road)
-                }
-            }
-            Button("إلغاء", role: .cancel) {}
-        } message: {
-            Text(nearestFuel.isEmpty ? "لا توجد محطات معروفة قريبة في قاعدة الأماكن، أو لم يتحدد موقعك بعد."
-                                     : "من بيانات OpenStreetMap، وقد لا تشمل كل المحطات. تأكد من عمل المحطة قبل الاعتماد عليها.")
         }
         .confirmationDialog("اختر شركة الاتصال في جوالك", isPresented: $showCarrierPicker, titleVisibility: .visible) {
             ForEach(Carrier.allCases) { c in
