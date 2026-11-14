@@ -78,7 +78,7 @@ struct OnlineMapView: View {
                     }
                 }
             }
-            .mapStyle(mapManager.layer.mapStyle)
+            .mapStyle(mapManager.layer.mapStyle(threeD: mapManager.is3D))
             .mapControls {
                 MapCompass()
                 MapScaleView()
@@ -98,7 +98,6 @@ struct OnlineMapView: View {
                 mapManager.visibleRegion = ctx.region
                 mapManager.cameraHeading = ctx.camera.heading
                 if position.positionedByUser { mapManager.followsUser = false }
-                if ctx.camera.pitch < 5, mapManager.is3D { mapManager.is3D = false }
             }
             .onChange(of: mapManager.commandID) { _, _ in
                 if let cmd = mapManager.command { perform(cmd) }
@@ -156,12 +155,15 @@ struct OnlineMapView: View {
                                         longitudeDelta: max(0.01, (box.ne.longitude - box.sw.longitude) * 1.4))
             withAnimation { position = .region(MKCoordinateRegion(center: center, span: span)) }
         case .pitch(let on):
-            // الميلان يحتاج تقريبًا كافيًا؛ نقرّب إلى ٤ كم كحد أقصى عند التفعيل
+            // الميلان يحتاج تقريبًا كافيًا؛ نقرّب إلى ٤ كم كحد أقصى عند التفعيل.
+            // ننتظر لحظة حتى يُطبَّق نمط الارتفاعات ثم نميل الكاميرا.
             let center = camera?.centerCoordinate ?? userCoordinate ?? CLLocationCoordinate2D(latitude: 24.7136, longitude: 46.6753)
             let distance = on ? min(camera?.distance ?? 2500, 4000) : (camera?.distance ?? 2500)
-            withAnimation(.easeInOut(duration: 0.6)) {
-                position = .camera(MapCamera(centerCoordinate: center, distance: distance,
-                                             heading: camera?.heading ?? 0, pitch: on ? 65 : 0))
+            let heading = camera?.heading ?? 0
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation(.easeInOut(duration: 0.6)) {
+                    position = .camera(MapCamera(centerCoordinate: center, distance: distance, heading: heading, pitch: on ? 65 : 0))
+                }
             }
         }
     }

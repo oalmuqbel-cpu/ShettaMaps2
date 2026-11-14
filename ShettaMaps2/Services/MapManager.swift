@@ -32,9 +32,13 @@ enum MapLayer: String, CaseIterable, Identifiable {
     var usesMapLibre: Bool { self == .offline || self == .dirt }
 
     /// نمط MapKit المقابل. "تضاريس" تستخدم الارتفاعات الواقعية حيث توفرها Apple.
-    var mapStyle: MapStyle {
+    var mapStyle: MapStyle { mapStyle(threeD: false) }
+
+    /// في المنظور ثلاثي الأبعاد نفعّل الارتفاعات حتى يقبل MapKit ميلان الكاميرا ويظهر المجسم.
+    func mapStyle(threeD: Bool) -> MapStyle {
         switch self {
-        case .standard, .offline, .dirt: return .standard(elevation: .flat, pointsOfInterest: .all)
+        case .standard, .offline, .dirt:
+            return .standard(elevation: threeD ? .realistic : .flat, pointsOfInterest: .all)
         case .terrain: return .standard(elevation: .realistic, emphasis: .muted, pointsOfInterest: .excludingAll)
         case .satellite: return .imagery(elevation: .realistic)
         case .hybrid: return .hybrid(elevation: .realistic)

@@ -58,6 +58,19 @@ final class SafeTripManager: ObservableObject {
         }
     }
 
+    /// «منذ» بصيغة عربية: دقائق أو ساعات ودقائق أو أيام.
+    nonisolated static func agoText(_ seconds: TimeInterval) -> String {
+        let m = max(0, Int(seconds / 60))
+        func count(_ n: Int, _ one: String, _ two: String, _ few: String) -> String {
+            n == 1 ? one : n == 2 ? two : (3...10).contains(n) ? "\(n) \(few)" : "\(n) \(one)"
+        }
+        if m < 1 { return "أقل من دقيقة" }
+        if m < 60 { return count(m, "دقيقة", "دقيقتين", "دقائق") }
+        let h = m / 60, r = m % 60
+        if h < 48 { return hoursText(h) + (r > 0 ? " و" + count(r, "دقيقة", "دقيقتين", "دقائق") : "") }
+        return count(h / 24, "يوم", "يومين", "أيام")
+    }
+
     nonisolated static func makeToken() -> String {
         let chars = Array("abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789")
         var out = ""

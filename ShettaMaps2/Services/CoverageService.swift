@@ -235,6 +235,9 @@ final class CoverageService: ObservableObject {
 
     /// جلب قياسات الآخرين ضمن المنطقة الظاهرة.
     func refresh(sw: CLLocationCoordinate2D, ne: CLLocationCoordinate2D) async {
+        #if DEBUG
+        if GuideScreens.requested != nil { return }  // لقطات الشاشة تستخدم بيانات عرض ثابتة
+        #endif
         guard CommunityService.shared.isEnabled else { return }
         let box = (sw.latitude, sw.longitude, ne.latitude, ne.longitude)
         if let last = lastFetchBox, Date().timeIntervalSince(lastFetch) < 90,

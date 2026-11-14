@@ -10,7 +10,7 @@ enum LocationMessage {
         let c = loc.coordinate
         let lat = String(format: "%.6f", c.latitude), lon = String(format: "%.6f", c.longitude)
         var parts = ["موقعي الحالي: \(lat), \(lon)",
-                     "https://maps.apple.com/?ll=\(lat),\(lon)&q=%D9%85%D9%88%D9%82%D8%B9%D9%8A"]
+                     "https://maps.apple.com/?ll=\(lat),\(lon)"]
         if loc.horizontalAccuracy >= 0 { parts.append("الدقة: ±\(Int(loc.horizontalAccuracy)) م") }
         parts.append("الوقت: \(Fmt.dateTime.string(from: loc.timestamp))")
         parts.append("أُرسل من تطبيق سَمْت")

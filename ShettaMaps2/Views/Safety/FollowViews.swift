@@ -148,7 +148,7 @@ struct FollowingView: View {
                 Section {
                     statusRow(t)
                     LabeledContent("آخر تحديث", value: Fmt.dateTime.string(from: t.updatedAt))
-                    LabeledContent("منذ", value: Fmt.duration(Date().timeIntervalSince(t.updatedAt)))
+                    LabeledContent("منذ", value: SafeTripManager.agoText(Date().timeIntervalSince(t.updatedAt)))
                     Text(CoordinateUtilities.format(t.coordinate, as: .decimal)).font(.footnote.monospaced())
                         .environment(\.layoutDirection, .leftToRight).textSelection(.enabled)
                     if let here = location.location?.coordinate {
