@@ -23,6 +23,8 @@ struct MapOverlaySet: Equatable {
         case stop, resume
         /// بلاغ أو قياس تغطية الشبكة.
         case coverage
+        /// آخر موقع معروف لشخص أتابع رحلته الآمنة.
+        case friend
         var isSmall: Bool { self == .stop || self == .resume }
     }
     enum LineKind: Equatable { case track, direct, road, importedTrack, community, myTracks }

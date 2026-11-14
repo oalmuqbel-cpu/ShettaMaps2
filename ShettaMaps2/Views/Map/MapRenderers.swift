@@ -111,7 +111,7 @@ enum MapKitOverlayRenderer {
         v.markerTintColor = PinImageFactory.color(kind: a.kind)
         v.glyphImage = UIImage(systemName: a.symbol ?? PinImageFactory.symbol(kind: a.kind))
         switch a.kind {
-        case .destination: v.displayPriority = .required
+        case .destination, .friend: v.displayPriority = .required
         case .landmark: v.displayPriority = .defaultLow
         case .stop, .resume: v.displayPriority = .defaultLow
         default: v.displayPriority = .defaultHigh
@@ -158,6 +158,7 @@ enum PinImageFactory {
         case .stop: return UIColor(red: 0.85, green: 0.33, blue: 0.20, alpha: 1)
         case .resume: return UIColor(red: 0.20, green: 0.60, blue: 0.30, alpha: 1)
         case .coverage: return UIColor.systemTeal
+        case .friend: return UIColor.systemIndigo
         }
     }
 
@@ -174,6 +175,7 @@ enum PinImageFactory {
         case .stop: return "pause.fill"
         case .resume: return "play.fill"
         case .coverage: return "antenna.radiowaves.left.and.right"
+        case .friend: return "person.fill"
         }
     }
 

@@ -32,6 +32,7 @@ struct MapScreen: View {
     @EnvironmentObject private var dirt: DirtRoadsStore
     @EnvironmentObject private var coverage: CoverageService
     @EnvironmentObject private var safeTrip: SafeTripManager
+    @EnvironmentObject private var follow: FollowService
     @State private var dirtRoads: [DirtRoad] = []
     @State private var coverageCells: [CoverageCell] = []
     @State private var showStopRecordingConfirm = false
@@ -55,6 +56,15 @@ struct MapScreen: View {
         return location.currentHeadingDegrees
     }
 
+    /// آخر مواقع من أتابع رحلاتهم الآمنة النشطة.
+    private var followPins: [MapOverlaySet.Pin] {
+        follow.activeTrips.map {
+            .init(id: "f-\($0.id)", title: $0.displayName,
+                  subtitle: ($0.isLate ? "تأخر التحديث · " : "رحلة آمنة · ") + "آخر تحديث " + Fmt.time.string(from: $0.updatedAt),
+                  coordinate: $0.coordinate, kind: .friend)
+        }
+    }
+
     /// كل مساراتي السابقة (عند تفعيل زر المسارات) بلون مختلف.
     private var myTracksLines: [MapOverlaySet.Line] {
         guard showMyTracks, let b = mapManager.visibleBounds else { return [] }
@@ -67,7 +77,7 @@ struct MapScreen: View {
                             navigation: navigation.snapshot,
                             currentLocation: location.location?.coordinate,
                             picked: mapManager.pickedCoordinate,
-                            extraPins: landmarkPins + communityPins + shownTrackPins,
+                            extraPins: landmarkPins + communityPins + shownTrackPins + followPins,
                             extraLines: myTracksLines
                                 + (router.shownTrack?.segments ?? []).map { .init(kind: .importedTrack, coordinates: $0) }
                                 + communityTrackLines)
@@ -213,6 +223,16 @@ struct MapScreen: View {
         .onChange(of: mapManager.pickedCoordinate?.latitude) { _, new in
             if new != nil { showPickedOptions = true }
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            Task { await follow.refresh() }
+        }
+        .task {
+            // متابعة الرحلات الآمنة لمن أضافوني: كل 5 دقائق أثناء فتح التطبيق
+            while !Task.isCancelled {
+                await follow.refresh()
+                try? await Task.sleep(nanoseconds: 300_000_000_000)
+            }
+        }
     }
 
     private func withPinDialogs<V: View>(_ v: V) -> some View {
@@ -333,6 +353,9 @@ struct MapScreen: View {
                 Button { router.mapSheet = .safeTrip } label: {
                     Label(safeTrip.isActive ? "الرحلة الآمنة (مفعلة)" : "الرحلة الآمنة", systemImage: "shield.lefthalf.filled")
                 }
+                Button { router.mapSheet = .following } label: {
+                    Label(follow.activeTrips.isEmpty ? "أتابعهم" : "أتابعهم (\(follow.activeTrips.count))", systemImage: "person.2.wave.2")
+                }
                 Button { router.mapSheet = .emergency } label: { Label("الطوارئ وإنجاد", systemImage: "sos") }
                 Button { sendLocation() } label: { Label("إرسال موقعي برسالة", systemImage: "message") }
             } label: {
@@ -417,6 +440,11 @@ struct MapScreen: View {
                    text: s.lastUploadAt.map { "الرحلة الآمنة مفعلة · آخر تحديث الساعة " + Fmt.time.string(from: $0) }
                        ?? "الرحلة الآمنة مفعلة · بانتظار الاتصال لرفع الموقع",
                    actionTitle: "التفاصيل", tint: .green) { router.mapSheet = .safeTrip }
+        }
+        ForEach(follow.lateTrips) { t in
+            Banner(icon: "exclamationmark.triangle.fill",
+                   text: "\(t.displayName): لم يتحدث موقعه منذ \(SafeTripManager.hoursText(t.hours)) أو أكثر.",
+                   actionTitle: "آخر موقع", tint: .red) { router.mapSheet = .following }
         }
         if showMyTracks && myTracks.isEmpty {
             Banner(icon: "point.topleft.down.to.point.bottomright.curvepath", text: "لا توجد مسارات محفوظة بعد.",
@@ -621,6 +649,8 @@ struct MapScreen: View {
             NavigationStack { SafeTripView() }
         case .emergency:
             NavigationStack { EmergencyView() }
+        case .following:
+            NavigationStack { FollowingView() }
         }
     }
 }

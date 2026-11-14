@@ -105,6 +105,14 @@ enum GuideScreens {
             mapManager.send(.focus(here, spanMeters: 9_000))
         case "safetrip":
             router.mapSheet = .safeTrip
+        case "following":
+            FollowService.shared.injectDemo(around: here)
+            mapManager.send(.focus(here, spanMeters: 20_000))
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            router.mapSheet = .following
+        case "followmap":
+            FollowService.shared.injectDemo(around: here)
+            mapManager.send(.focus(here, spanMeters: 20_000))
         case "emergency":
             router.mapSheet = .emergency
         case "night":

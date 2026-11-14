@@ -103,6 +103,7 @@ final class AppEnvironment {
         NetworkMonitor.shared.$isOnline.removeDuplicates().filter { $0 }
             .sink { _ in
                 SafeTripManager.shared.networkBecameAvailable()
+                Task { await FollowService.shared.refresh() }
                 Task { await CoverageService.shared.uploadPending() }
             }
             .store(in: &cancellables)

@@ -7,10 +7,13 @@ struct SafeTripView: View {
     @EnvironmentObject private var safeTrip: SafeTripManager
     @EnvironmentObject private var location: LocationManager
     @EnvironmentObject private var network: NetworkMonitor
+    @EnvironmentObject private var follow: FollowService
     @Environment(\.dismiss) private var dismiss
     @AppStorage(SettingsKeys.emergencyNumber) private var emergencyNumber = ""
     @AppStorage("safeTrip.lastName") private var name = ""
     @State private var contact = ""
+    @State private var selectedWatchers: Set<String> = []
+    @State private var editingWatchers = false
     @State private var hours = 6
     @State private var composing = false
     @State private var shareText: String?
@@ -27,7 +30,14 @@ struct SafeTripView: View {
         }
         .navigationTitle("الرحلة الآمنة")
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("إغلاق") { dismiss() } } }
-        .onAppear { if contact.isEmpty { contact = emergencyNumber } }
+        .onAppear {
+            if contact.isEmpty { contact = emergencyNumber }
+            selectedWatchers = Set((safeTrip.state?.watchers ?? []).map(\.code))
+            if selectedWatchers.isEmpty, safeTrip.state == nil {
+                selectedWatchers = Set((UserDefaults.standard.stringArray(forKey: "safeTrip.lastWatchers") ?? [])
+                    .filter { code in follow.contacts.contains { $0.code == code } })
+            }
+        }
         .sheet(isPresented: $composing) {
             MessageComposer(recipients: [safeTrip.state?.contact ?? contact].filter { !$0.isEmpty }, body: safeTrip.message)
                 .ignoresSafeArea()
@@ -49,40 +59,58 @@ struct SafeTripView: View {
             }
             Button("تراجع", role: .cancel) {}
         } message: {
-            Text("تظهر في صفحة المتابعة أنك وصلت، ويتوقف تحديث الموقع.")
+            Text("يظهر لمن يتابعك أنك وصلت، ويتوقف تحديث الموقع.")
         }
     }
 
     private var setupSection: some View {
         Group {
             Section {
-                Text("قبل أن تدخل منطقة بلا شبكة: ترسل رابط متابعة لشخص تثق به. كلما التقط جوالك الإنترنت ولو لثوانٍ، يتحدث آخر موقع لك في الرابط. وإذا مرت المدة التي تحددها دون تحديث، تظهر له صفحة المتابعة تنبيهًا واضحًا مع آخر موقع معروف.")
+                Text("قبل أن تدخل منطقة بلا شبكة: تختار من يتابعك. كلما التقط جوالك الإنترنت ولو لثوانٍ، يتحدث آخر موقع لك عندهم. وإذا مرت المدة التي تحددها دون تحديث، يصلهم تنبيه على جوالاتهم مع آخر موقع معروف.")
                     .font(.callout)
             }
             Section("البيانات") {
-                TextField("اسمك كما يظهر في الصفحة (اختياري)", text: $name)
-                TextField("رقم جوال جهة الاتصال", text: $contact)
-                    .keyboardType(.phonePad)
-                    .environment(\.layoutDirection, .leftToRight)
+                TextField("اسمك كما يظهر لمن يتابعك", text: $name)
                 Picker("التنبيه إذا لم يتحدث موقعي خلال", selection: $hours) {
                     ForEach([2, 3, 6, 9, 12, 24, 48], id: \.self) { Text(SafeTripManager.hoursText($0)).tag($0) }
                 }
             }
             Section {
+                WatchersPicker(selected: $selectedWatchers)
+            } header: {
+                Text("يتابعونني من تطبيق سَمْت")
+            } footer: {
+                Text("تظهر لهم رحلتك في «أتابعهم» ويصلهم التنبيه على جوالاتهم. حتى 10 أشخاص.")
+            }
+            Section {
+                TextField("رقم جوال (اختياري)", text: $contact)
+                    .keyboardType(.phonePad)
+                    .environment(\.layoutDirection, .leftToRight)
+            } header: {
+                Text("رابط متابعة برسالة نصية")
+            } footer: {
+                Text("لمن لا يملك التطبيق: يصله رابط صفحة تعرض آخر موقع لك. لا يصله تنبيه تلقائي، فيفتح الرابط ليتابع.")
+            }
+            Section {
                 Button {
-                    safeTrip.start(name: name, contact: contact, hours: hours, location: location.location)
-                    if MessageComposer.canSend { composing = true } else { shareText = safeTrip.message }
+                    let watchers = follow.contacts.filter { selectedWatchers.contains($0.code) }
+                    UserDefaults.standard.set(Array(selectedWatchers), forKey: "safeTrip.lastWatchers")
+                    safeTrip.start(name: name, contact: contact, hours: hours, watchers: watchers, location: location.location)
+                    if !contact.isEmpty {
+                        if MessageComposer.canSend { composing = true } else { shareText = safeTrip.message }
+                    }
                 } label: {
-                    Label("ابدأ الرحلة الآمنة وأرسل الرابط", systemImage: "shield.lefthalf.filled")
+                    Label("ابدأ الرحلة الآمنة", systemImage: "shield.lefthalf.filled")
                 }
-                .disabled(location.location == nil)
+                .disabled(location.location == nil || (selectedWatchers.isEmpty && contact.isEmpty))
                 if !network.isOnline {
                     Text("أنت الآن دون إنترنت: يمكنك البدء، وسيُرفع الموقع ويعمل الرابط عند أول اتصال.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             } footer: {
-                Text("لا يرسل التطبيق رسائل بنفسه؛ ترسل الرابط أنت مرة واحدة قبل الانطلاق. يُرفع آخر موقع فقط، ولا يراه إلا من معه الرابط.")
+                Text("يُرفع آخر موقع لك فقط، ولا يراه إلا من اخترتهم أو من معه الرابط. الرسالة النصية ترسلها أنت؛ التطبيق لا يرسل رسائل بنفسه.")
             }
+            MyCodeSection()
         }
     }
 
@@ -97,8 +125,10 @@ struct SafeTripView: View {
             }
             LabeledContent("مدة التنبيه", value: "\(SafeTripManager.hoursText(s.hours)) دون تحديث")
             if !s.contact.isEmpty {
-                LabeledContent("جهة الاتصال", value: s.contact).environment(\.layoutDirection, .leftToRight)
+                LabeledContent("رابط برسالة إلى", value: s.contact).environment(\.layoutDirection, .leftToRight)
             }
+            let names = (s.watchers ?? []).map(\.name)
+            LabeledContent("يتابعونك من التطبيق", value: names.isEmpty ? "لا أحد" : names.joined(separator: "، "))
             if let e = safeTrip.lastError {
                 Text(e).font(.footnote).foregroundStyle(.red)
             }
@@ -114,6 +144,15 @@ struct SafeTripView: View {
             if let link = safeTrip.link {
                 ShareLink(item: link) { Label("مشاركة الرابط", systemImage: "square.and.arrow.up") }
                 Link(destination: link) { Label("فتح صفحة المتابعة", systemImage: "safari") }
+            }
+        }
+        Section {
+            DisclosureGroup("تعديل المتابعين", isExpanded: $editingWatchers) {
+                WatchersPicker(selected: $selectedWatchers)
+                Button("حفظ المتابعين") {
+                    safeTrip.setWatchers(follow.contacts.filter { selectedWatchers.contains($0.code) })
+                    editingWatchers = false
+                }
             }
         }
         Section {

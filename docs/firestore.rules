@@ -57,11 +57,13 @@ service cloud.firestore {
     // الرحلة الآمنة: آخر موقع معروف يقرؤه من معه الرابط السري فقط (لا يُسمح بالاستعلام عن القائمة)
     match /safetrips/{tripId} {
       allow get: if tripId.size() >= 20;
-      allow list: if false;
+      // المتابعون المضافون من صاحب الرحلة فقط يستعرضون رحلاته
+      allow list: if request.auth != null && request.auth.uid in resource.data.watchers;
 
       allow create, update: if request.auth != null
         && tripId.size() >= 20 && tripId.size() <= 40
-        && request.resource.data.keys().hasOnly(['owner','name','hours','startedAt','updatedAt','lat','lon','acc','active','endedAt'])
+        && request.resource.data.keys().hasOnly(['owner','name','hours','startedAt','updatedAt','lat','lon','acc','active','endedAt','watchers','code'])
+        && (!('watchers' in request.resource.data) || (request.resource.data.watchers is list && request.resource.data.watchers.size() <= 10))
         && request.resource.data.owner == request.auth.uid
         && (resource == null || resource.data.owner == request.auth.uid)
         && request.resource.data.name is string && request.resource.data.name.size() <= 40
@@ -74,6 +76,18 @@ service cloud.firestore {
         && request.resource.data.updatedAt is timestamp;
 
       allow delete: if request.auth != null && resource.data.owner == request.auth.uid;
+    }
+
+    // معرّف سَمْت: رمز قصير يربط بالمستخدم حتى يضيفه غيره كمتابع
+    match /codes/{code} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if request.auth != null
+        && code.matches('^[A-Z2-9]{8}$')
+        && request.resource.data.keys().hasOnly(['uid','createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.createdAt is timestamp;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
     }
 
     // تغطية الشبكة: مربع تقريبي (حوالي 550 م) وحالة الشبكة وشركتها، مستند واحد لكل مستخدم في كل مربع وشركة

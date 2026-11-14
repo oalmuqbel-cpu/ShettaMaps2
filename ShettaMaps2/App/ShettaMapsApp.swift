@@ -24,6 +24,7 @@ struct ShettaMapsApp: App {
                 .environmentObject(DirtRoadsStore.shared)
                 .environmentObject(CoverageService.shared)
                 .environmentObject(SafeTripManager.shared)
+                .environmentObject(FollowService.shared)
                 .environmentObject(CarPlayConnectionMonitor.shared)
                 .environmentObject(router)
                 .environmentObject(mapManager)
@@ -48,6 +49,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         MainActor.assumeIsolated {
             _ = AppEnvironment.shared
             AppEnvironment.shared.location.start()
+            FollowService.registerBackgroundRefresh()
+            FollowService.scheduleBackgroundRefresh()
             Self.startDemoNavigationIfRequested()
         }
         return true

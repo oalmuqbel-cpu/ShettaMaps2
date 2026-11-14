@@ -36,6 +36,7 @@ enum MapSheet: Identifiable {
     case recording
     case safeTrip
     case emergency
+    case following
 
     var id: String {
         switch self {
@@ -48,6 +49,7 @@ enum MapSheet: Identifiable {
         case .recording: return "recording"
         case .safeTrip: return "safeTrip"
         case .emergency: return "emergency"
+        case .following: return "following"
         }
     }
 }

@@ -83,10 +83,13 @@ struct SettingsView: View {
                     .keyboardType(.phonePad)
                     .environment(\.layoutDirection, .leftToRight)
                 NavigationLink { SafeTripView() } label: { Label("الرحلة الآمنة", systemImage: "shield.lefthalf.filled") }
+                NavigationLink { FollowingView() } label: { Label("أتابعهم", systemImage: "person.2.wave.2") }
                 NavigationLink { EmergencyView() } label: { Label("أرقام الطوارئ وفريق إنجاد", systemImage: "sos") }
             } header: { Text("الطوارئ") } footer: {
                 Text("من زر الطبقات في الخريطة اختر «إرسال موقعي برسالة»: تُجهَّز رسالة SMS بموقعك ورابط خرائط، وتصل بإشارة الجوال حتى دون إنترنت. يبقى الرقم على جهازك فقط.")
             }
+
+            MyCodeSection()
 
             CoverageSettingsSection()
 

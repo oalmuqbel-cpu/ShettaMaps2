@@ -19,6 +19,8 @@ final class SafeTripManager: ObservableObject {
         var lastUploadAt: Date?
         var lastUploadLat: Double?
         var lastUploadLon: Double?
+        /// من أضفتهم بمعرّف سَمْت ليتابعوك من تطبيقهم.
+        var watchers: [SamtContact]?
     }
 
     @Published private(set) var state: State? {
@@ -66,9 +68,9 @@ final class SafeTripManager: ObservableObject {
 
     /// يبدأ رحلة آمنة ويعيد نص الرسالة المقترح إرسالها لجهة الاتصال.
     @discardableResult
-    func start(name: String, contact: String, hours: Int, location: CLLocation?) -> String {
+    func start(name: String, contact: String, hours: Int, watchers: [SamtContact] = [], location: CLLocation?) -> String {
         let s = State(token: Self.makeToken(), name: String(name.trimmingCharacters(in: .whitespaces).prefix(40)),
-                      contact: contact, hours: max(1, min(72, hours)), startedAt: Date())
+                      contact: contact, hours: max(1, min(72, hours)), startedAt: Date(), watchers: Array(watchers.prefix(10)))
         state = s
         lastError = nil
         scheduleReminder()
@@ -77,6 +79,14 @@ final class SafeTripManager: ObservableObject {
     }
 
     /// نص الرسالة لجهة الاتصال.
+    /// تعديل المتابعين أثناء الرحلة.
+    func setWatchers(_ list: [SamtContact]) {
+        guard var s = state else { return }
+        s.watchers = Array(list.prefix(10))
+        state = s
+        Task { await upload(force: true) }
+    }
+
     var message: String {
         guard let s = state, let link else { return "" }
         let who = s.name.isEmpty ? "أنا" : s.name
@@ -127,6 +137,9 @@ final class SafeTripManager: ObservableObject {
                 "active": ["booleanValue": active]
             ]
             if !active { fields["endedAt"] = ["timestampValue": iso.string(from: Date())] }
+            let uids = (s.watchers ?? []).map(\.uid)
+            fields["watchers"] = ["arrayValue": uids.isEmpty ? [:] : ["values": uids.map { ["stringValue": $0] }]]
+            if let code = FollowService.shared.myCode { fields["code"] = ["stringValue": code] }
             var req = URLRequest(url: URL(string: "\(CommunityService.shared.base)/safetrips/\(s.token)")!)
             req.httpMethod = "PATCH"
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")

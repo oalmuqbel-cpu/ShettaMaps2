@@ -87,4 +87,19 @@ cq = {"structuredQuery": {"from": [{"collectionId": "coverage"}], "where": {"com
     {"fieldFilter": {"field": {"fieldPath": "lat"}, "op": "LESS_THAN_OR_EQUAL", "value": {"doubleValue": 24.8}}}]}}, "limit": 50}}
 s, rows = req("POST", f"{BASE}:runQuery?key={KEY}", cq); check("public coverage query", s == 200 and any(cid in json.dumps(x) for x in rows))
 s, r = req("DELETE", f"{BASE}/coverage/{cid}", None, tok); check("owner deletes coverage sample", s == 200)
+# معرّف سَمْت والمتابعون
+code = "".join(random.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(8))
+cf = lambda u: {"fields": {"uid": {"stringValue": u}, "createdAt": {"timestampValue": datetime.datetime.utcnow().isoformat() + "Z"}}}
+s, r = req("POST", f"{BASE}/codes?documentId={code}", cf(uid), tok); check("create samt code", s == 200)
+s, r = req("POST", f"{BASE}/codes?documentId=abc12345", cf(uid), tok); check("reject invalid code format", s == 403)
+s, r = req("POST", f"{BASE}/codes?documentId={code[::-1]}", cf(a2["localId"]), tok); check("reject code for another user", s == 403)
+s, r = req("GET", f"{BASE}/codes/{code}?key={KEY}"); check("public resolve code", s == 200 and uid in json.dumps(r))
+wtoken = "".join(random.choice(string.ascii_letters) for _ in range(24))
+wf = sfields(uid); wf["fields"]["watchers"] = {"arrayValue": {"values": [{"stringValue": a2["localId"]}]}}; wf["fields"]["code"] = {"stringValue": code}
+s, r = req("PATCH", f"{BASE}/safetrips/{wtoken}", wf, tok); check("create trip with watchers", s == 200)
+wq = {"structuredQuery": {"from": [{"collectionId": "safetrips"}], "where": {"fieldFilter": {"field": {"fieldPath": "watchers"}, "op": "ARRAY_CONTAINS", "value": {"stringValue": a2["localId"]}}}, "limit": 10}}
+s, rows = req("POST", f"{BASE}:runQuery", wq, tok2); check("watcher lists followed trips", s == 200 and wtoken in json.dumps(rows))
+s, rows = req("POST", f"{BASE}:runQuery", wq, tok); check("reject non-watcher listing", s == 403)
+s, r = req("DELETE", f"{BASE}/safetrips/{wtoken}", None, tok); check("owner deletes watched trip", s == 200)
+s, r = req("DELETE", f"{BASE}/codes/{code}", None, tok); check("owner deletes code", s == 200)
 sys.exit(0 if ok else 1)
