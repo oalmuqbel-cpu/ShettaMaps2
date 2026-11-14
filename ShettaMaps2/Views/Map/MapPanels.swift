@@ -310,14 +310,15 @@ struct ActionBar: View {
 
 /// سرعتك الحالية بالكيلومتر في الساعة مع لوحة حد السرعة إن عُرف؛ تصير حمراء عند التجاوز.
 struct SpeedBubble: View {
-    let speedMS: Double
+    /// nil: لا توجد قراءة سرعة موثوقة الآن.
+    let speedMS: Double?
     var limit: Int?
     var over = false
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             VStack(spacing: -2) {
-                Text("\(Int((speedMS * 3.6).rounded()))")
+                Text(speedMS.map { "\(Int(($0 * 3.6).rounded()))" } ?? "—")
                     .font(.system(size: 24, weight: .heavy, design: .rounded))
                     .monospacedDigit()
                     .minimumScaleFactor(0.6)
@@ -340,7 +341,7 @@ struct SpeedBubble: View {
     }
 
     private var accessibility: String {
-        var s = "سرعتك \(Int((speedMS * 3.6).rounded())) كيلومتر في الساعة"
+        var s = speedMS.map { "سرعتك \(Int(($0 * 3.6).rounded())) كيلومتر في الساعة" } ?? "السرعة غير متاحة"
         if let limit { s += "، والحد \(limit)" }
         if over { s += "، تجاوزت الحد" }
         return s

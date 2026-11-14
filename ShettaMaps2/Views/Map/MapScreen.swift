@@ -39,6 +39,7 @@ struct MapScreen: View {
     @AppStorage(SettingsKeys.showRainMap) private var showRainMap = false
     @State private var rainHour = 0
     @State private var showFuel = false
+    @State private var showLayers = false
     @State private var dirtRoads: [DirtRoad] = []
     @State private var coverageCells: [CoverageCell] = []
     @State private var showStopRecordingConfirm = false
@@ -203,6 +204,13 @@ struct MapScreen: View {
     private func withSheets<V: View>(_ v: V) -> some View {
         v
         .sheet(item: $router.mapSheet) { sheet in sheetContent(sheet) }
+        .sheet(isPresented: $showLayers) {
+            LayersSheet(mapManager: mapManager, communityEnabled: community.isEnabled, safeTripActive: safeTrip.isActive,
+                        followingCount: follow.activeTrips.count) { action in
+                // ننتظر إغلاق اللوحة قبل فتح شاشة أخرى
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { performLayersAction(action) }
+            }
+        }
         .sheet(isPresented: $sendingLocation) {
             if let loc = location.location {
                 MessageComposer(recipients: emergencyNumber.isEmpty ? [] : [emergencyNumber], body: LocationMessage.text(for: loc))
@@ -370,47 +378,15 @@ struct MapScreen: View {
 
     private var controls: some View {
         VStack(spacing: 10) {
-            Menu {
-                Picker("طبقة الخريطة", selection: $mapManager.layer) {
-                    ForEach(MapLayer.allCases) { l in
-                        Label(l.title, systemImage: l.icon).tag(l)
-                    }
-                }
-                Divider()
-                Toggle(isOn: $showLandmarks) { Label("أسماء الأماكن المعروفة", systemImage: "mappin.circle") }
-                if community.isEnabled {
-                    Toggle(isOn: $showCommunity) { Label("مشاركات المجتمع", systemImage: "person.2") }
-                }
-                Toggle(isOn: $showDirtRoads) { Label("الردميات والطرق الترابية", systemImage: "road.lanes") }
-                if showDirtRoads {
-                    Toggle(isOn: $showDetectedRoads) { Label("طرق مرصودة من الأقمار الصناعية", systemImage: "globe.asia.australia") }
-                }
-                Toggle(isOn: $showRainMap) { Label("الأمطار والأجواء", systemImage: "cloud.rain") }
-                Toggle(isOn: $showWind) { Label("الرياح على الخريطة", systemImage: "wind") }
-                Toggle(isOn: $showCoverage) { Label("تغطية الشبكة", systemImage: "antenna.radiowaves.left.and.right") }
-                if showCoverage {
-                    Toggle(isOn: $coverageOnlyMine) { Label("شركتي فقط", systemImage: "simcard") }
-                }
-                Divider()
-                Button { router.mapSheet = .weather } label: { Label("الطقس", systemImage: "cloud.sun") }
-                Button { showFuel = true } label: { Label("أقرب محطة وقود", systemImage: "fuelpump") }
-                Button { requestCoverageReport() } label: { Label("بلّغ عن الشبكة في موقعي", systemImage: "exclamationmark.bubble") }
-                Button { router.mapSheet = .safeTrip } label: {
-                    Label(safeTrip.isActive ? "الرحلة الآمنة (مفعلة)" : "الرحلة الآمنة", systemImage: "shield.lefthalf.filled")
-                }
-                Button { router.mapSheet = .following } label: {
-                    Label(follow.activeTrips.isEmpty ? "أتابعهم" : "أتابعهم (\(follow.activeTrips.count))", systemImage: "person.2.wave.2")
-                }
-                Button { router.mapSheet = .emergency } label: { Label("الطوارئ وإنجاد", systemImage: "sos") }
-                Button { sendLocation() } label: { Label("إرسال موقعي برسالة", systemImage: "message") }
-            } label: {
+            Button { showLayers = true } label: {
                 Image(systemName: "square.3.layers.3d")
                     .font(.title3.weight(.semibold))
                     .frame(width: 48, height: 48)
                     .foregroundStyle(Theme.brown)
                     .background(Circle().fill(.regularMaterial))
+                    .shadow(color: .black.opacity(0.15), radius: 4, y: 1)
             }
-            .accessibilityLabel("طبقة الخريطة")
+            .accessibilityLabel("الطبقات والأدوات")
 
             MapControlButton(systemImage: "plus", label: "تكبير") { mapManager.send(.zoomIn) }
             MapControlButton(systemImage: "minus", label: "تصغير") { mapManager.send(.zoomOut) }
@@ -429,8 +405,9 @@ struct MapScreen: View {
     /// العمود الثاني: المنظور ثلاثي الأبعاد، مساراتي السابقة، والشمال.
     /// السرعة الحالية إذا كانت موثوقة وأعلى من المشي البطيء.
     private var currentSpeed: Double? {
-        guard showSpeed, let l = location.location, l.speed > 1.2, Date().timeIntervalSince(l.timestamp) < 10 else { return nil }
-        return l.speed
+        guard let l = location.location, Date().timeIntervalSince(l.timestamp) < 15, l.speed >= 0 else { return nil }
+        // أقل من ٤ كم/س تقريبًا يعني واقف (ضجيج GPS)
+        return l.speed > 1.2 ? l.speed : 0
     }
 
     /// الطقس المعروض يخص منطقتك (أقل من ٥٠ كم) وعمره أقل من ٣ ساعات.
@@ -446,8 +423,8 @@ struct MapScreen: View {
                 Button { router.mapSheet = .weather } label: { WindChip(now: r.now, mapHeading: mapManager.cameraHeading) }
                     .buttonStyle(.plain)
             }
-            if let v = currentSpeed {
-                SpeedBubble(speedMS: v, limit: speedLimits.currentLimit, over: speedLimits.isOver)
+            if showSpeed {
+                SpeedBubble(speedMS: currentSpeed, limit: speedLimits.currentLimit, over: speedLimits.isOver)
                     .padding(.top, speedLimits.currentLimit == nil ? 0 : 14)
             }
             Button { mapManager.send(.pitch(!mapManager.is3D)) } label: {
@@ -658,6 +635,18 @@ struct MapScreen: View {
         }
         parts.append(CoordinateUtilities.format(pin.coordinate, as: .decimal))
         return parts.joined(separator: "\n")
+    }
+
+    private func performLayersAction(_ a: LayersAction) {
+        switch a {
+        case .weather: router.mapSheet = .weather
+        case .fuel: showFuel = true
+        case .safeTrip: router.mapSheet = .safeTrip
+        case .following: router.mapSheet = .following
+        case .emergency: router.mapSheet = .emergency
+        case .sendLocation: sendLocation()
+        case .reportCoverage: requestCoverageReport()
+        }
     }
 
     // MARK: - الطقس
