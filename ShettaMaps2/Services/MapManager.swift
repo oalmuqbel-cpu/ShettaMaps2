@@ -38,7 +38,8 @@ enum MapLayer: String, CaseIterable, Identifiable {
     func mapStyle(threeD: Bool) -> MapStyle {
         switch self {
         case .standard, .offline, .dirt:
-            return .standard(elevation: threeD ? .realistic : .flat, pointsOfInterest: .all)
+            // تلقائي: مسطح عند النظر من أعلى، ومجسم عند إمالة الكاميرا (دون تغيير النمط أثناء الإمالة)
+            return .standard(elevation: .automatic, pointsOfInterest: .all)
         case .terrain: return .standard(elevation: .realistic, emphasis: .muted, pointsOfInterest: .excludingAll)
         case .satellite: return .imagery(elevation: .realistic)
         case .hybrid: return .hybrid(elevation: .realistic)

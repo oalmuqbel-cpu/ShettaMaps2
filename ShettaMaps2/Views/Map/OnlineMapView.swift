@@ -160,10 +160,8 @@ struct OnlineMapView: View {
             let center = camera?.centerCoordinate ?? userCoordinate ?? CLLocationCoordinate2D(latitude: 24.7136, longitude: 46.6753)
             let distance = on ? min(camera?.distance ?? 2500, 4000) : (camera?.distance ?? 2500)
             let heading = camera?.heading ?? 0
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                withAnimation(.easeInOut(duration: 0.6)) {
-                    position = .camera(MapCamera(centerCoordinate: center, distance: distance, heading: heading, pitch: on ? 65 : 0))
-                }
+            withAnimation(.easeInOut(duration: 0.8)) {
+                position = .camera(MapCamera(centerCoordinate: center, distance: distance, heading: heading, pitch: on ? 60 : 0))
             }
         }
     }
