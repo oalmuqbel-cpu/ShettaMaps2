@@ -65,7 +65,7 @@ struct SafeTripView: View {
                     .keyboardType(.phonePad)
                     .environment(\.layoutDirection, .leftToRight)
                 Picker("التنبيه إذا لم يتحدث موقعي خلال", selection: $hours) {
-                    ForEach([2, 3, 6, 9, 12, 24, 48], id: \.self) { Text("\($0) ساعات").tag($0) }
+                    ForEach([2, 3, 6, 9, 12, 24, 48], id: \.self) { Text(SafeTripManager.hoursText($0)).tag($0) }
                 }
             }
             Section {
@@ -95,7 +95,7 @@ struct SafeTripView: View {
             } else {
                 LabeledContent("آخر تحديث للموقع", value: "بانتظار الاتصال")
             }
-            LabeledContent("مدة التنبيه", value: "\(s.hours) ساعات دون تحديث")
+            LabeledContent("مدة التنبيه", value: "\(SafeTripManager.hoursText(s.hours)) دون تحديث")
             if !s.contact.isEmpty {
                 LabeledContent("جهة الاتصال", value: s.contact).environment(\.layoutDirection, .leftToRight)
             }

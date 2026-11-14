@@ -81,13 +81,21 @@
   var fmt = new Intl.DateTimeFormat("ar-SA-u-nu-latn-ca-gregory", { dateStyle: "medium", timeStyle: "short" });
   var last = null;
 
+  // صيغ العدد في العربية: ١ ساعة، ٢ ساعتان، ٣-١٠ ساعات، ١١ فأكثر ساعة
+  function count(n, one, two, few) {
+    if (n === 1) return one;
+    if (n === 2) return two;
+    if (n >= 3 && n <= 10) return n + " " + few;
+    return n + " " + one;
+  }
+  function hoursText(n) { return count(n, "ساعة", "ساعتين", "ساعات"); }
   function ago(ms) {
     var m = Math.max(0, Math.round(ms / 60000));
     if (m < 1) return "أقل من دقيقة";
-    if (m < 60) return m + " دقيقة";
+    if (m < 60) return count(m, "دقيقة", "دقيقتين", "دقائق");
     var h = Math.floor(m / 60), r = m % 60;
-    if (h < 48) return h + " ساعة" + (r ? " و" + r + " دقيقة" : "");
-    return Math.floor(h / 24) + " يوم";
+    if (h < 48) return hoursText(h) + (r ? " و" + count(r, "دقيقة", "دقيقتين", "دقائق") : "");
+    return count(Math.floor(h / 24), "يوم", "يومين", "أيام");
   }
   function val(f, k) {
     var v = f[k]; if (!v) return null;
@@ -118,14 +126,14 @@
       st.textContent = "وصل بالسلامة وأنهى الرحلة" + (ended ? " في " + fmt.format(ended) : "") + ".";
     } else if (late) {
       st.className = "status late";
-      st.textContent = "لم يتحدث الموقع منذ " + ago(now - updated.getTime()) + "، وتجاوز المدة المحددة (" + hours + " ساعات). حاول التواصل، وإن تعذر فأبلغ الجهات المختصة بآخر موقع معروف.";
+      st.textContent = "لم يتحدث الموقع منذ " + ago(now - updated.getTime()) + "، وتجاوز المدة المحددة (" + hoursText(hours) + "). حاول التواصل، وإن تعذر فأبلغ الجهات المختصة بآخر موقع معروف.";
     } else {
       st.className = "status ok";
       st.textContent = "الرحلة جارية. آخر تحديث قبل " + ago(now - updated.getTime()) + ".";
     }
     $("updated").textContent = updated ? fmt.format(updated) : "—";
     $("ago").textContent = updated ? ago(now - updated.getTime()) : "—";
-    $("hours").textContent = hours + " ساعات دون تحديث";
+    $("hours").textContent = hoursText(hours) + " دون تحديث";
     $("started").textContent = started ? fmt.format(started) : "—";
     var c = lat.toFixed(5) + ", " + lon.toFixed(5);
     $("coords").textContent = c;

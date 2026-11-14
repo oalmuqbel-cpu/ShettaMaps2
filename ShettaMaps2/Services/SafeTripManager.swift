@@ -46,6 +46,16 @@ final class SafeTripManager: ObservableObject {
         }
     }
 
+    /// صيغة العدد العربية للساعات.
+    nonisolated static func hoursText(_ n: Int) -> String {
+        switch n {
+        case 1: return "ساعة"
+        case 2: return "ساعتين"
+        case 3...10: return "\(n) ساعات"
+        default: return "\(n) ساعة"
+        }
+    }
+
     nonisolated static func makeToken() -> String {
         let chars = Array("abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789")
         var out = ""
@@ -73,7 +83,7 @@ final class SafeTripManager: ObservableObject {
         return """
         \(who) في رحلة برية، وهذا رابط متابعة آخر موقع معروف (يتحدث كلما توفر الإنترنت):
         \(link.absoluteString)
-        إذا لم يتحدث الموقع خلال \(s.hours) ساعات، حاول التواصل، وإن تعذر فتواصل مع الطوارئ 911 أو فريق إنجاد للبحث والإنقاذ 920018911.
+        إذا لم يتحدث الموقع خلال \(Self.hoursText(s.hours))، حاول التواصل، وإن تعذر فتواصل مع الطوارئ 911 أو فريق إنجاد للبحث والإنقاذ 920018911.
         """
     }
 
