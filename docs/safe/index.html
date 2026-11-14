@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>متابعة رحلة · سَمْت</title>
+<style>
+  :root { --bg:#f6efe2; --card:#ffffff; --ink:#2b1d10; --muted:#7a6a58; --brand:#d9822b; --ok:#2a9d4d; --warn:#c62828; --line:#e6dccb; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#17120e; --card:#231c16; --ink:#f3ece2; --muted:#b5a690; --line:#3a2f25; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, "SF Arabic", "Segoe UI", Tahoma, sans-serif; background:var(--bg); color:var(--ink); line-height:1.6; }
+  main { max-width: 640px; margin: 0 auto; padding: 16px; }
+  header { display:flex; align-items:center; gap:10px; margin: 6px 0 14px; }
+  header .logo { width:36px; height:36px; border-radius:9px; background:var(--brand); color:#fff; display:grid; place-items:center; font-weight:700; }
+  h1 { font-size: 20px; margin:0; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:12px; }
+  .status { border-radius:12px; padding:14px 16px; font-weight:600; margin-bottom:12px; }
+  .status.ok { background: rgba(42,157,77,.12); color: var(--ok); border:1px solid rgba(42,157,77,.35); }
+  .status.late { background: rgba(198,40,40,.12); color: var(--warn); border:1px solid rgba(198,40,40,.45); }
+  .status.done { background: rgba(217,130,43,.12); color: var(--brand); border:1px solid rgba(217,130,43,.4); }
+  .row { display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px solid var(--line); }
+  .row:last-child { border-bottom:0; }
+  .row span:first-child { color: var(--muted); }
+  .ltr { direction:ltr; unicode-bidi: embed; font-variant-numeric: tabular-nums; }
+  iframe { width:100%; height:300px; border:0; border-radius:12px; }
+  .btns { display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px; }
+  a.btn, button.btn { display:block; text-align:center; padding:11px 8px; border-radius:10px; text-decoration:none; font-weight:600; border:1px solid var(--line); color:var(--ink); background:var(--card); font-size:15px; font-family:inherit; cursor:pointer; }
+  a.btn.primary { background: var(--brand); border-color: var(--brand); color:#fff; }
+  a.btn.danger { background: var(--warn); border-color: var(--warn); color:#fff; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<main>
+  <header><div class="logo">س</div><h1 id="title">متابعة رحلة</h1></header>
+
+  <div id="loading" class="card">جارٍ تحميل آخر موقع…</div>
+  <div id="error" class="card hidden"></div>
+
+  <section id="content" class="hidden">
+    <div id="status" class="status"></div>
+
+    <div class="card">
+      <div class="row"><span>آخر تحديث للموقع</span><strong id="updated"></strong></div>
+      <div class="row"><span>منذ</span><strong id="ago"></strong></div>
+      <div class="row"><span>التنبيه بعد</span><strong id="hours"></strong></div>
+      <div class="row"><span>بداية الرحلة</span><strong id="started"></strong></div>
+      <div class="row"><span>الإحداثيات</span><strong id="coords" class="ltr"></strong></div>
+      <div class="row"><span>دقة الموقع</span><strong id="acc"></strong></div>
+    </div>
+
+    <div class="card">
+      <iframe id="map" title="آخر موقع معروف" loading="lazy"></iframe>
+      <div class="btns">
+        <a id="gmaps" class="btn primary" target="_blank" rel="noopener">فتح في خرائط Google</a>
+        <a id="amaps" class="btn" target="_blank" rel="noopener">فتح في خرائط Apple</a>
+        <button id="copy" class="btn" type="button">نسخ الإحداثيات</button>
+        <button id="refresh" class="btn" type="button">تحديث الآن</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <strong>إذا تأخر التحديث وتعذر التواصل</strong>
+      <p class="muted">انقطاع التحديث قد يعني فقط عدم وجود شبكة في المكان. حاول الاتصال أولًا، وإذا تعذر الوصول وتجاوزت المدة فتواصل مع الجهات المختصة وأعطهم آخر موقع معروف.</p>
+      <div class="btns">
+        <a class="btn danger" href="tel:911">الطوارئ 911</a>
+        <a class="btn" href="tel:920018911">فريق إنجاد للبحث والإنقاذ</a>
+      </div>
+    </div>
+    <p class="muted">تُحدَّث هذه الصفحة تلقائيًا كل دقيقة. لا يراها إلا من معه هذا الرابط. من تطبيق سَمْت للملاحة البرية.</p>
+  </section>
+</main>
+<script>
+(function () {
+  var KEY = "AIzaSyBAR0YbiZgooW7XuERAgAALJL7EpXikS8I";
+  var BASE = "https://firestore.googleapis.com/v1/projects/samt-maps/databases/(default)/documents/safetrips/";
+  var token = new URLSearchParams(location.search).get("t") || "";
+  var $ = function (id) { return document.getElementById(id); };
+  var fmt = new Intl.DateTimeFormat("ar-SA-u-nu-latn-ca-gregory", { dateStyle: "medium", timeStyle: "short" });
+  var last = null;
+
+  function ago(ms) {
+    var m = Math.max(0, Math.round(ms / 60000));
+    if (m < 1) return "أقل من دقيقة";
+    if (m < 60) return m + " دقيقة";
+    var h = Math.floor(m / 60), r = m % 60;
+    if (h < 48) return h + " ساعة" + (r ? " و" + r + " دقيقة" : "");
+    return Math.floor(h / 24) + " يوم";
+  }
+  function val(f, k) {
+    var v = f[k]; if (!v) return null;
+    if ("stringValue" in v) return v.stringValue;
+    if ("doubleValue" in v) return v.doubleValue;
+    if ("integerValue" in v) return parseInt(v.integerValue, 10);
+    if ("booleanValue" in v) return v.booleanValue;
+    if ("timestampValue" in v) return new Date(v.timestampValue);
+    return null;
+  }
+  function showError(msg) {
+    $("loading").classList.add("hidden");
+    $("content").classList.add("hidden");
+    $("error").textContent = msg;
+    $("error").classList.remove("hidden");
+  }
+  function render() {
+    if (!last) return;
+    var f = last, now = Date.now();
+    var name = val(f, "name"), hours = val(f, "hours") || 6, active = val(f, "active");
+    var updated = val(f, "updatedAt"), started = val(f, "startedAt"), ended = val(f, "endedAt");
+    var lat = val(f, "lat"), lon = val(f, "lon"), acc = val(f, "acc");
+    $("title").textContent = name ? "متابعة رحلة " + name : "متابعة رحلة";
+    var st = $("status");
+    var late = updated && (now - updated.getTime()) > hours * 3600000;
+    if (active === false) {
+      st.className = "status done";
+      st.textContent = "وصل بالسلامة وأنهى الرحلة" + (ended ? " في " + fmt.format(ended) : "") + ".";
+    } else if (late) {
+      st.className = "status late";
+      st.textContent = "لم يتحدث الموقع منذ " + ago(now - updated.getTime()) + "، وتجاوز المدة المحددة (" + hours + " ساعات). حاول التواصل، وإن تعذر فأبلغ الجهات المختصة بآخر موقع معروف.";
+    } else {
+      st.className = "status ok";
+      st.textContent = "الرحلة جارية. آخر تحديث قبل " + ago(now - updated.getTime()) + ".";
+    }
+    $("updated").textContent = updated ? fmt.format(updated) : "—";
+    $("ago").textContent = updated ? ago(now - updated.getTime()) : "—";
+    $("hours").textContent = hours + " ساعات دون تحديث";
+    $("started").textContent = started ? fmt.format(started) : "—";
+    var c = lat.toFixed(5) + ", " + lon.toFixed(5);
+    $("coords").textContent = c;
+    $("acc").textContent = acc != null ? "± " + Math.round(acc) + " م" : "—";
+    var d = 0.02;
+    var src = "https://www.openstreetmap.org/export/embed.html?bbox=" + (lon - d) + "%2C" + (lat - d) + "%2C" + (lon + d) + "%2C" + (lat + d) + "&layer=mapnik&marker=" + lat + "%2C" + lon;
+    if ($("map").getAttribute("src") !== src) $("map").setAttribute("src", src);
+    $("gmaps").href = "https://www.google.com/maps/search/?api=1&query=" + lat + "," + lon;
+    $("amaps").href = "https://maps.apple.com/?ll=" + lat + "," + lon + "&q=" + encodeURIComponent("آخر موقع معروف");
+    $("copy").onclick = function () {
+      if (navigator.clipboard) navigator.clipboard.writeText(c).then(function () { $("copy").textContent = "تم النسخ"; });
+    };
+  }
+  function load() {
+    if (token.length < 20) { showError("الرابط غير مكتمل. تأكد من فتح الرابط كاملًا كما وصلك."); return; }
+    fetch(BASE + encodeURIComponent(token) + "?key=" + KEY)
+      .then(function (r) {
+        if (r.status === 404) throw new Error("لم يُرفع موقع لهذه الرحلة بعد. سيظهر عند أول اتصال لجوال المسافر بالإنترنت.");
+        if (!r.ok) throw new Error("تعذر تحميل البيانات الآن. حاول مرة أخرى بعد قليل.");
+        return r.json();
+      })
+      .then(function (doc) {
+        last = doc.fields || {};
+        $("loading").classList.add("hidden");
+        $("error").classList.add("hidden");
+        $("content").classList.remove("hidden");
+        render();
+      })
+      .catch(function (e) { showError(e.message); });
+  }
+  $("refresh").onclick = load;
+  load();
+  setInterval(load, 60000);
+  setInterval(render, 30000);
+})();
+</script>
+</body>
+</html>

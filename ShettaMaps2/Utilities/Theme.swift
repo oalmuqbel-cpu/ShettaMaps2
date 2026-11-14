@@ -25,6 +25,9 @@ enum Theme {
     static let sand = Color(uiColor: sandUI)
     static let route = Color(uiColor: routeUI)
     static let track = Color(uiColor: trackUI)
+    /// مساراتي السابقة عند عرضها كلها على الخريطة: أزرق مميز عن المسار الحالي والمستورد.
+    static let myTracksUI = UIColor(red: 0.10, green: 0.42, blue: 0.85, alpha: 0.85)
+    static let myTracks = Color(uiColor: myTracksUI)
     static let directLine = Color(uiColor: directLineUI)
 
     /// لون مؤشر دقة GPS.

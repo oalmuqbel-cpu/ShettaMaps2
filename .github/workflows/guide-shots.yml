@@ -6,6 +6,14 @@ on:
     inputs:
       runner:
         default: macos-15-intel
+      screens:
+        description: "أسماء الشاشات مفصولة بمسافة"
+        default: "map filter pick record search coords save places offline trips tracks settings"
+      out:
+        description: "مجلد الحفظ"
+        default: "docs/guide"
+      navigation:
+        default: "yes"
 
 permissions:
   contents: write
@@ -45,7 +53,7 @@ jobs:
           # تشغيل أول لتهيئة البيانات وقاعدة الأماكن
           xcrun simctl launch "$UDID" $BID; sleep 15; xcrun simctl terminate "$UDID" $BID || true
           i=1
-          for s in map filter pick record search coords save places offline trips tracks settings; do
+          for s in ${{ inputs.screens || 'map filter pick record search coords save places offline trips tracks settings' }}; do
             xcrun simctl launch "$UDID" $BID -GuideScreen $s
             sleep 2; xcrun simctl location "$UDID" set 24.7136,46.6753
             sleep 14
@@ -53,15 +61,18 @@ jobs:
             xcrun simctl terminate "$UDID" $BID || true
             i=$((i+1)); sleep 2
           done
-          xcrun simctl launch "$UDID" $BID -DemoNavigation
-          sleep 2; xcrun simctl location "$UDID" set 24.7136,46.6753
-          sleep 18
-          xcrun simctl io "$UDID" screenshot "shots/$(printf %02d $i)-navigation.png"
+          if [ "${{ inputs.navigation || 'yes' }}" = "yes" ]; then
+            xcrun simctl launch "$UDID" $BID -DemoNavigation
+            sleep 2; xcrun simctl location "$UDID" set 24.7136,46.6753
+            sleep 18
+            xcrun simctl io "$UDID" screenshot "shots/$(printf %02d $i)-navigation.png"
+          fi
       - name: Commit
         run: |
-          mkdir -p docs/guide; rm -f docs/guide/*
-          for f in shots/*.png; do sips -s format jpeg -s formatOptions 85 "$f" --out "docs/guide/$(basename "${f%.png}").jpg" >/dev/null; done
-          ls docs/guide
+          OUT="${{ inputs.out || 'docs/guide' }}"
+          mkdir -p "$OUT"; rm -f "$OUT"/*
+          for f in shots/*.png; do sips -s format jpeg -s formatOptions 85 "$f" --out "$OUT/$(basename "${f%.png}").jpg" >/dev/null; done
+          ls "$OUT"
           git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
-          git add docs/guide; git commit -m "صور دليل الاستخدام" || true
+          git add "$OUT"; git commit -m "صور الشاشات: $OUT" || true
           git pull --rebase -q && git push

@@ -113,6 +113,7 @@ enum MapKitOverlayRenderer {
         switch a.kind {
         case .destination: v.displayPriority = .required
         case .landmark: v.displayPriority = .defaultLow
+        case .stop, .resume: v.displayPriority = .defaultLow
         default: v.displayPriority = .defaultHigh
         }
         v.canShowCallout = true
@@ -127,6 +128,7 @@ private func color(for kind: MapOverlaySet.LineKind) -> UIColor {
     case .track: return Theme.trackUI
     case .importedTrack: return UIColor.systemPurple
     case .community: return UIColor(red: 0.55, green: 0.30, blue: 0.12, alpha: 0.85)
+    case .myTracks: return Theme.myTracksUI
     case .direct: return Theme.directLineUI
     case .road: return Theme.routeUI
     }
@@ -138,6 +140,7 @@ private func width(for kind: MapOverlaySet.LineKind) -> CGFloat {
     case .direct: return 3
     case .track, .importedTrack: return 4
     case .community: return 3
+    case .myTracks: return 3
     }
 }
 
@@ -152,6 +155,9 @@ enum PinImageFactory {
         case .search: return Theme.brownUI
         case .landmark: return UIColor(red: 0.45, green: 0.36, blue: 0.27, alpha: 1)
         case .community: return UIColor(red: 0.18, green: 0.55, blue: 0.45, alpha: 1)
+        case .stop: return UIColor(red: 0.85, green: 0.33, blue: 0.20, alpha: 1)
+        case .resume: return UIColor(red: 0.20, green: 0.60, blue: 0.30, alpha: 1)
+        case .coverage: return UIColor.systemTeal
         }
     }
 
@@ -165,21 +171,25 @@ enum PinImageFactory {
         case .search: return "magnifyingglass"
         case .landmark: return "mappin.circle"
         case .community: return "person.2.fill"
+        case .stop: return "pause.fill"
+        case .resume: return "play.fill"
+        case .coverage: return "antenna.radiowaves.left.and.right"
         }
     }
 
     @MainActor static func image(kind: MapOverlaySet.PinKind, symbol custom: String? = nil) -> UIImage {
-        let size = CGSize(width: 30, height: 30)
+        // علامات الوقفات صغيرة حتى لا تزاحم بداية الرحلة ونهايتها
+        let size = kind.isSmall ? CGSize(width: 18, height: 18) : CGSize(width: 30, height: 30)
         return UIGraphicsImageRenderer(size: size).image { ctx in
             let rect = CGRect(origin: .zero, size: size).insetBy(dx: 2, dy: 2)
             color(kind: kind).resolvedColor(with: UITraitCollection(userInterfaceStyle: .light)).setFill()
             UIBezierPath(ovalIn: rect).fill()
             UIColor.white.setStroke()
             let ring = UIBezierPath(ovalIn: rect)
-            ring.lineWidth = 2.5
+            ring.lineWidth = kind.isSmall ? 2 : 2.5
             ring.stroke()
             if let glyph = UIImage(systemName: custom ?? symbol(kind: kind),
-                                   withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .bold))?
+                                   withConfiguration: UIImage.SymbolConfiguration(pointSize: kind.isSmall ? 7 : 13, weight: .bold))?
                 .withTintColor(.white, renderingMode: .alwaysOriginal) {
                 let g = glyph.size
                 glyph.draw(in: CGRect(x: (size.width - g.width) / 2, y: (size.height - g.height) / 2, width: g.width, height: g.height))

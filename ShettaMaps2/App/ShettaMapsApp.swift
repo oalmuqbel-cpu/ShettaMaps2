@@ -7,6 +7,7 @@ struct ShettaMapsApp: App {
     private let env = AppEnvironment.shared
     @StateObject private var router = AppRouter()
     @StateObject private var mapManager = MapManager()
+    @StateObject private var appearance = AppearanceController.shared
 
     var body: some Scene {
         WindowGroup {
@@ -21,6 +22,8 @@ struct ShettaMapsApp: App {
                 .environmentObject(CommunityService.shared)
                 .environmentObject(CommunityTrackStore.shared)
                 .environmentObject(DirtRoadsStore.shared)
+                .environmentObject(CoverageService.shared)
+                .environmentObject(SafeTripManager.shared)
                 .environmentObject(CarPlayConnectionMonitor.shared)
                 .environmentObject(router)
                 .environmentObject(mapManager)
@@ -28,6 +31,7 @@ struct ShettaMapsApp: App {
                 .environment(\.layoutDirection, .rightToLeft)
                 .environment(\.locale, Locale(identifier: "ar"))
                 .tint(Theme.desertOrange)
+                .preferredColorScheme(appearance.scheme)
                 .onOpenURL { url in router.handleIncomingFile(url) }
                 #if DEBUG
                 .task { await GuideScreens.applyIfRequested(router: router, mapManager: mapManager) }

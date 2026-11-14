@@ -17,8 +17,15 @@ struct MapOverlaySet: Equatable {
                 && a.coordinate.latitude == b.coordinate.latitude && a.coordinate.longitude == b.coordinate.longitude
         }
     }
-    enum PinKind: Equatable { case saved, destination, waypoint, picked, start, search, landmark, community }
-    enum LineKind: Equatable { case track, direct, road, importedTrack, community }
+    enum PinKind: Equatable {
+        case saved, destination, waypoint, picked, start, search, landmark, community
+        /// علامتان صغيرتان لوقفة داخل الرحلة: مكان التوقف ومكان الاستئناف.
+        case stop, resume
+        /// بلاغ أو قياس تغطية الشبكة.
+        case coverage
+        var isSmall: Bool { self == .stop || self == .resume }
+    }
+    enum LineKind: Equatable { case track, direct, road, importedTrack, community, myTracks }
 
     struct Line: Equatable {
         var kind: LineKind
@@ -52,6 +59,8 @@ struct MapOverlaySet: Equatable {
         if let first = liveSegments.first?.first {
             set.pins.append(Pin(id: "rec-start", title: "بداية التسجيل", subtitle: nil, coordinate: first, kind: .start, symbol: "flag.fill"))
         }
+        // الوقفات أثناء التسجيل الحالي: نهاية كل مقطع وبداية الذي يليه
+        set.pins += TrackStops.pins(segments: liveSegments, idPrefix: "rec")
 
         if let plan = navigation.plan, navigation.isNavigating {
             let targetIndex = navigation.progress?.targetIndex ?? 0

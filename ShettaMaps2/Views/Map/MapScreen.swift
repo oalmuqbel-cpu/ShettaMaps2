@@ -30,8 +30,36 @@ struct MapScreen: View {
     @AppStorage(SettingsKeys.showDirtRoads) private var showDirtRoads = true
     @AppStorage(SettingsKeys.showDetectedRoads) private var showDetectedRoads = true
     @EnvironmentObject private var dirt: DirtRoadsStore
+    @EnvironmentObject private var coverage: CoverageService
+    @EnvironmentObject private var safeTrip: SafeTripManager
     @State private var dirtRoads: [DirtRoad] = []
+    @State private var coverageCells: [CoverageCell] = []
     @State private var showStopRecordingConfirm = false
+    @State private var showCoverageReport = false
+    @State private var showCarrierPicker = false
+    @AppStorage(SettingsKeys.showMyTracks) private var showMyTracks = false
+    @AppStorage(SettingsKeys.showCoverage) private var showCoverage = false
+    @AppStorage(SettingsKeys.coverageOnlyMine) private var coverageOnlyMine = true
+    @AppStorage(SettingsKeys.coverageCarrier) private var carrierRaw = ""
+    @AppStorage(SettingsKeys.userMarkerStyle) private var markerStyleRaw = UserMarkerStyle.dot.rawValue
+    @AppStorage(SettingsKeys.userMarkerColor) private var markerColorRaw = UserMarkerColor.white.rawValue
+    @Environment(\.colorScheme) private var colorScheme
+    @Query(sort: \RecordedTrack.startedAt, order: .reverse) private var myTracks: [RecordedTrack]
+
+    private var markerStyle: UserMarkerStyle { UserMarkerStyle(rawValue: markerStyleRaw) ?? .dot }
+    private var markerColor: UserMarkerColor { UserMarkerColor(rawValue: markerColorRaw) ?? .white }
+
+    /// اتجاه علامة المركبة: اتجاه السير أثناء الحركة، وإلا البوصلة.
+    private var userHeading: Double? {
+        if let l = location.location, l.course >= 0, l.speed > 1.5 { return l.course }
+        return location.currentHeadingDegrees
+    }
+
+    /// كل مساراتي السابقة (عند تفعيل زر المسارات) بلون مختلف.
+    private var myTracksLines: [MapOverlaySet.Line] {
+        guard showMyTracks, let b = mapManager.visibleBounds else { return [] }
+        return MyTracksOverlay.shared.lines(for: myTracks, sw: b.sw, ne: b.ne)
+    }
 
     private var overlays: MapOverlaySet {
         MapOverlaySet.build(places: places,
@@ -40,7 +68,8 @@ struct MapScreen: View {
                             currentLocation: location.location?.coordinate,
                             picked: mapManager.pickedCoordinate,
                             extraPins: landmarkPins + communityPins + shownTrackPins,
-                            extraLines: (router.shownTrack?.segments ?? []).map { .init(kind: .importedTrack, coordinates: $0) }
+                            extraLines: myTracksLines
+                                + (router.shownTrack?.segments ?? []).map { .init(kind: .importedTrack, coordinates: $0) }
                                 + communityTrackLines)
     }
 
@@ -62,6 +91,7 @@ struct MapScreen: View {
         guard let t = router.shownTrack, let s = t.segments.first?.first, let e = t.segments.last?.last else { return [] }
         return [.init(id: "st-start", title: "البداية", subtitle: t.name, coordinate: s, kind: .start, symbol: "flag.fill"),
                 .init(id: "st-end", title: "النهاية", subtitle: t.name, coordinate: e, kind: .destination, symbol: "flag.checkered")]
+            + TrackStops.pins(stops: t.stops, idPrefix: "st")
     }
 
     /// مسارات المجتمع ضمن المنطقة الظاهرة (عند تكبير كافٍ لتبقى الخريطة واضحة).
@@ -89,7 +119,11 @@ struct MapScreen: View {
                 if navigation.snapshot.isNavigating { NavigationPanel() }
                 if recorder.isActive { RecordingPanel(onStop: { showStopRecordingConfirm = true }) }
                 Spacer()
+                if showCoverage {
+                    CoverageLegend(note: mapManager.visibleRegion.map { $0.span.latitudeDelta > 0.6 ? "قرّب للعرض" : nil } ?? nil)
+                }
                 HStack(alignment: .bottom) {
+                    secondaryControls
                     Spacer()
                     controls
                 }
@@ -142,6 +176,11 @@ struct MapScreen: View {
         .onChange(of: mapManager.visibleRegion?.center.longitude) { _, _ in refreshCommunity(); refreshDirt() }
         .onChange(of: mapManager.visibleRegion?.span.latitudeDelta) { _, _ in refreshDirt() }
         .onChange(of: dirt.revision) { _, _ in refreshDirt() }
+        .onChange(of: mapManager.visibleRegion?.center.latitude) { _, _ in refreshCoverage() }
+        .onChange(of: mapManager.visibleRegion?.span.latitudeDelta) { _, _ in refreshCoverage() }
+        .onChange(of: showCoverage) { _, _ in refreshCoverage() }
+        .onChange(of: coverageOnlyMine) { _, _ in refreshCoverage() }
+        .onChange(of: coverage.cells.count) { _, _ in refreshCoverage(fetch: false) }
         .onChange(of: showDirtRoads) { _, _ in refreshDirt() }
         .onChange(of: showDetectedRoads) { _, _ in refreshDirt() }
         .onChange(of: mapManager.pickedCoordinate?.latitude) { _, new in
@@ -170,6 +209,32 @@ struct MapScreen: View {
                 Text(CoordinateUtilities.format(c, as: .decimal))
             }
         }
+        .confirmationDialog(mapManager.selectedPin?.title ?? "", isPresented: Binding(
+            get: { mapManager.selectedPin != nil }, set: { if !$0 { mapManager.selectedPin = nil } }),
+                            titleVisibility: .visible, presenting: mapManager.selectedPin) { pin in
+            pinActions(pin)
+        } message: { pin in
+            Text(pinMessage(pin))
+        }
+        .confirmationDialog("حالة الشبكة في موقعك الآن", isPresented: $showCoverageReport, titleVisibility: .visible) {
+            ForEach(CoverageLevel.allCases, id: \.self) { l in
+                Button(l.title) {
+                    if let c = location.location?.coordinate, let carrier = Carrier(rawValue: carrierRaw) {
+                        coverage.report(l, at: c, carrier: carrier)
+                        showCoverage = true
+                    }
+                }
+            }
+            Button("إلغاء", role: .cancel) {}
+        } message: {
+            Text("شركتك: \(Carrier(rawValue: carrierRaw)?.title ?? "")")
+        }
+        .confirmationDialog("اختر شركة الاتصال في جوالك", isPresented: $showCarrierPicker, titleVisibility: .visible) {
+            ForEach(Carrier.allCases) { c in
+                Button(c.title) { carrierRaw = c.rawValue; showCoverageReport = true }
+            }
+            Button("إلغاء", role: .cancel) {}
+        }
         .confirmationDialog("إنهاء التسجيل؟", isPresented: $showStopRecordingConfirm, titleVisibility: .visible) {
             Button("إنهاء وحفظ المسار") { recorder.finish() }
             Button("حذف التسجيل", role: .destructive) { recorder.discard() }
@@ -184,12 +249,25 @@ struct MapScreen: View {
         if mapManager.layer == .dirt {
             // نفس مصدر الخرائط المجاني مع إبراز الطرق الترابية؛ يعمل دون إنترنت في المناطق المنزّلة
             OfflineMapView(styleURL: URL(string: OfflineMapManager.defaultStyleURL), overlays: overlays, mapManager: mapManager,
-                           highlightDirtRoads: true, dirtRoads: dirtRoads)
+                           highlightDirtRoads: true, dirtRoads: dirtRoads, coverageCells: coverageCells,
+                           markerStyle: markerStyle, markerColor: markerColor)
+                .overlay(nightDim)
         } else if mapManager.layer == .offline {
             OfflineMapView(styleURL: offlineMaps.activeStyleURL, overlays: overlays, mapManager: mapManager, highlightDirtRoads: true,
-                           dirtRoads: dirtRoads)
+                           dirtRoads: dirtRoads, coverageCells: coverageCells, markerStyle: markerStyle, markerColor: markerColor)
+                .overlay(nightDim)
         } else {
-            OnlineMapView(overlays: overlays, mapManager: mapManager, dirtRoads: dirtRoads, dirtLabels: dirtLabels)
+            OnlineMapView(overlays: overlays, mapManager: mapManager, dirtRoads: dirtRoads, dirtLabels: dirtLabels,
+                          coverageCells: coverageCells, userCoordinate: location.location?.coordinate, userHeading: userHeading,
+                          markerStyle: markerStyle, markerColor: markerColor)
+        }
+    }
+
+    /// خرائط MapLibre نهارية التصميم؛ في النمط الليلي نخفف سطوعها حتى لا تبهر السائق.
+    @ViewBuilder
+    private var nightDim: some View {
+        if colorScheme == .dark {
+            Color.black.opacity(0.32).allowsHitTesting(false)
         }
     }
 
@@ -212,7 +290,16 @@ struct MapScreen: View {
                 if showDirtRoads {
                     Toggle(isOn: $showDetectedRoads) { Label("طرق مرصودة من الأقمار الصناعية", systemImage: "globe.asia.australia") }
                 }
+                Toggle(isOn: $showCoverage) { Label("تغطية الشبكة", systemImage: "antenna.radiowaves.left.and.right") }
+                if showCoverage {
+                    Toggle(isOn: $coverageOnlyMine) { Label("شركتي فقط", systemImage: "simcard") }
+                }
                 Divider()
+                Button { requestCoverageReport() } label: { Label("بلّغ عن الشبكة في موقعي", systemImage: "exclamationmark.bubble") }
+                Button { router.mapSheet = .safeTrip } label: {
+                    Label(safeTrip.isActive ? "الرحلة الآمنة (مفعلة)" : "الرحلة الآمنة", systemImage: "shield.lefthalf.filled")
+                }
+                Button { router.mapSheet = .emergency } label: { Label("الطوارئ وإنجاد", systemImage: "sos") }
                 Button { sendLocation() } label: { Label("إرسال موقعي برسالة", systemImage: "message") }
             } label: {
                 Image(systemName: "square.3.layers.3d")
@@ -225,7 +312,6 @@ struct MapScreen: View {
 
             MapControlButton(systemImage: "plus", label: "تكبير") { mapManager.send(.zoomIn) }
             MapControlButton(systemImage: "minus", label: "تصغير") { mapManager.send(.zoomOut) }
-            MapControlButton(systemImage: "location.north.line", label: "توجيه الخريطة للشمال") { mapManager.send(.resetNorth) }
             MapControlButton(systemImage: mapManager.followsUser ? "location.fill" : "location",
                              label: "موقعي الحالي", isActive: mapManager.followsUser) {
                 mapManager.send(.centerOnUser)
@@ -234,6 +320,33 @@ struct MapScreen: View {
                              isActive: mapManager.isPickingPoint) {
                 mapManager.isPickingPoint.toggle()
             }
+        }
+        .padding(.bottom, 8)
+    }
+
+    /// العمود الثاني: المنظور ثلاثي الأبعاد، مساراتي السابقة، والشمال.
+    private var secondaryControls: some View {
+        VStack(spacing: 10) {
+            Button { mapManager.send(.pitch(!mapManager.is3D)) } label: {
+                Text(mapManager.is3D ? "2D" : "3D")
+                    .font(.system(size: 15, weight: .heavy, design: .rounded))
+                    .frame(width: 48, height: 48)
+                    .foregroundStyle(mapManager.is3D ? Color.white : Theme.brown)
+                    .background(Circle().fill(mapManager.is3D ? AnyShapeStyle(Theme.desertOrange) : AnyShapeStyle(.regularMaterial)))
+                    .shadow(color: .black.opacity(0.15), radius: 4, y: 1)
+            }
+            .accessibilityLabel(mapManager.is3D ? "عرض مسطح" : "عرض ثلاثي الأبعاد")
+            MapControlButton(systemImage: "point.topleft.down.to.point.bottomright.curvepath",
+                             label: showMyTracks ? "إخفاء مساراتي السابقة" : "عرض كل مساراتي السابقة",
+                             isActive: showMyTracks) {
+                showMyTracks.toggle()
+                if showMyTracks, !myTracks.isEmpty, mapManager.visibleRegion.map({ $0.span.latitudeDelta > 3 }) ?? true {
+                    // تقريب على مكان المسارات إن كانت الخريطة بعيدة
+                    let pts = myTracks.prefix(30).compactMap { $0.points.first?.coordinate }
+                    if !pts.isEmpty { mapManager.send(.fit(pts)) }
+                }
+            }
+            MapControlButton(systemImage: "location.north.line", label: "توجيه الخريطة للشمال") { mapManager.send(.resetNorth) }
         }
         .padding(.bottom, 8)
     }
@@ -264,6 +377,16 @@ struct MapScreen: View {
             Banner(icon: "point.topleft.down.to.point.bottomright.curvepath", text: "معروض: \(t.name)", actionTitle: "إخفاء", tint: Theme.brown) {
                 router.shownTrack = nil
             }
+        }
+        if let s = safeTrip.state {
+            Banner(icon: "shield.lefthalf.filled",
+                   text: s.lastUploadAt.map { "الرحلة الآمنة مفعلة · آخر تحديث الساعة " + Fmt.time.string(from: $0) }
+                       ?? "الرحلة الآمنة مفعلة · بانتظار الاتصال لرفع الموقع",
+                   actionTitle: "التفاصيل", tint: .green) { router.mapSheet = .safeTrip }
+        }
+        if showMyTracks && myTracks.isEmpty {
+            Banner(icon: "point.topleft.down.to.point.bottomright.curvepath", text: "لا توجد مسارات محفوظة بعد.",
+                   actionTitle: "إخفاء", tint: Theme.brown) { showMyTracks = false }
         }
         if let n = recorder.recoveredNotice {
             Banner(icon: "arrow.uturn.backward.circle", text: n, actionTitle: "حسنًا", tint: Theme.brown) { recorder.clearRecoveredNotice() }
@@ -349,12 +472,8 @@ struct MapScreen: View {
 
     /// النصوص المكتوبة على الردميات: المسماة أولًا، ثم غير المسماة الطويلة عند التكبير.
     private var dirtLabels: [DirtRoad] {
-        guard let r = mapManager.visibleRegion else { return [] }
-        let named = dirtRoads.filter { !$0.name.isEmpty }.prefix(30)
-        guard r.span.latitudeDelta < 0.08 else { return Array(named) }
-        let unnamed = dirtRoads.filter { $0.name.isEmpty && $0.coordinates.count > 2 }
-            .map { ($0, $0.length) }.filter { $0.1 > 700 }.sorted { $0.1 > $1.1 }.prefix(20).map(\.0)
-        return Array(named) + unnamed
+        // الأسماء فقط؛ الطرق غير المسماة يكفي لونها (ومفتاح الألوان في قائمة الطبقات)
+        Array(dirtRoads.filter { !$0.name.isEmpty && $0.coordinates.count > 1 }.prefix(30))
     }
 
     private func refreshCommunity() {
@@ -364,6 +483,75 @@ struct MapScreen: View {
             await community.refresh(sw: b.sw, ne: b.ne)
             await communityTracks.refresh(sw: b.sw, ne: b.ne)
         }
+    }
+
+    // MARK: - الضغط على مكان في الخريطة
+
+    @ViewBuilder
+    private func pinActions(_ pin: MapOverlaySet.Pin) -> some View {
+        Button("الملاحة إليه") {
+            navigation.navigate(to: Waypoint(name: pin.title, coordinate: pin.coordinate))
+            mapManager.selectedPin = nil
+        }
+        Button("طريق بالسيارة إن وُجد") {
+            navigation.navigate(to: Waypoint(name: pin.title, coordinate: pin.coordinate), mode: .road)
+            mapManager.selectedPin = nil
+        }
+        if pin.kind != .saved {
+            Button("حفظ في أماكني") { router.mapSheet = .savePlace(pin.coordinate); mapManager.selectedPin = nil }
+        }
+        Button("إضافة إلى مخطط المسار") {
+            router.plannerDraft.waypoints.append(Waypoint(name: pin.title, coordinate: pin.coordinate))
+            mapManager.selectedPin = nil
+            router.mapSheet = .routePlanner
+        }
+        Button("نسخ الإحداثيات") {
+            UIPasteboard.general.string = CoordinateUtilities.shareString(pin.coordinate)
+            mapManager.selectedPin = nil
+        }
+        Button("مشاركة الموقع") {
+            shareLocationText = pin.title + "\n" + CoordinateUtilities.shareString(pin.coordinate)
+            mapManager.selectedPin = nil
+        }
+        Button("إلغاء", role: .cancel) { mapManager.selectedPin = nil }
+    }
+
+    private func pinMessage(_ pin: MapOverlaySet.Pin) -> String {
+        var parts: [String] = []
+        if let s = pin.subtitle, !s.isEmpty { parts.append(s) }
+        if let here = location.location?.coordinate {
+            parts.append("\(Fmt.distance(GeoMath.distance(here, pin.coordinate))) · \(Fmt.bearing(GeoMath.bearing(from: here, to: pin.coordinate)))")
+        }
+        parts.append(CoordinateUtilities.format(pin.coordinate, as: .decimal))
+        return parts.joined(separator: "\n")
+    }
+
+    // MARK: - تغطية الشبكة
+
+    private func requestCoverageReport() {
+        guard location.location != nil else { location.requestWhenInUse(); return }
+        if Carrier(rawValue: carrierRaw) == nil { showCarrierPicker = true } else { showCoverageReport = true }
+    }
+
+    private func refreshCoverage(fetch: Bool = true) {
+        guard showCoverage, let b = mapManager.visibleBounds, let r = mapManager.visibleRegion, r.span.latitudeDelta <= 0.6 else {
+            if !coverageCells.isEmpty { coverageCells = [] }
+            return
+        }
+        if fetch, network.isOnline { Task { await coverage.refresh(sw: b.sw, ne: b.ne) } }
+        let mine = coverageOnlyMine ? Carrier(rawValue: carrierRaw) : nil
+        var list = coverage.visibleCells(sw: b.sw, ne: b.ne, carrier: mine)
+        if mine == nil {
+            // لكل مربع أفضل حالة بين الشركات
+            var best: [String: CoverageCell] = [:]
+            for c in list {
+                let key = "\(c.lat)_\(c.lon)"
+                if let e = best[key], e.level.rank >= c.level.rank { continue }
+                best[key] = c
+            }
+            list = Array(best.values)
+        }
+        coverageCells = list
     }
 
     private func toggleRecording() {
@@ -395,6 +583,10 @@ struct MapScreen: View {
             NavigationStack { RoutePlannerView() }
         case .recording:
             NavigationStack { TracksListView() }
+        case .safeTrip:
+            NavigationStack { SafeTripView() }
+        case .emergency:
+            NavigationStack { EmergencyView() }
         }
     }
 }

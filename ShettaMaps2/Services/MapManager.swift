@@ -55,12 +55,15 @@ enum MapCommand: Equatable {
     case zoomIn, zoomOut, centerOnUser, resetNorth
     case focus(CLLocationCoordinate2D, spanMeters: Double)
     case fit([CLLocationCoordinate2D])
+    /// منظور ثلاثي الأبعاد (ميلان الكاميرا) أو مسطح.
+    case pitch(Bool)
 
     static func == (a: MapCommand, b: MapCommand) -> Bool {
         switch (a, b) {
         case (.zoomIn, .zoomIn), (.zoomOut, .zoomOut), (.centerOnUser, .centerOnUser), (.resetNorth, .resetNorth): return true
         case let (.focus(c1, s1), .focus(c2, s2)): return c1.latitude == c2.latitude && c1.longitude == c2.longitude && s1 == s2
         case let (.fit(x), .fit(y)): return x.count == y.count
+        case let (.pitch(x), .pitch(y)): return x == y
         default: return false
         }
     }
@@ -78,6 +81,10 @@ final class MapManager: ObservableObject {
     /// مركز الخريطة ومنطقتها الظاهرة (تستخدم لتنزيل منطقة دون إنترنت والبحث).
     @Published var visibleRegion: MKCoordinateRegion?
     @Published var cameraHeading: Double = 0
+    /// المنظور ثلاثي الأبعاد مفعل.
+    @Published var is3D = false
+    /// علامة ضغط عليها المستخدم على الخريطة (مكان معروف، روضة، مكان محفوظ...).
+    @Published var selectedPin: MapOverlaySet.Pin?
     @Published private(set) var command: MapCommand?
     @Published private(set) var commandID = 0
 
@@ -89,6 +96,7 @@ final class MapManager: ObservableObject {
         switch c {
         case .centerOnUser: followsUser = true
         case .zoomIn, .zoomOut, .resetNorth: break
+        case .pitch(let on): is3D = on
         case .focus, .fit: followsUser = false
         }
         command = c

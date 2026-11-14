@@ -54,5 +54,47 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reportCount'])
         && request.resource.data.reportCount == resource.data.reportCount + 1;
     }
+    // الرحلة الآمنة: آخر موقع معروف يقرؤه من معه الرابط السري فقط (لا يُسمح بالاستعلام عن القائمة)
+    match /safetrips/{tripId} {
+      allow get: if tripId.size() >= 20;
+      allow list: if false;
+
+      allow create, update: if request.auth != null
+        && tripId.size() >= 20 && tripId.size() <= 40
+        && request.resource.data.keys().hasOnly(['owner','name','hours','startedAt','updatedAt','lat','lon','acc','active','endedAt'])
+        && request.resource.data.owner == request.auth.uid
+        && (resource == null || resource.data.owner == request.auth.uid)
+        && request.resource.data.name is string && request.resource.data.name.size() <= 40
+        && request.resource.data.hours is int && request.resource.data.hours >= 1 && request.resource.data.hours <= 72
+        && request.resource.data.lat is number && request.resource.data.lat >= -90 && request.resource.data.lat <= 90
+        && request.resource.data.lon is number && request.resource.data.lon >= -180 && request.resource.data.lon <= 180
+        && request.resource.data.acc is number
+        && request.resource.data.active is bool
+        && request.resource.data.startedAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+
+      allow delete: if request.auth != null && resource.data.owner == request.auth.uid;
+    }
+
+    // تغطية الشبكة: مربع تقريبي (حوالي 550 م) وحالة الشبكة وشركتها، مستند واحد لكل مستخدم في كل مربع وشركة
+    match /coverage/{cellId} {
+      allow read: if true;
+
+      allow create, update: if request.auth != null
+        && cellId.matches('.*_' + request.auth.uid)
+        && (resource == null || resource.data.author == request.auth.uid)
+        && request.resource.data.keys().hasOnly(['cell','lat','lon','carrier','level','source','author','at','radio'])
+        && request.resource.data.author == request.auth.uid
+        && request.resource.data.cell is string && request.resource.data.cell.size() <= 24
+        && request.resource.data.lat is number && request.resource.data.lat >= 12 && request.resource.data.lat <= 33
+        && request.resource.data.lon is number && request.resource.data.lon >= 34 && request.resource.data.lon <= 60
+        && request.resource.data.carrier in ['stc','mobily','zain','other']
+        && request.resource.data.level in ['data','voice','none']
+        && request.resource.data.source in ['auto','manual']
+        && request.resource.data.radio is string && request.resource.data.radio.size() <= 4
+        && request.resource.data.at is timestamp;
+
+      allow delete: if request.auth != null && resource.data.author == request.auth.uid;
+    }
   }
 }

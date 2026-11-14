@@ -168,7 +168,7 @@ struct TrackDetailView: View {
             }
             Section {
                 Button {
-                    router.shownTrack = ShownTrack(name: track.name, segments: segments)
+                    router.shownTrack = ShownTrack(name: track.name, segments: segments, stops: TrackStops.stops(from: points))
                     mapManager.send(.fit(points.map(\.coordinate))); router.showOnMap()
                 } label: {
                     Label("عرض على الخريطة الرئيسية", systemImage: "map")

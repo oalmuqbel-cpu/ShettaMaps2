@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import SwiftData
 import OSLog
@@ -22,6 +23,14 @@ enum SettingsKeys {
     static let showDirtRoads = "showDirtRoads"
     static let showDetectedRoads = "showDetectedRoads"
     static let emergencyNumber = "emergencyNumber"
+    static let userMarkerStyle = "userMarkerStyle"
+    static let userMarkerColor = "userMarkerColor"
+    static let appearanceMode = "appearanceMode"
+    static let showMyTracks = "showMyTracks"
+    static let showCoverage = "showCoverage"
+    static let coverageCarrier = "coverageCarrier"
+    static let coverageContribute = "coverageContribute"
+    static let coverageOnlyMine = "coverageOnlyMine"
 }
 
 let appLog = Logger(subsystem: "com.almuqbel.ShettaMaps2", category: "app")
@@ -42,6 +51,7 @@ final class AppEnvironment {
     let trips: TripManager
     let network = NetworkMonitor.shared
     let offlineMaps = OfflineMapManager.shared
+    private var cancellables: Set<AnyCancellable> = []
 
     private init() {
         let schema = Schema(AppSchema.models)
@@ -83,6 +93,19 @@ final class AppEnvironment {
         nav.attach(location: loc)
         seedIfNeeded()
         recorder.recoverUnfinishedTrackIfNeeded()
+        // قياس تغطية الشبكة وتحديث موقع الرحلة الآمنة مع كل تحديث للموقع (حتى في الخلفية أثناء التسجيل)
+        loc.$location.compactMap { $0 }
+            .sink { l in
+                CoverageService.shared.observe(l)
+                SafeTripManager.shared.observe(l)
+            }
+            .store(in: &cancellables)
+        NetworkMonitor.shared.$isOnline.removeDuplicates().filter { $0 }
+            .sink { _ in
+                SafeTripManager.shared.networkBecameAvailable()
+                Task { await CoverageService.shared.uploadPending() }
+            }
+            .store(in: &cancellables)
     }
 
     private func seedIfNeeded() {

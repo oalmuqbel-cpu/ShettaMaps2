@@ -212,6 +212,11 @@ struct TripDetailView: View {
                     NavigationLink { TrackDetailView(track: t) } label: { TrackRow(track: t) }
                 }
                 LabeledContent("إجمالي المسافة", value: Fmt.distance(trip.totalDistance))
+                if !tracks.isEmpty {
+                    Button { showTripOnMap(tracks) } label: {
+                        Label("عرض الرحلة كاملة على الخريطة", systemImage: "map")
+                    }
+                }
             }
 
             Section {
@@ -247,5 +252,15 @@ struct TripDetailView: View {
         .confirmationDialog("إنهاء الرحلة؟ سيتم حفظ المسار.", isPresented: $confirmEnd, titleVisibility: .visible) {
             Button("إنهاء الرحلة", role: .destructive) { trips.endTrip() }
         }
+    }
+
+    /// كل مسارات الرحلة كخط واحد: بداية ونهاية كبيرتان للرحلة، وعلامات صغيرة لكل وقفة بينهما.
+    private func showTripOnMap(_ tracks: [RecordedTrack]) {
+        let points = TrackStops.merged(tracks.map(\.points))
+        let segments = TrackAccumulator.segments(of: points)
+        guard !segments.isEmpty else { return }
+        router.shownTrack = ShownTrack(name: trip.name, segments: segments, stops: TrackStops.stops(from: points))
+        mapManager.send(.fit(points.map(\.coordinate)))
+        router.showOnMap()
     }
 }

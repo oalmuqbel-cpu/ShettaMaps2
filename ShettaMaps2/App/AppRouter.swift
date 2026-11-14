@@ -34,6 +34,8 @@ enum MapSheet: Identifiable {
     case trips
     case routePlanner
     case recording
+    case safeTrip
+    case emergency
 
     var id: String {
         switch self {
@@ -44,6 +46,8 @@ enum MapSheet: Identifiable {
         case .trips: return "trips"
         case .routePlanner: return "planner"
         case .recording: return "recording"
+        case .safeTrip: return "safeTrip"
+        case .emergency: return "emergency"
         }
     }
 }
@@ -86,5 +90,7 @@ struct RoutePlannerDraft: Equatable {
 struct ShownTrack: Equatable {
     var name: String
     var segments: [[CLLocationCoordinate2D]]
+    /// الوقفات داخل الرحلة (علامات صغيرة بين البداية والنهاية الكبيرتين).
+    var stops: [TrackStop] = []
     static func == (a: ShownTrack, b: ShownTrack) -> Bool { a.name == b.name && a.segments.count == b.segments.count }
 }

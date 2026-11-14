@@ -52,4 +52,39 @@ tq = {"structuredQuery": {"from": [{"collectionId": "tracks"}], "where": {"compo
 s, rows = req("POST", f"{BASE}:runQuery?key={KEY}", tq); check("public track query", s == 200 and any(tdoc in json.dumps(x) for x in rows))
 s, r = req("DELETE", f"{BASE}/tracks/{tdoc}", None, tok2); check("reject deleting others' track", s == 403)
 s, r = req("DELETE", f"{BASE}/tracks/{tdoc}", None, tok); check("owner deletes own track", s == 200)
+# الرحلة الآمنة
+import random, string
+def sfields(uid, hours=6, lat=24.7, active=True):
+    now = datetime.datetime.utcnow().isoformat() + "Z"
+    return {"fields": {"owner": {"stringValue": uid}, "name": {"stringValue": "اختبار"}, "hours": {"integerValue": str(hours)},
+            "startedAt": {"timestampValue": now}, "updatedAt": {"timestampValue": now}, "lat": {"doubleValue": lat},
+            "lon": {"doubleValue": 46.6}, "acc": {"doubleValue": 8.0}, "active": {"booleanValue": active}}}
+stoken = "".join(random.choice(string.ascii_letters) for _ in range(24))
+s, r = req("PATCH", f"{BASE}/safetrips/{stoken}", sfields(uid), tok); check("create safe trip", s == 200)
+s, r = req("GET", f"{BASE}/safetrips/{stoken}?key={KEY}"); check("public get safe trip by token", s == 200 and "اختبار" in json.dumps(r, ensure_ascii=False))
+s, r = req("PATCH", f"{BASE}/safetrips/{stoken}", sfields(uid, lat=24.9), tok2); check("reject others updating safe trip", s == 403)
+s, r = req("PATCH", f"{BASE}/safetrips/{stoken}", sfields(uid, hours=500), tok); check("reject invalid hours", s == 403)
+s, r = req("PATCH", f"{BASE}/safetrips/short123", sfields(uid), tok); check("reject short token", s == 403)
+lq = {"structuredQuery": {"from": [{"collectionId": "safetrips"}], "limit": 5}}
+s, r = req("POST", f"{BASE}:runQuery?key={KEY}", lq); check("reject listing safe trips", s == 403)
+s, r = req("PATCH", f"{BASE}/safetrips/{stoken}", sfields(uid, active=False), tok); check("owner ends safe trip", s == 200)
+s, r = req("DELETE", f"{BASE}/safetrips/{stoken}", None, tok); check("owner deletes safe trip", s == 200)
+# تغطية الشبكة
+def cfields(uid, level="data", carrier="stc", lat=24.71, radio="4G"):
+    return {"fields": {"cell": {"stringValue": "24.710_46.675"}, "lat": {"doubleValue": lat}, "lon": {"doubleValue": 46.675},
+            "carrier": {"stringValue": carrier}, "level": {"stringValue": level}, "source": {"stringValue": "auto"},
+            "author": {"stringValue": uid}, "at": {"timestampValue": datetime.datetime.utcnow().isoformat() + "Z"},
+            "radio": {"stringValue": radio}}}
+cid = f"24.710_46.675_stc_{uid}"
+s, r = req("PATCH", f"{BASE}/coverage/{cid}", cfields(uid), tok); check("create coverage sample", s == 200)
+s, r = req("PATCH", f"{BASE}/coverage/{cid}", cfields(uid, level="none"), tok); check("update own coverage sample", s == 200)
+s, r = req("PATCH", f"{BASE}/coverage/{cid}", cfields(uid), tok2); check("reject writing others' coverage", s == 403)
+s, r = req("PATCH", f"{BASE}/coverage/24.710_46.675_stc_{a2['localId']}", cfields(uid), tok2); check("reject spoofed coverage author", s == 403)
+s, r = req("PATCH", f"{BASE}/coverage/{cid}", cfields(uid, level="great"), tok); check("reject invalid level", s == 403)
+s, r = req("PATCH", f"{BASE}/coverage/{cid}", cfields(uid, lat=50.0), tok); check("reject coverage outside Gulf", s == 403)
+cq = {"structuredQuery": {"from": [{"collectionId": "coverage"}], "where": {"compositeFilter": {"op": "AND", "filters": [
+    {"fieldFilter": {"field": {"fieldPath": "lat"}, "op": "GREATER_THAN_OR_EQUAL", "value": {"doubleValue": 24.6}}},
+    {"fieldFilter": {"field": {"fieldPath": "lat"}, "op": "LESS_THAN_OR_EQUAL", "value": {"doubleValue": 24.8}}}]}}, "limit": 50}}
+s, rows = req("POST", f"{BASE}:runQuery?key={KEY}", cq); check("public coverage query", s == 200 and any(cid in json.dumps(x) for x in rows))
+s, r = req("DELETE", f"{BASE}/coverage/{cid}", None, tok); check("owner deletes coverage sample", s == 200)
 sys.exit(0 if ok else 1)

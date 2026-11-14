@@ -17,6 +17,8 @@ struct SettingsView: View {
     @AppStorage(SettingsKeys.coordinateFormat) private var formatRaw = CoordinateFormat.decimal.rawValue
     @AppStorage(SettingsKeys.iCloudSync) private var iCloudSync = false
     @AppStorage(SettingsKeys.weakGPSThreshold) private var weakThreshold = 50.0
+    @AppStorage(SettingsKeys.appearanceMode) private var appearanceRaw = AppearanceMode.sun.rawValue
+    @AppStorage(SettingsKeys.userMarkerStyle) private var markerStyleRaw = UserMarkerStyle.dot.rawValue
 
     @State private var backupURL: URL?
     @State private var restoring = false
@@ -50,6 +52,13 @@ struct SettingsView: View {
                     Text("بدون").tag(0.0)
                     ForEach([5.0, 10, 15, 30], id: \.self) { Text("بعد \(Int($0)) دقيقة").tag($0) }
                 }
+                Picker("النمط النهاري والليلي", selection: $appearanceRaw) {
+                    ForEach(AppearanceMode.allCases) { Text($0.title).tag($0.rawValue) }
+                }
+                .onChange(of: appearanceRaw) { _, _ in AppearanceController.shared.update() }
+                NavigationLink { UserMarkerSettingsView() } label: {
+                    LabeledContent("شكل موقعي على الخريطة", value: (UserMarkerStyle(rawValue: markerStyleRaw) ?? .dot).title)
+                }
                 Toggle("تباين عالٍ للاستخدام تحت الشمس", isOn: $highContrast)
                 Picker("صيغة الإحداثيات", selection: $formatRaw) {
                     ForEach(CoordinateFormat.allCases) { Text($0.title).tag($0.rawValue) }
@@ -73,9 +82,13 @@ struct SettingsView: View {
                 TextField("رقم جوال لإرسال موقعك إليه", text: $emergencyNumber)
                     .keyboardType(.phonePad)
                     .environment(\.layoutDirection, .leftToRight)
+                NavigationLink { SafeTripView() } label: { Label("الرحلة الآمنة", systemImage: "shield.lefthalf.filled") }
+                NavigationLink { EmergencyView() } label: { Label("أرقام الطوارئ وفريق إنجاد", systemImage: "sos") }
             } header: { Text("الطوارئ") } footer: {
                 Text("من زر الطبقات في الخريطة اختر «إرسال موقعي برسالة»: تُجهَّز رسالة SMS بموقعك ورابط خرائط، وتصل بإشارة الجوال حتى دون إنترنت. يبقى الرقم على جهازك فقط.")
             }
+
+            CoverageSettingsSection()
 
             Section {
                 NavigationLink { StorageUsageView() } label: {
@@ -100,7 +113,7 @@ struct SettingsView: View {
             }
 
             Section("الخصوصية") {
-                Text("تُحفظ مواقعك ومساراتك ورحلاتك وصورك على جهازك فقط. لا يُرسل أي مكان إلى خادم إلا إذا اخترت له «عام» عند الحفظ، وحينها يُرسل الاسم والإحداثيات والنوع والملاحظات فقط دون أي معلومات عنك. وعند مشاركة مسار مع المجتمع يُرسل خطه بعد إخفاء أول وآخر 400 متر، مع الاسم والملاحظات التي تكتبها. عند استخدام خرائط الإنترنت أو البحث عبر الإنترنت أو توجيهات الطرق، تُرسل Apple أو مزوّد الخرائط الطلبات اللازمة لتلك الخدمة فقط.")
+                Text("تُحفظ مواقعك ومساراتك ورحلاتك وصورك على جهازك فقط. لا يُرسل أي مكان إلى خادم إلا إذا اخترت له «عام» عند الحفظ، وحينها يُرسل الاسم والإحداثيات والنوع والملاحظات فقط دون أي معلومات عنك. وعند مشاركة مسار مع المجتمع يُرسل خطه بعد إخفاء أول وآخر 400 متر، مع الاسم والملاحظات التي تكتبها. وإذا فعّلت المساهمة في خريطة التغطية يُرسل مربع تقريبي (قرابة 550 م) مع حالة الشبكة ونوعها وشركتك فقط. وفي الرحلة الآمنة يُرفع آخر موقع لك فقط، ولا يراه إلا من معه رابطها. عند استخدام خرائط الإنترنت أو البحث عبر الإنترنت أو توجيهات الطرق، تُرسل Apple أو مزوّد الخرائط الطلبات اللازمة لتلك الخدمة فقط.")
                     .font(.footnote)
             }
 
