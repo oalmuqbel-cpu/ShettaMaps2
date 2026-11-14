@@ -1,0 +1,23 @@
+# بناء بيانات حدود السرعة من OpenStreetMap ونشرها
+name: Speed Limits Data
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+
+jobs:
+  data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool >/dev/null
+      - name: Build
+        run: bash tools/speedlimits/build.sh
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view speed-v1 >/dev/null 2>&1 || gh release create speed-v1 --title "Samt speed limits data" --notes "Speed limits tagged in OpenStreetMap for the Gulf region. © OpenStreetMap contributors (ODbL)."
+          gh release upload speed-v1 out/* --clobber
