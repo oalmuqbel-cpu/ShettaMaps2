@@ -143,6 +143,9 @@ final class FollowService: ObservableObject {
 
     /// يجلب رحلات من أضافوني متابعًا، ويجدول تنبيه التأخر لكل رحلة نشطة.
     func refresh() async {
+        #if DEBUG
+        if GuideScreens.requested != nil { return }  // لقطات الشاشة تستخدم بيانات عرض ثابتة
+        #endif
         guard !refreshing, CommunityService.shared.isEnabled else { return }
         refreshing = true
         defer { refreshing = false }
