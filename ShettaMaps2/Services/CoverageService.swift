@@ -113,7 +113,8 @@ final class CoverageService: ObservableObject {
 
     private var samples: [CoverageSample] = []   // بانتظار الرفع
     private var fetched: [CoverageSample] = []   // من الخادم ومن قياساتي
-    private let telephony = CTTelephonyNetworkInfo()
+    /// يُنشأ عند أول قياس فقط (إنشاؤه يتصل بخدمة الاتصالات في النظام وقد يتأخر).
+    private lazy var telephony = CTTelephonyNetworkInfo()
     private let monitor = NWPathMonitor()
     private var cellularOK = false
     private var wifi = false
