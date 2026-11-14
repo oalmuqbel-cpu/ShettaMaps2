@@ -102,4 +102,24 @@ s, rows = req("POST", f"{BASE}:runQuery", wq, tok2); check("watcher lists follow
 s, rows = req("POST", f"{BASE}:runQuery", wq, tok); check("reject non-watcher listing", s == 403)
 s, r = req("DELETE", f"{BASE}/safetrips/{wtoken}", None, tok); check("owner deletes watched trip", s == 200)
 s, r = req("DELETE", f"{BASE}/codes/{code}", None, tok); check("owner deletes code", s == 200)
+# التقييمات والتعليقات
+pkey = "osm-n" + "".join(random.choice(string.digits) for _ in range(9))
+def rf(u, rating=5, text="طريق ممتاز", rc=0, key=None):
+    return {"fields": {"placeKey": {"stringValue": key or pkey}, "placeName": {"stringValue": "روضة اختبار"},
+            "rating": {"integerValue": str(rating)}, "text": {"stringValue": text}, "author": {"stringValue": u},
+            "createdAt": {"timestampValue": datetime.datetime.utcnow().isoformat() + "Z"}, "reportCount": {"integerValue": str(rc)}}}
+rid = f"{pkey}__{uid}"
+s, r = req("PATCH", f"{BASE}/reviews/{rid}", rf(uid), tok); check("create review", s == 200)
+s, r = req("PATCH", f"{BASE}/reviews/{rid}", rf(uid, rating=3, text="تغيرت حالة الطريق"), tok); check("author edits review", s == 200)
+s, r = req("PATCH", f"{BASE}/reviews/{rid}", rf(uid, rating=9), tok); check("reject rating out of range", s == 403)
+s, r = req("PATCH", f"{BASE}/reviews/{pkey}__{a2['localId']}", rf(uid), tok); check("reject review under another id", s == 403)
+s, r = req("PATCH", f"{BASE}/reviews/{rid}", rf(uid, rating=1), tok2); check("reject editing others' review", s == 403)
+s, r = req("PATCH", f"{BASE}/reviews/{rid}", rf(uid, text="x" * 500), tok); check("reject long review", s == 403)
+rq = {"structuredQuery": {"from": [{"collectionId": "reviews"}], "where": {"fieldFilter": {"field": {"fieldPath": "placeKey"}, "op": "EQUAL", "value": {"stringValue": pkey}}}, "limit": 10}}
+s, rows = req("POST", f"{BASE}:runQuery?key={KEY}", rq); check("public reviews query", s == 200 and rid in json.dumps(rows))
+rc = {"writes": [{"transform": {"document": f"projects/{PID}/databases/(default)/documents/reviews/{rid}",
+       "fieldTransforms": [{"fieldPath": "reportCount", "increment": {"integerValue": "1"}}]}}]}
+s, r = req("POST", f"{BASE}:commit", rc, tok2); check("report review", s == 200)
+s, r = req("DELETE", f"{BASE}/reviews/{rid}", None, tok2); check("reject deleting others' review", s == 403)
+s, r = req("DELETE", f"{BASE}/reviews/{rid}", None, tok); check("author deletes review", s == 200)
 sys.exit(0 if ok else 1)

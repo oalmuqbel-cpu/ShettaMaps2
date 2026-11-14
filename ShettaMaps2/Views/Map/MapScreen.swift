@@ -33,6 +33,11 @@ struct MapScreen: View {
     @EnvironmentObject private var coverage: CoverageService
     @EnvironmentObject private var safeTrip: SafeTripManager
     @EnvironmentObject private var follow: FollowService
+    @EnvironmentObject private var weather: WeatherService
+    @AppStorage(SettingsKeys.showWind) private var showWind = true
+    @AppStorage(SettingsKeys.showRainMap) private var showRainMap = false
+    @State private var rainHour = 0
+    @State private var showFuel = false
     @State private var dirtRoads: [DirtRoad] = []
     @State private var coverageCells: [CoverageCell] = []
     @State private var showStopRecordingConfirm = false
@@ -226,7 +231,13 @@ struct MapScreen: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             Task { await follow.refresh() }
+            refreshWeather()
         }
+        .onChange(of: location.location?.coordinate.latitude) { _, _ in refreshWeather() }
+        .onChange(of: network.isOnline) { _, on in if on { refreshWeather(); refreshRain() } }
+        .onChange(of: showRainMap) { _, on in rainHour = 0; if on { refreshRain() } }
+        .onChange(of: mapManager.visibleRegion?.center.latitude) { _, _ in refreshRain() }
+        .onChange(of: mapManager.visibleRegion?.span.latitudeDelta) { _, _ in refreshRain() }
         .task {
             // متابعة الرحلات الآمنة لمن أضافوني: كل 5 دقائق أثناء فتح التطبيق
             while !Task.isCancelled {
@@ -284,6 +295,18 @@ struct MapScreen: View {
         } message: {
             Text("شركتك: \(Carrier(rawValue: carrierRaw)?.title ?? "")")
         }
+        .confirmationDialog("أقرب محطات الوقود", isPresented: $showFuel, titleVisibility: .visible) {
+            ForEach(Array(nearestFuel.enumerated()), id: \.offset) { _, item in
+                Button("\(item.0.name) · \(Fmt.distance(item.1))") {
+                    navigation.navigate(to: Waypoint(name: item.0.name, coordinate: .init(latitude: item.0.lat, longitude: item.0.lon)),
+                                        mode: .road)
+                }
+            }
+            Button("إلغاء", role: .cancel) {}
+        } message: {
+            Text(nearestFuel.isEmpty ? "لا توجد محطات معروفة قريبة في قاعدة الأماكن، أو لم يتحدد موقعك بعد."
+                                     : "من بيانات OpenStreetMap، وقد لا تشمل كل المحطات. تأكد من عمل المحطة قبل الاعتماد عليها.")
+        }
         .confirmationDialog("اختر شركة الاتصال في جوالك", isPresented: $showCarrierPicker, titleVisibility: .visible) {
             ForEach(Carrier.allCases) { c in
                 Button(c.title) { carrierRaw = c.rawValue; showCoverageReport = true }
@@ -305,15 +328,19 @@ struct MapScreen: View {
             // نفس مصدر الخرائط المجاني مع إبراز الطرق الترابية؛ يعمل دون إنترنت في المناطق المنزّلة
             OfflineMapView(styleURL: URL(string: OfflineMapManager.defaultStyleURL), overlays: overlays, mapManager: mapManager,
                            highlightDirtRoads: true, dirtRoads: dirtRoads, coverageCells: coverageCells,
+                           rainCells: showRainMap ? weather.rainCells : [], rainHour: rainHour,
                            markerStyle: markerStyle, markerColor: markerColor)
                 .overlay(nightDim)
         } else if mapManager.layer == .offline {
             OfflineMapView(styleURL: offlineMaps.activeStyleURL, overlays: overlays, mapManager: mapManager, highlightDirtRoads: true,
-                           dirtRoads: dirtRoads, coverageCells: coverageCells, markerStyle: markerStyle, markerColor: markerColor)
+                           dirtRoads: dirtRoads, coverageCells: coverageCells,
+                           rainCells: showRainMap ? weather.rainCells : [], rainHour: rainHour,
+                           markerStyle: markerStyle, markerColor: markerColor)
                 .overlay(nightDim)
         } else {
             OnlineMapView(overlays: overlays, mapManager: mapManager, dirtRoads: dirtRoads, dirtLabels: dirtLabels,
-                          coverageCells: coverageCells, userCoordinate: location.location?.coordinate, userHeading: userHeading,
+                          coverageCells: coverageCells, rainCells: showRainMap ? weather.rainCells : [], rainHour: rainHour,
+                          userCoordinate: location.location?.coordinate, userHeading: userHeading,
                           markerStyle: markerStyle, markerColor: markerColor)
         }
     }
@@ -345,11 +372,15 @@ struct MapScreen: View {
                 if showDirtRoads {
                     Toggle(isOn: $showDetectedRoads) { Label("طرق مرصودة من الأقمار الصناعية", systemImage: "globe.asia.australia") }
                 }
+                Toggle(isOn: $showRainMap) { Label("الأمطار والأجواء", systemImage: "cloud.rain") }
+                Toggle(isOn: $showWind) { Label("الرياح على الخريطة", systemImage: "wind") }
                 Toggle(isOn: $showCoverage) { Label("تغطية الشبكة", systemImage: "antenna.radiowaves.left.and.right") }
                 if showCoverage {
                     Toggle(isOn: $coverageOnlyMine) { Label("شركتي فقط", systemImage: "simcard") }
                 }
                 Divider()
+                Button { router.mapSheet = .weather } label: { Label("الطقس", systemImage: "cloud.sun") }
+                Button { showFuel = true } label: { Label("أقرب محطة وقود", systemImage: "fuelpump") }
                 Button { requestCoverageReport() } label: { Label("بلّغ عن الشبكة في موقعي", systemImage: "exclamationmark.bubble") }
                 Button { router.mapSheet = .safeTrip } label: {
                     Label(safeTrip.isActive ? "الرحلة الآمنة (مفعلة)" : "الرحلة الآمنة", systemImage: "shield.lefthalf.filled")
@@ -389,8 +420,19 @@ struct MapScreen: View {
         return l.speed
     }
 
+    /// الطقس المعروض يخص منطقتك (أقل من ٥٠ كم) وعمره أقل من ٣ ساعات.
+    private func isWeatherNearby(_ r: WeatherReport) -> Bool {
+        guard Date().timeIntervalSince(r.fetchedAt) < 3 * 3600 else { return false }
+        guard let c = location.location?.coordinate else { return true }
+        return GeoMath.distance(c, r.coordinate) < 50_000
+    }
+
     private var secondaryControls: some View {
         VStack(spacing: 10) {
+            if showWind, let r = weather.report, isWeatherNearby(r) {
+                Button { router.mapSheet = .weather } label: { WindChip(now: r.now, mapHeading: mapManager.cameraHeading) }
+                    .buttonStyle(.plain)
+            }
             if let v = currentSpeed { SpeedBubble(speedMS: v) }
             Button { mapManager.send(.pitch(!mapManager.is3D)) } label: {
                 Text(mapManager.is3D ? "2D" : "3D")
@@ -575,6 +617,12 @@ struct MapScreen: View {
             mapManager.selectedPin = nil
             router.mapSheet = .routePlanner
         }
+        if let key = ReviewsService.placeKey(forPinID: pin.id) {
+            Button("التقييمات والتعليقات") {
+                router.mapSheet = .reviews(key, pin.title)
+                mapManager.selectedPin = nil
+            }
+        }
         Button("نسخ الإحداثيات") {
             UIPasteboard.general.string = CoordinateUtilities.shareString(pin.coordinate)
             mapManager.selectedPin = nil
@@ -594,6 +642,24 @@ struct MapScreen: View {
         }
         parts.append(CoordinateUtilities.format(pin.coordinate, as: .decimal))
         return parts.joined(separator: "\n")
+    }
+
+    // MARK: - الطقس
+
+    private func refreshWeather() {
+        guard (showWind || router.mapSheet != nil), network.isOnline, let c = location.location?.coordinate else { return }
+        Task { await weather.refresh(at: c) }
+    }
+
+    private func refreshRain() {
+        guard showRainMap, network.isOnline, let b = mapManager.visibleBounds else { return }
+        Task { await weather.refreshRain(sw: b.sw, ne: b.ne) }
+    }
+
+    /// أقرب محطات الوقود من قاعدة الأماكن (تعمل دون إنترنت).
+    private var nearestFuel: [(GazetteerEntry, Double)] {
+        guard let c = location.location?.coordinate else { return [] }
+        return search.nearest(.fuel, to: c, count: 5)
     }
 
     // MARK: - تغطية الشبكة
@@ -659,6 +725,10 @@ struct MapScreen: View {
             NavigationStack { EmergencyView() }
         case .following:
             NavigationStack { FollowingView() }
+        case .weather:
+            NavigationStack { WeatherView() }
+        case .reviews(let key, let name):
+            NavigationStack { ReviewsView(placeKey: key, placeName: name) }
         }
     }
 }

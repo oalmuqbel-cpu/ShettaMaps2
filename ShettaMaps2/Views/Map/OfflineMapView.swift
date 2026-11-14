@@ -10,6 +10,8 @@ struct OfflineMapView: UIViewRepresentable {
     var highlightDirtRoads = false
     var dirtRoads: [DirtRoad] = []
     var coverageCells: [CoverageCell] = []
+    var rainCells: [RainCell] = []
+    var rainHour: Int = 0
     var markerStyle: UserMarkerStyle = .dot
     var markerColor: UserMarkerColor = .white
 
@@ -59,6 +61,12 @@ struct OfflineMapView: UIViewRepresentable {
             map.showsUserLocation = false
             map.showsUserLocation = true
         }
+        let rainKey = "\(rainHour)|" + rainCells.map(\.id).joined(separator: ",")
+        if c.lastRainKey != rainKey {
+            c.lastRainKey = rainKey
+            c.pendingRain = (rainCells, rainHour)
+            c.applyRain(rainCells, hour: rainHour, on: map)
+        }
         let covKey = coverageCells.map(\.id).joined(separator: ",")
         if c.lastCoverageKey != covKey {
             c.lastCoverageKey = covKey
@@ -88,6 +96,8 @@ struct OfflineMapView: UIViewRepresentable {
         var lastDirtIDs: [String] = []
         var pendingDirt: [DirtRoad] = []
         var lastCoverageKey = ""
+        var lastRainKey = ""
+        var pendingRain: ([RainCell], Int) = ([], 0)
         var pendingCoverage: [CoverageCell] = []
         var markerKey = ""
         var markerStyle: UserMarkerStyle = .dot
@@ -142,6 +152,36 @@ struct OfflineMapView: UIViewRepresentable {
             style.addLayer(text)
         }
 
+        /// خريطة الأمطار المتوقعة: مربعات بلون شدة المطر للساعة المختارة.
+        func applyRain(_ cells: [RainCell], hour: Int, on map: MLNMapView) {
+            guard let style = map.style else { return }
+            let polys: [MLNPolygonFeature] = cells.compactMap { cell in
+                let mm = cell.hourly.indices.contains(hour) ? cell.hourly[hour] : 0
+                let l = RainScale.level(mm)
+                guard l > 0 else { return nil }
+                var coords = cell.corners
+                let f = MLNPolygonFeature(coordinates: &coords, count: UInt(coords.count))
+                f.attributes = ["l": l]
+                return f
+            }
+            let shape = MLNShapeCollectionFeature(shapes: polys)
+            if let src = style.source(withIdentifier: "samt-rain") as? MLNShapeSource {
+                src.shape = shape
+                return
+            }
+            let src = MLNShapeSource(identifier: "samt-rain", shape: shape, options: nil)
+            style.addSource(src)
+            let fill = MLNFillStyleLayer(identifier: "samt-rain-fill", source: src)
+            fill.fillColor = NSExpression(format: "TERNARY(l == 1, %@, TERNARY(l == 2, %@, TERNARY(l == 3, %@, %@)))",
+                                          RainScale.colorsUI[1], RainScale.colorsUI[2], RainScale.colorsUI[3], RainScale.colorsUI[4])
+            fill.fillOpacity = NSExpression(forConstantValue: 0.45)
+            if let firstSymbol = style.layers.first(where: { $0 is MLNSymbolStyleLayer }) {
+                style.insertLayer(fill, below: firstSymbol)
+            } else {
+                style.addLayer(fill)
+            }
+        }
+
         /// مربعات تغطية الشبكة (تعبئة ملونة حسب الحالة).
         func applyCoverage(on map: MLNMapView) {
             guard let style = map.style else { return }
@@ -175,6 +215,7 @@ struct OfflineMapView: UIViewRepresentable {
             MainActor.assumeIsolated {
                 applyDirt(on: mapView)
                 applyCoverage(on: mapView)
+                applyRain(pendingRain.0, hour: pendingRain.1, on: mapView)
                 guard highlightDirtRoads, style.layer(withIdentifier: "samt-dirt-roads") == nil else { return }
                 let vectorSources = style.sources.compactMap { $0 as? MLNVectorTileSource }
                 guard let source = vectorSources.first(where: { $0.identifier == "openmaptiles" }) ?? vectorSources.first else { return }

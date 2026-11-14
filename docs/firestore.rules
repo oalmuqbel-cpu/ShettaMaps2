@@ -90,6 +90,42 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
     }
 
+    // التقييمات والتعليقات: تقييم واحد لكل مستخدم في كل مكان عام
+    match /reviews/{reviewId} {
+      allow read: if true;
+
+      allow create: if request.auth != null
+        && reviewId.matches('.*__' + request.auth.uid)
+        && request.resource.data.keys().hasOnly(['placeKey','placeName','rating','text','author','createdAt','reportCount'])
+        && request.resource.data.author == request.auth.uid
+        && request.resource.data.placeKey is string && request.resource.data.placeKey.size() >= 3 && request.resource.data.placeKey.size() <= 80
+        && reviewId == request.resource.data.placeKey + '__' + request.auth.uid
+        && request.resource.data.placeName is string && request.resource.data.placeName.size() <= 60
+        && request.resource.data.rating is int && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
+        && request.resource.data.text is string && request.resource.data.text.size() <= 400
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.reportCount == 0;
+
+      // صاحب التقييم يعدله دون تغيير عداد البلاغات
+      allow update: if request.auth != null
+        && resource.data.author == request.auth.uid
+        && request.resource.data.keys().hasOnly(['placeKey','placeName','rating','text','author','createdAt','reportCount'])
+        && request.resource.data.author == request.auth.uid
+        && request.resource.data.placeKey == resource.data.placeKey
+        && request.resource.data.placeName is string && request.resource.data.placeName.size() <= 60
+        && request.resource.data.rating is int && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
+        && request.resource.data.text is string && request.resource.data.text.size() <= 400
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.reportCount == resource.data.reportCount;
+
+      // البلاغ من غيره: زيادة العداد بواحد فقط
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reportCount'])
+        && request.resource.data.reportCount == resource.data.reportCount + 1;
+
+      allow delete: if request.auth != null && resource.data.author == request.auth.uid;
+    }
+
     // تغطية الشبكة: مربع تقريبي (حوالي 550 م) وحالة الشبكة وشركتها، مستند واحد لكل مستخدم في كل مربع وشركة
     match /coverage/{cellId} {
       allow read: if true;

@@ -25,6 +25,8 @@ struct ShettaMapsApp: App {
                 .environmentObject(CoverageService.shared)
                 .environmentObject(SafeTripManager.shared)
                 .environmentObject(FollowService.shared)
+                .environmentObject(WeatherService.shared)
+                .environmentObject(ReviewsService.shared)
                 .environmentObject(CarPlayConnectionMonitor.shared)
                 .environmentObject(router)
                 .environmentObject(mapManager)

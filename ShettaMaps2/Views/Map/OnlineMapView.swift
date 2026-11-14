@@ -8,6 +8,8 @@ struct OnlineMapView: View {
     var dirtRoads: [DirtRoad] = []
     var dirtLabels: [DirtRoad] = []
     var coverageCells: [CoverageCell] = []
+    var rainCells: [RainCell] = []
+    var rainHour: Int = 0
     var userCoordinate: CLLocationCoordinate2D?
     var userHeading: Double?
     var markerStyle: UserMarkerStyle = .dot
@@ -22,6 +24,13 @@ struct OnlineMapView: View {
     var body: some View {
         MapReader { proxy in
             Map(position: $position, interactionModes: .all, selection: $selection) {
+                ForEach(rainCells) { cell in
+                    let l = RainScale.level(cell.hourly.indices.contains(rainHour) ? cell.hourly[rainHour] : 0)
+                    if l > 0 {
+                        MapPolygon(coordinates: cell.corners)
+                            .foregroundStyle(RainScale.color(l).opacity(0.45))
+                    }
+                }
                 ForEach(coverageCells) { cell in
                     MapPolygon(coordinates: cell.corners)
                         .foregroundStyle(cell.level.color.opacity(0.32))
