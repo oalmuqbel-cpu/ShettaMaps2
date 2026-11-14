@@ -21,7 +21,7 @@ permissions:
 jobs:
   shots:
     runs-on: ${{ inputs.runner || 'macos-15-intel' }}
-    timeout-minutes: 50
+    timeout-minutes: 80
     steps:
       - uses: actions/checkout@v4
       - name: Select latest Xcode 26
@@ -38,27 +38,31 @@ jobs:
           xcodebuild build -project ShettaMaps2.xcodeproj -scheme ShettaMaps2 -configuration Debug \
             -destination "id=$UDID" -derivedDataPath build CODE_SIGNING_ALLOWED=NO | tail -3
       - name: Capture
+        timeout-minutes: 45
         run: |
+          # مهلة لكل أمر حتى لا يتعلق التصوير
+          t() { local s=$1; shift; perl -e 'alarm shift; exec @ARGV' "$s" "$@"; }
           mkdir -p shots
           APP=$(find build/Build/Products -name "ShettaMaps2.app" -maxdepth 3 | head -1)
           BID=com.almuqbel.ShettaMaps2
           xcrun simctl boot "$UDID" || true
-          xcrun simctl bootstatus "$UDID" -b
+          echo "== boot"; t 300 xcrun simctl bootstatus "$UDID" -b || true
           xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 || true
-          xcrun simctl install "$UDID" "$APP"
+          echo "== install"; t 180 xcrun simctl install "$UDID" "$APP"
           xcrun simctl privacy "$UDID" grant location-always $BID || xcrun simctl privacy "$UDID" grant location $BID || true
           xcrun simctl location "$UDID" set 24.7136,46.6753
-          open -a Simulator --args -CurrentDeviceUDID "$UDID" || true
+          t 60 open -a Simulator --args -CurrentDeviceUDID "$UDID" || true
           sleep 10
           # تشغيل أول لتهيئة البيانات وقاعدة الأماكن
-          xcrun simctl launch "$UDID" $BID; sleep 15; xcrun simctl terminate "$UDID" $BID || true
+          echo "== warmup"; t 60 xcrun simctl launch "$UDID" $BID || true; sleep 15; t 30 xcrun simctl terminate "$UDID" $BID || true
           i=1
           for s in ${{ inputs.screens || 'map filter pick record search coords save places offline trips tracks settings' }}; do
-            xcrun simctl launch "$UDID" $BID -GuideScreen $s
-            sleep 2; xcrun simctl location "$UDID" set 24.7136,46.6753
+            echo "== $s"
+            t 60 xcrun simctl launch "$UDID" $BID -GuideScreen $s || echo "launch failed: $s"
+            sleep 2; t 30 xcrun simctl location "$UDID" set 24.7136,46.6753 || true
             sleep 14
-            xcrun simctl io "$UDID" screenshot "shots/$(printf %02d $i)-$s.png"
-            xcrun simctl terminate "$UDID" $BID || true
+            t 60 xcrun simctl io "$UDID" screenshot "shots/$(printf %02d $i)-$s.png" || echo "shot failed: $s"
+            t 30 xcrun simctl terminate "$UDID" $BID || true
             i=$((i+1)); sleep 2
           done
           if [ "${{ inputs.navigation || 'yes' }}" = "yes" ]; then
@@ -67,7 +71,13 @@ jobs:
             sleep 18
             xcrun simctl io "$UDID" screenshot "shots/$(printf %02d $i)-navigation.png"
           fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shots
+          path: shots
       - name: Commit
+        if: always()
         run: |
           OUT="${{ inputs.out || 'docs/guide' }}"
           mkdir -p "$OUT"; rm -f "$OUT"/*
