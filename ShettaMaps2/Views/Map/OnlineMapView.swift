@@ -73,6 +73,7 @@ struct OnlineMapView: View {
                     Annotation("", coordinate: c, anchor: .center) {
                         VehicleMarkerView(style: markerStyle, color: markerColor)
                             .rotationEffect(.degrees((userHeading ?? 0) - (camera?.heading ?? 0)))
+                            .environment(\.layoutDirection, .leftToRight)
                             .animation(.easeOut(duration: 0.3), value: userHeading)
                             .allowsHitTesting(false)
                     }
@@ -135,9 +136,12 @@ struct OnlineMapView: View {
         case .zoomIn: scale(by: 0.5)
         case .zoomOut: scale(by: 2)
         case .resetNorth:
-            if let cam = camera {
-                withAnimation { position = .camera(MapCamera(centerCoordinate: cam.centerCoordinate, distance: cam.distance, heading: 0, pitch: cam.pitch)) }
-            }
+            // يعمل حتى لو لم تُسجَّل الكاميرا بعد (مثل أول تشغيل أثناء تتبع الموقع)
+            let center = camera?.centerCoordinate ?? mapManager.visibleRegion?.center ?? userCoordinate
+            guard let center else { return }
+            let distance = camera?.distance ?? max(1_000, (mapManager.visibleRegion?.span.latitudeDelta ?? 0.05) * 111_000 * 1.6)
+            withAnimation { position = .camera(MapCamera(centerCoordinate: center, distance: distance, heading: 0, pitch: camera?.pitch ?? 0)) }
+            mapManager.cameraHeading = 0
         case .centerOnUser:
             if mapManager.is3D, let c = userCoordinate {
                 withAnimation { position = .camera(MapCamera(centerCoordinate: c, distance: min(camera?.distance ?? 2500, 4000),

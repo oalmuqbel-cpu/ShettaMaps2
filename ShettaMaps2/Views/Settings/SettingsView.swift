@@ -19,6 +19,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKeys.weakGPSThreshold) private var weakThreshold = 50.0
     @AppStorage(SettingsKeys.appearanceMode) private var appearanceRaw = AppearanceMode.sun.rawValue
     @AppStorage(SettingsKeys.userMarkerStyle) private var markerStyleRaw = UserMarkerStyle.dot.rawValue
+    @AppStorage(SettingsKeys.showSpeed) private var showSpeed = true
 
     @State private var backupURL: URL?
     @State private var restoring = false
@@ -59,6 +60,7 @@ struct SettingsView: View {
                 NavigationLink { UserMarkerSettingsView() } label: {
                     LabeledContent("شكل موقعي على الخريطة", value: (UserMarkerStyle(rawValue: markerStyleRaw) ?? .dot).title)
                 }
+                Toggle("عرض سرعتي على الخريطة", isOn: $showSpeed)
                 Toggle("تباين عالٍ للاستخدام تحت الشمس", isOn: $highContrast)
                 Picker("صيغة الإحداثيات", selection: $formatRaw) {
                     ForEach(CoordinateFormat.allCases) { Text($0.title).tag($0.rawValue) }

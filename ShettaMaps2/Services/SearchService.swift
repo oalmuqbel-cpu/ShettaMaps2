@@ -4,7 +4,7 @@ import SwiftData
 
 /// تصنيفات البحث الصحراوي.
 enum PlaceKind: String, CaseIterable, Identifiable, Codable {
-    case all, mountain, valley, rawdah, shaib, camp, water, landmark, saved
+    case all, mountain, valley, rawdah, shaib, camp, water, cave, fuel, landmark, saved
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -15,6 +15,8 @@ enum PlaceKind: String, CaseIterable, Identifiable, Codable {
         case .shaib: return "شعبان"
         case .camp: return "مخيمات ومواقع برية"
         case .water: return "مياه وآبار"
+        case .cave: return "غيران"
+        case .fuel: return "محطات وقود"
         case .landmark: return "معالم"
         case .saved: return "محفوظة"
         }
@@ -28,13 +30,15 @@ enum PlaceKind: String, CaseIterable, Identifiable, Codable {
         case .shaib: return "point.topleft.down.to.point.bottomright.curvepath"
         case .camp: return "tent"
         case .water: return "drop"
+        case .cave: return "flashlight.on.fill"
+        case .fuel: return "fuelpump.fill"
         case .landmark: return "building.columns"
         case .saved: return "bookmark"
         }
     }
 
     /// أنواع الأماكن المعروفة التي تظهر أسماؤها على الخريطة (للفلترة).
-    static let mapKinds: [PlaceKind] = [.rawdah, .mountain, .valley, .shaib, .water, .camp, .landmark]
+    static let mapKinds: [PlaceKind] = [.rawdah, .mountain, .valley, .shaib, .water, .cave, .fuel, .camp, .landmark]
 
     /// يحوّل قيمة الفلتر المحفوظة ("rawdah,valley") إلى مجموعة؛ الفارغة تعني الكل.
     static func decodeSet(_ raw: String) -> Set<PlaceKind> {
@@ -202,7 +206,7 @@ final class SearchService: ObservableObject {
     /// kinds الفارغة تعني كل الأنواع، و nameFilter يطابق الاسم أو الأسماء البديلة بعد التطبيع.
     func entries(sw: CLLocationCoordinate2D, ne: CLLocationCoordinate2D, limit: Int = 120,
                  kinds: Set<PlaceKind> = [], nameFilter: String = "") -> [GazetteerEntry] {
-        let priority: [PlaceKind: Int] = [.rawdah: 0, .valley: 1, .mountain: 2, .camp: 3, .water: 4, .shaib: 5, .landmark: 6]
+        let priority: [PlaceKind: Int] = [.rawdah: 0, .valley: 1, .mountain: 2, .cave: 3, .camp: 4, .water: 5, .fuel: 6, .shaib: 7, .landmark: 8]
         let key = Self.searchKey(nameFilter)
         var found: [GazetteerEntry] = []
         for item in normalizedIndex {
@@ -215,6 +219,20 @@ final class SearchService: ObservableObject {
         }
         found.sort { (priority[$0.kind] ?? 9) < (priority[$1.kind] ?? 9) }
         return Array(found.prefix(limit))
+    }
+
+    /// أقرب أماكن من نوع معيّن (مثل محطات الوقود) لموقعك، دون إنترنت.
+    func nearest(_ kind: PlaceKind, to c: CLLocationCoordinate2D, count: Int = 5) -> [(GazetteerEntry, Double)] {
+        var best: [(GazetteerEntry, Double)] = []
+        for item in normalizedIndex where item.entry.kind == kind {
+            let d = GeoMath.distance(c, CLLocationCoordinate2D(latitude: item.entry.lat, longitude: item.entry.lon))
+            if best.count < count || d < best[best.count - 1].1 {
+                best.append((item.entry, d))
+                best.sort { $0.1 < $1.1 }
+                if best.count > count { best.removeLast() }
+            }
+        }
+        return best
     }
 
     /// بحث Apple Maps — يتطلب الإنترنت.

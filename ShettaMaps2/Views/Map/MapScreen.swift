@@ -39,6 +39,7 @@ struct MapScreen: View {
     @State private var showCoverageReport = false
     @State private var showCarrierPicker = false
     @AppStorage(SettingsKeys.showMyTracks) private var showMyTracks = false
+    @AppStorage(SettingsKeys.showSpeed) private var showSpeed = true
     @AppStorage(SettingsKeys.showCoverage) private var showCoverage = false
     @AppStorage(SettingsKeys.coverageOnlyMine) private var coverageOnlyMine = true
     @AppStorage(SettingsKeys.coverageCarrier) private var carrierRaw = ""
@@ -382,8 +383,15 @@ struct MapScreen: View {
     }
 
     /// العمود الثاني: المنظور ثلاثي الأبعاد، مساراتي السابقة، والشمال.
+    /// السرعة الحالية إذا كانت موثوقة وأعلى من المشي البطيء.
+    private var currentSpeed: Double? {
+        guard showSpeed, let l = location.location, l.speed > 1.2, Date().timeIntervalSince(l.timestamp) < 10 else { return nil }
+        return l.speed
+    }
+
     private var secondaryControls: some View {
         VStack(spacing: 10) {
+            if let v = currentSpeed { SpeedBubble(speedMS: v) }
             Button { mapManager.send(.pitch(!mapManager.is3D)) } label: {
                 Text(mapManager.is3D ? "2D" : "3D")
                     .font(.system(size: 15, weight: .heavy, design: .rounded))

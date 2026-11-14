@@ -7,5 +7,7 @@ area["ISO3166-1"="__CC__"][admin_level=2]->.a;
   nwr["tourism"~"^(camp_site|picnic_site|viewpoint|attraction)$"]["name"](area.a);
   nwr["historic"]["name"](area.a);
   node["man_made"="water_well"]["name"](area.a);
+  nwr["natural"="cave_entrance"](area.a);
+  nwr["amenity"="fuel"](area.a);
 );
 out center tags;

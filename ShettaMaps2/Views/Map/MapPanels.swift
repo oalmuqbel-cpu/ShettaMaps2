@@ -87,29 +87,79 @@ struct StatusChip: View {
     }
 }
 
-/// بوصلة تدور حسب اتجاه الجهاز.
+/// بوصلة حقيقية: الإبرة الحمراء تشير دائمًا إلى الشمال، والمؤشر الثابت أعلى القرص يمثل اتجاه الجوال.
+/// الدوران يُحسب بأقصر طريق (لا تلف دورة كاملة عند المرور بين 359° و0°)، والرسم من اليسار لليمين دائمًا.
 struct CompassDial: View {
     let heading: Double?
+    @State private var angle: Double
+
+    init(heading: Double?) {
+        self.heading = heading
+        _angle = State(initialValue: -(heading ?? 0))
+    }
+
+    static let needleNorth = Color(red: 0.86, green: 0.12, blue: 0.10)
 
     var body: some View {
         ZStack {
             Circle().fill(Theme.beige)
             Circle().stroke(Theme.brown.opacity(0.5), lineWidth: 2)
-            Group {
-                Text("ش").font(.caption2.bold()).offset(y: -18)
-                Text("ج").font(.caption2).offset(y: 18)
-                Text("ق").font(.caption2).offset(x: 18)
-                Text("غ").font(.caption2).offset(x: -18)
+            ZStack {
+                ForEach(0..<12, id: \.self) { i in
+                    Capsule().fill(Theme.brown.opacity(i % 3 == 0 ? 0.7 : 0.3))
+                        .frame(width: 1.5, height: i % 3 == 0 ? 5 : 3)
+                        .offset(y: -23)
+                        .rotationEffect(.degrees(Double(i) * 30))
+                }
+                Text("ش").font(.system(size: 10, weight: .heavy)).foregroundStyle(Self.needleNorth).offset(y: -15)
+                Text("ج").font(.system(size: 9, weight: .semibold)).foregroundStyle(Theme.brown).offset(y: 15)
+                Text("ق").font(.system(size: 9, weight: .semibold)).foregroundStyle(Theme.brown).offset(x: 15)
+                Text("غ").font(.system(size: 9, weight: .semibold)).foregroundStyle(Theme.brown).offset(x: -15)
+                CompassNeedle()
+                    .frame(width: 8, height: 30)
+                    .opacity(heading == nil ? 0.35 : 1)
             }
-            .foregroundStyle(Theme.brown)
-            .environment(\.layoutDirection, .leftToRight)
-            .rotationEffect(.degrees(-(heading ?? 0)))
-            Image(systemName: "location.north.fill")
-                .foregroundStyle(heading == nil ? .gray : Theme.desertOrange)
-                .font(.system(size: 16, weight: .bold))
+            .rotationEffect(.degrees(angle))
+            // مؤشر اتجاه الجوال (ثابت أعلى القرص)
+            Triangle().fill(Theme.desertOrange).frame(width: 8, height: 6).offset(y: -27)
         }
-        .animation(.easeOut(duration: 0.25), value: heading)
-        .accessibilityLabel(heading.map { "الاتجاه \(Fmt.bearing($0))" } ?? "البوصلة غير متاحة")
+        .environment(\.layoutDirection, .leftToRight)
+        .onChange(of: heading) { _, new in
+            guard let h = new else { return }
+            // أقصر فرق بين الزاوية الحالية والجديدة
+            var delta = (-h - angle).truncatingRemainder(dividingBy: 360)
+            if delta > 180 { delta -= 360 }
+            if delta < -180 { delta += 360 }
+            withAnimation(.easeOut(duration: 0.2)) { angle += delta }
+        }
+        .accessibilityLabel(heading.map { "اتجاهك \(Fmt.bearing($0))، والإبرة الحمراء تشير إلى الشمال" } ?? "البوصلة غير متاحة")
+    }
+}
+
+/// إبرة البوصلة: النصف الأحمر للشمال والرمادي للجنوب.
+struct CompassNeedle: View {
+    var body: some View {
+        GeometryReader { g in
+            let w = g.size.width, h = g.size.height
+            Path { p in
+                p.move(to: CGPoint(x: w / 2, y: 0)); p.addLine(to: CGPoint(x: w, y: h / 2))
+                p.addLine(to: CGPoint(x: 0, y: h / 2)); p.closeSubpath()
+            }.fill(CompassDial.needleNorth)
+            Path { p in
+                p.move(to: CGPoint(x: 0, y: h / 2)); p.addLine(to: CGPoint(x: w, y: h / 2))
+                p.addLine(to: CGPoint(x: w / 2, y: h)); p.closeSubpath()
+            }.fill(Color.gray.opacity(0.7))
+            Circle().fill(.white).frame(width: 3, height: 3).position(x: w / 2, y: h / 2)
+        }
+    }
+}
+
+struct Triangle: Shape {
+    func path(in r: CGRect) -> Path {
+        Path { p in
+            p.move(to: CGPoint(x: r.midX, y: r.maxY)); p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+            p.addLine(to: CGPoint(x: r.minX, y: r.minY)); p.closeSubpath()
+        }
     }
 }
 
@@ -127,6 +177,7 @@ struct NavigationPanel: View {
                         .font(.system(size: 34, weight: .bold))
                         .foregroundStyle(Theme.desertOrange)
                         .rotationEffect(.degrees(rel))
+                        .environment(\.layoutDirection, .leftToRight)
                         .frame(width: 48)
                 } else {
                     Image(systemName: "flag.checkered").font(.title).foregroundStyle(Theme.desertOrange).frame(width: 48)
@@ -253,5 +304,25 @@ struct ActionBar: View {
         case .recording: return "إيقاف مؤقت"
         case .paused: return "استئناف"
         }
+    }
+}
+
+
+/// سرعتك الحالية بالكيلومتر في الساعة، مثل خرائط Google: تظهر أثناء الحركة.
+struct SpeedBubble: View {
+    let speedMS: Double
+    var body: some View {
+        VStack(spacing: -2) {
+            Text("\(Int((speedMS * 3.6).rounded()))")
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .minimumScaleFactor(0.6)
+            Text("كم/س").font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary)
+        }
+        .frame(width: 58, height: 58)
+        .background(Circle().fill(.regularMaterial))
+        .overlay(Circle().stroke(Theme.brown.opacity(0.35), lineWidth: 1.5))
+        .shadow(color: .black.opacity(0.15), radius: 4, y: 1)
+        .accessibilityLabel("السرعة \(Int((speedMS * 3.6).rounded())) كيلومتر في الساعة")
     }
 }

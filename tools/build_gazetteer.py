@@ -15,6 +15,10 @@ import json, sys
 
 def kind_for(tags: dict, name: str) -> str:
     n = name.strip()
+    if tags.get("natural") == "cave_entrance" or n.startswith(("غار ", "الغار", "كهف")):
+        return "cave"
+    if tags.get("amenity") == "fuel":
+        return "fuel"
     if n.startswith(("روضة", "روضه", "فيضة", "فيضه", "الفيضة", "الروضة")):
         return "rawdah"
     if n.startswith(("شعيب", "الشعيب")):
@@ -49,7 +53,14 @@ def main(srcs, dst):
         tags = el.get("tags", {})
         name = tags.get("name:ar") or tags.get("name")
         if not name:
-            continue
+            # الغيران ومحطات الوقود مفيدة حتى دون اسم مسجل
+            if tags.get("natural") == "cave_entrance":
+                name = "غار"
+            elif tags.get("amenity") == "fuel":
+                brand = tags.get("brand:ar") or tags.get("brand") or tags.get("operator")
+                name = f"محطة {brand}" if brand else "محطة وقود"
+            else:
+                continue
         lat, lon = center(el)
         if lat is None or lon is None:
             continue

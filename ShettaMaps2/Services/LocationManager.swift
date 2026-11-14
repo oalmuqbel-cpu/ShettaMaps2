@@ -90,7 +90,23 @@ final class LocationManager: NSObject, ObservableObject {
         manager.activityType = .otherNavigation
         manager.pausesLocationUpdatesAutomatically = false
         manager.headingFilter = 2
+        // الاتجاه بالنسبة لأعلى الشاشة حسب وضع الجهاز (عمودي أو أفقي على الآيباد)
+        manager.headingOrientation = .portrait
+        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+        NotificationCenter.default.addObserver(forName: UIDevice.orientationDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.updateHeadingOrientation() }
+        }
         applyBatteryMode()
+    }
+
+    private func updateHeadingOrientation() {
+        switch UIDevice.current.orientation {
+        case .portrait: manager.headingOrientation = .portrait
+        case .portraitUpsideDown: manager.headingOrientation = .portraitUpsideDown
+        case .landscapeLeft: manager.headingOrientation = .landscapeLeft
+        case .landscapeRight: manager.headingOrientation = .landscapeRight
+        default: break  // على الطاولة (وجه للأعلى أو للأسفل) نبقي آخر وضع
+        }
     }
 
     // MARK: - الأذونات

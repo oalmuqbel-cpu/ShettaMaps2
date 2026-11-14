@@ -31,6 +31,9 @@ enum SettingsKeys {
     static let coverageCarrier = "coverageCarrier"
     static let coverageContribute = "coverageContribute"
     static let coverageOnlyMine = "coverageOnlyMine"
+    static let showSpeed = "showSpeed"
+    static let showWind = "showWind"
+    static let showRainMap = "showRainMap"
 }
 
 let appLog = Logger(subsystem: "com.almuqbel.ShettaMaps2", category: "app")
