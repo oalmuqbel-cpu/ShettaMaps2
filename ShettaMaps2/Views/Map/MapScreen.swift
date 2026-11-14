@@ -34,6 +34,7 @@ struct MapScreen: View {
     @EnvironmentObject private var safeTrip: SafeTripManager
     @EnvironmentObject private var follow: FollowService
     @EnvironmentObject private var weather: WeatherService
+    @EnvironmentObject private var speedLimits: SpeedLimitStore
     @AppStorage(SettingsKeys.showWind) private var showWind = true
     @AppStorage(SettingsKeys.showRainMap) private var showRainMap = false
     @State private var rainHour = 0
@@ -445,7 +446,10 @@ struct MapScreen: View {
                 Button { router.mapSheet = .weather } label: { WindChip(now: r.now, mapHeading: mapManager.cameraHeading) }
                     .buttonStyle(.plain)
             }
-            if let v = currentSpeed { SpeedBubble(speedMS: v) }
+            if let v = currentSpeed {
+                SpeedBubble(speedMS: v, limit: speedLimits.currentLimit, over: speedLimits.isOver)
+                    .padding(.top, speedLimits.currentLimit == nil ? 0 : 14)
+            }
             Button { mapManager.send(.pitch(!mapManager.is3D)) } label: {
                 Text(mapManager.is3D ? "2D" : "3D")
                     .font(.system(size: 15, weight: .heavy, design: .rounded))

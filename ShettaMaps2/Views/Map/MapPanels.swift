@@ -308,21 +308,55 @@ struct ActionBar: View {
 }
 
 
-/// سرعتك الحالية بالكيلومتر في الساعة، مثل خرائط Google: تظهر أثناء الحركة.
+/// سرعتك الحالية بالكيلومتر في الساعة مع لوحة حد السرعة إن عُرف؛ تصير حمراء عند التجاوز.
 struct SpeedBubble: View {
     let speedMS: Double
+    var limit: Int?
+    var over = false
+
     var body: some View {
-        VStack(spacing: -2) {
-            Text("\(Int((speedMS * 3.6).rounded()))")
-                .font(.system(size: 22, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .minimumScaleFactor(0.6)
-            Text("كم/س").font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary)
+        ZStack(alignment: .topLeading) {
+            VStack(spacing: -2) {
+                Text("\(Int((speedMS * 3.6).rounded()))")
+                    .font(.system(size: 24, weight: .heavy, design: .rounded))
+                    .monospacedDigit()
+                    .minimumScaleFactor(0.6)
+                    .foregroundStyle(over ? Color.white : Color.primary)
+                Text("كم/س").font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(over ? Color.white.opacity(0.9) : Color.secondary)
+            }
+            .frame(width: 62, height: 62)
+            .background(Circle().fill(over ? AnyShapeStyle(Color.red) : AnyShapeStyle(.regularMaterial)))
+            .overlay(Circle().stroke(over ? Color.red : Theme.brown.opacity(0.35), lineWidth: over ? 3 : 1.5))
+            .shadow(color: over ? .red.opacity(0.5) : .black.opacity(0.15), radius: over ? 8 : 4, y: 1)
+            if let limit {
+                SpeedLimitSign(limit: limit)
+                    .offset(x: -16, y: -16)
+            }
         }
-        .frame(width: 58, height: 58)
-        .background(Circle().fill(.regularMaterial))
-        .overlay(Circle().stroke(Theme.brown.opacity(0.35), lineWidth: 1.5))
-        .shadow(color: .black.opacity(0.15), radius: 4, y: 1)
-        .accessibilityLabel("السرعة \(Int((speedMS * 3.6).rounded())) كيلومتر في الساعة")
+        .environment(\.layoutDirection, .leftToRight)
+        .animation(.easeInOut(duration: 0.25), value: over)
+        .accessibilityLabel(accessibility)
+    }
+
+    private var accessibility: String {
+        var s = "سرعتك \(Int((speedMS * 3.6).rounded())) كيلومتر في الساعة"
+        if let limit { s += "، والحد \(limit)" }
+        if over { s += "، تجاوزت الحد" }
+        return s
+    }
+}
+
+/// لوحة حد السرعة (دائرة بإطار أحمر).
+struct SpeedLimitSign: View {
+    let limit: Int
+    var body: some View {
+        Text("\(limit)")
+            .font(.system(size: limit >= 100 ? 13 : 15, weight: .heavy, design: .rounded))
+            .foregroundStyle(.black)
+            .frame(width: 36, height: 36)
+            .background(Circle().fill(.white))
+            .overlay(Circle().stroke(Color.red, lineWidth: 4))
+            .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
     }
 }

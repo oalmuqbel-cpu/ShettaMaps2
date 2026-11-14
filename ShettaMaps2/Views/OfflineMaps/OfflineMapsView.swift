@@ -62,6 +62,8 @@ struct OfflineMapsView: View {
                             regionName = ""
                             // ردميات المنطقة نفسها لتظهر دون إنترنت
                             await dirt.download(sw: b.sw, ne: b.ne)
+                            // حدود السرعة للمنطقة نفسها لتعمل دون إنترنت
+                            await SpeedLimitStore.shared.download(sw: b.sw, ne: b.ne)
                         } catch { self.error = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription }
                     }
                 } label: {

@@ -101,6 +101,7 @@ final class AppEnvironment {
             .sink { l in
                 CoverageService.shared.observe(l)
                 SafeTripManager.shared.observe(l)
+                SpeedLimitStore.shared.observe(l)
             }
             .store(in: &cancellables)
         NetworkMonitor.shared.$isOnline.removeDuplicates().filter { $0 }

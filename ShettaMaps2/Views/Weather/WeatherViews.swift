@@ -8,15 +8,19 @@ struct WindChip: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            Label("رياح", systemImage: "wind")
+                .labelStyle(.titleAndIcon)
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(.secondary)
             Image(systemName: "location.north.fill")
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(Theme.directLine)
                 .rotationEffect(.degrees(now.windDirection + 180 - mapHeading))
                 .environment(\.layoutDirection, .leftToRight)
             Text("\(Int(now.windSpeed.rounded()))").font(.system(size: 13, weight: .bold, design: .rounded)).monospacedDigit()
             Text("كم/س").font(.system(size: 8, weight: .semibold)).foregroundStyle(.secondary)
         }
-        .frame(width: 48, height: 58)
+        .frame(width: 52, height: 66)
         .background(RoundedRectangle(cornerRadius: 14).fill(.regularMaterial))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(WeatherText.dustWarning(now) != nil ? Color.orange : .clear, lineWidth: 2))
         .shadow(color: .black.opacity(0.15), radius: 4, y: 1)
