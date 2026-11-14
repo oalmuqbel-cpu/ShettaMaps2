@@ -34,15 +34,38 @@ final class CompassRenderingTests: XCTestCase {
             .environment(\.layoutDirection, .rightToLeft)   // نفس بيئة التطبيق العربية
     }
 
-    func testRotationIsNotMirroredInRightToLeft() {
+    /// اكتُشف بهذا الاختبار: في الواجهة العربية يعكس SwiftUI اتجاه rotationEffect، وكان هذا سبب خطأ البوصلة وسهم الملاحة.
+    func testRotationIsMirroredInRightToLeftWithoutFix() {
         let bar = Rectangle().fill(Color.red).frame(width: 8, height: 40).offset(y: -20)
             .frame(width: 100, height: 100)
             .rotationEffect(.degrees(90))
             .environment(\.layoutDirection, .rightToLeft)
         let c = redCentroid(bar)
         XCTAssertNotNil(c)
+        XCTAssertLessThan(c!.x, -10)
+    }
+
+    /// الحل المستخدم في التطبيق: تثبيت اتجاه الرسم من اليسار لليمين حول الدوران.
+    func testRotationCorrectWhenWrappedLeftToRight() {
+        let bar = Rectangle().fill(Color.red).frame(width: 8, height: 40).offset(y: -20)
+            .frame(width: 100, height: 100)
+            .rotationEffect(.degrees(90))
+            .environment(\.layoutDirection, .leftToRight)
+            .environment(\.layoutDirection, .rightToLeft)
+        let c = redCentroid(bar)
+        XCTAssertNotNil(c)
         // دوران +90 (مع عقارب الساعة): الخط الذي كان للأعلى يصبح لليمين
-        XCTAssertGreaterThan(c!.x, 10, "rotationEffect معكوس في الواجهة العربية")
+        XCTAssertGreaterThan(c!.x, 10)
+    }
+
+    /// سهم الملاحة: هدف على يمينك (+90) يجب أن يشير السهم لليمين.
+    func testNavigationArrowPointsRightForTargetOnRight() {
+        let arrow = Rectangle().fill(Color.red).frame(width: 8, height: 30).offset(y: -15)
+            .frame(width: 80, height: 80)
+            .rotationEffect(.degrees(90))
+            .environment(\.layoutDirection, .leftToRight)
+            .environment(\.layoutDirection, .rightToLeft)
+        XCTAssertGreaterThan(redCentroid(arrow)!.x, 10)
     }
 
     func testNeedlePointsNorthWhenFacingNorth() {
