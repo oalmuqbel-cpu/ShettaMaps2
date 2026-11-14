@@ -58,7 +58,10 @@ final class AppEnvironment {
 
     private init() {
         let schema = Schema(AppSchema.models)
-        let wantsCloud = UserDefaults.standard.bool(forKey: SettingsKeys.iCloudSync)
+        // مزامنة iCloud معطلة حتى تُفعَّل قدرة CloudKit للتطبيق في حساب المطوّر: بدون الصلاحية يُنهي النظام
+        // التطبيق فورًا عند فتح الحاوية (خطأ لا يمكن التقاطه). نمسح أي تفعيل سابق حتى لا يتعطل التشغيل.
+        UserDefaults.standard.set(false, forKey: SettingsKeys.iCloudSync)
+        let wantsCloud = false
         var made: ModelContainer?
         var cloud = false
 

@@ -73,7 +73,8 @@ struct SettingsView: View {
             } header: { Text("الخرائط") }
 
             Section {
-                Toggle("المزامنة عبر iCloud بين أجهزتك", isOn: $iCloudSync)
+                Toggle("المزامنة عبر iCloud بين أجهزتك (قريبًا)", isOn: .constant(false))
+                    .disabled(true)
                 LabeledContent("الحالة", value: AppEnvironment.shared.isCloudSyncActive ? "مفعلة" : "التخزين محلي فقط")
                 if let n = AppEnvironment.shared.storageNotice { Text(n).font(.caption).foregroundStyle(.orange) }
             } header: { Text("المزامنة") } footer: {
