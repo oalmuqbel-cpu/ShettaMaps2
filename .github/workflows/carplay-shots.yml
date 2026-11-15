@@ -9,6 +9,9 @@ on:
       location:
         default: "25.3800,47.2500"
 
+permissions:
+  contents: write
+
 jobs:
   shots:
     runs-on: macos-15-intel
@@ -68,3 +71,13 @@ jobs:
         with:
           name: carplay-shots
           path: shots
+      - name: Commit
+        if: always()
+        run: |
+          OUT=ci-shots/carplay
+          mkdir -p "$OUT"; rm -f "$OUT"/*
+          for f in shots/*.png; do sips -s format jpeg -s formatOptions 80 "$f" --out "$OUT/$(basename "${f%.png}").jpg" >/dev/null; done
+          ls "$OUT"
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git add "$OUT"; git commit -m "CarPlay screenshots" || true
+          git pull --rebase -q && git push
