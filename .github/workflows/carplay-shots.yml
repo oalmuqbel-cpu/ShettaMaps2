@@ -28,35 +28,40 @@ jobs:
           echo "UDID=$UDID" >> $GITHUB_ENV
           xcodebuild build -project ShettaMaps2.xcodeproj -scheme ShettaMaps2 -destination "id=$UDID" -derivedDataPath build | tail -3
       - name: Capture
+        timeout-minutes: 30
         run: |
           set -x
+          t() { local n=$1; shift; perl -e 'alarm shift; exec @ARGV' "$n" "$@" || echo "timeout/fail: $*"; }
           mkdir -p shots
           APP=$(find build/Build/Products -name "ShettaMaps2.app" -maxdepth 3 | head -1)
           BID=com.almuqbel.ShettaMaps2
           LOC="${{ inputs.location }}"
-          xcrun simctl boot "$UDID" || true
-          xcrun simctl bootstatus "$UDID" -b
-          xcrun simctl install "$UDID" "$APP"
-          xcrun simctl privacy "$UDID" grant location-always $BID || true
-          xcrun simctl location "$UDID" set "$LOC"
-          open -a Simulator --args -CurrentDeviceUDID "$UDID" || true
+          t 120 xcrun simctl boot "$UDID"
+          t 240 xcrun simctl bootstatus "$UDID" -b
+          t 120 xcrun simctl install "$UDID" "$APP"
+          t 30 xcrun simctl privacy "$UDID" grant location-always $BID
+          t 30 xcrun simctl location "$UDID" set "$LOC"
+          t 30 open -a Simulator --args -CurrentDeviceUDID "$UDID"
           sleep 10
-          xcrun simctl launch "$UDID" $BID
+          t 60 xcrun simctl launch "$UDID" $BID
           sleep 15
-          osascript -e 'tell application "Simulator" to activate' -e 'delay 2' \
+          t 60 osascript -e 'tell application "Simulator" to activate' -e 'delay 2' \
             -e 'tell application "System Events" to tell process "Simulator" to click menu item "CarPlay" of menu 1 of menu item "External Displays" of menu 1 of menu bar item "I/O" of menu bar 1'
           sleep 40
-          osascript -e 'tell application "System Events" to tell process "Simulator" to get {name, position, size} of every window' > shots/windows.txt
+          t 30 osascript -e 'tell application "System Events" to tell process "Simulator" to get {name, position, size} of every window' > shots/windows.txt
+          cat shots/windows.txt
+          t 30 xcrun simctl io "$UDID" screenshot --display=external shots/cp-00-home.png
           for S in ${{ inputs.screens }}; do
-            xcrun simctl terminate "$UDID" $BID || true
+            echo "=== $S"
+            t 30 xcrun simctl terminate "$UDID" $BID
             sleep 3
-            if [ "$S" = map ]; then perl -e 'alarm 30; exec @ARGV' xcrun simctl launch "$UDID" $BID || true
-            else perl -e 'alarm 30; exec @ARGV' xcrun simctl launch "$UDID" $BID -CarPlayScreen "$S" || true; fi
+            if [ "$S" = map ]; then t 40 xcrun simctl launch "$UDID" $BID
+            else t 40 xcrun simctl launch "$UDID" $BID -CarPlayScreen "$S"; fi
             sleep 4
-            xcrun simctl location "$UDID" set "$LOC"
-            python3 ci/carplay_tap.py shots/windows.txt 205 280 || true
-            sleep 30
-            perl -e 'alarm 30; exec @ARGV' xcrun simctl io "$UDID" screenshot --display=external "shots/cp-$S.png" || true
+            t 20 xcrun simctl location "$UDID" set "$LOC"
+            t 30 python3 ci/carplay_tap.py shots/windows.txt 205 280
+            sleep 25
+            t 30 xcrun simctl io "$UDID" screenshot --display=external "shots/cp-$S.png"
           done
       - uses: actions/upload-artifact@v4
         if: always()
