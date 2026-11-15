@@ -216,3 +216,48 @@ enum MapKitDataLayers {
         return nil
     }
 }
+
+/// الوضع الليلي لخرائط MapLibre (النمط الافتراضي فاتح ويُبهر السائق ليلًا):
+/// إعادة تلوين طبقات النمط نفسه بألوان داكنة دون تنزيل نمط آخر، فيعمل دون إنترنت أيضًا.
+enum MapLibreNightStyle {
+    @MainActor static func apply(to map: MLNMapView) {
+        guard let style = map.style else { return }
+        let bg = UIColor(red: 0.12, green: 0.11, blue: 0.10, alpha: 1)
+        for layer in style.layers where !layer.identifier.hasPrefix("samt-") {
+            let id = layer.identifier.lowercased()
+            if let l = layer as? MLNBackgroundStyleLayer {
+                l.backgroundColor = NSExpression(forConstantValue: bg)
+            } else if let l = layer as? MLNFillStyleLayer {
+                let c: UIColor
+                if id.contains("water") || id.contains("ocean") { c = UIColor(red: 0.09, green: 0.15, blue: 0.23, alpha: 1) }
+                else if id.contains("building") { c = UIColor(white: 0.20, alpha: 1) }
+                else if id.contains("park") || id.contains("wood") || id.contains("grass") || id.contains("forest") {
+                    c = UIColor(red: 0.13, green: 0.16, blue: 0.12, alpha: 1)
+                } else if id.contains("sand") || id.contains("landcover") || id.contains("landuse") {
+                    c = UIColor(red: 0.17, green: 0.15, blue: 0.12, alpha: 1)
+                } else { c = UIColor(red: 0.15, green: 0.14, blue: 0.13, alpha: 1) }
+                l.fillColor = NSExpression(forConstantValue: c)
+                l.fillOutlineColor = NSExpression(forConstantValue: c)
+            } else if let l = layer as? MLNFillExtrusionStyleLayer {
+                l.fillExtrusionColor = NSExpression(forConstantValue: UIColor(white: 0.22, alpha: 1))
+            } else if let l = layer as? MLNLineStyleLayer {
+                let c: UIColor
+                if id.contains("water") || id.contains("river") { c = UIColor(red: 0.12, green: 0.22, blue: 0.33, alpha: 1) }
+                else if id.contains("casing") { c = UIColor(white: 0.06, alpha: 1) }
+                else if id.contains("boundary") || id.contains("admin") { c = UIColor(white: 0.35, alpha: 0.8) }
+                else if id.contains("motorway") || id.contains("trunk") || id.contains("primary") {
+                    c = UIColor(red: 0.62, green: 0.47, blue: 0.22, alpha: 1)
+                } else { c = UIColor(white: 0.40, alpha: 1) }
+                l.lineColor = NSExpression(forConstantValue: c)
+            } else if let l = layer as? MLNSymbolStyleLayer {
+                l.textColor = NSExpression(forConstantValue: UIColor(white: 0.86, alpha: 1))
+                l.textHaloColor = NSExpression(forConstantValue: UIColor(white: 0.05, alpha: 0.9))
+            } else if let l = layer as? MLNRasterStyleLayer {
+                // صور الأقمار الصناعية: تخفيف السطوع فقط
+                l.maximumRasterBrightness = NSExpression(forConstantValue: 0.7)
+            } else if let l = layer as? MLNHillshadeStyleLayer {
+                l.hillshadeHighlightColor = NSExpression(forConstantValue: UIColor(white: 0.25, alpha: 1))
+            }
+        }
+    }
+}

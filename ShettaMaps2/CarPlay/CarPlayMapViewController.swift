@@ -114,7 +114,12 @@ final class CarPlayMapViewController: UIViewController {
         view.backgroundColor = Theme.beigeUI
         mapKitDelegate.onRegionChange = { [weak self] in self?.regionChanged() }
         libreDelegate.onRegionChange = { [weak self] in self?.regionChanged() }
-        libreDelegate.onStyleLoaded = { [weak self] in self?.applyDataLayers() }
+        libreDelegate.onStyleLoaded = { [weak self] in
+            guard let self else { return }
+            // السيارة في الوضع الليلي: خريطة داكنة لا تُبهر السائق
+            if self.traitCollection.userInterfaceStyle == .dark, let m = self.libreView { MapLibreNightStyle.apply(to: m) }
+            self.applyDataLayers()
+        }
         // بدون إنترنت ومع توفر خرائط محلية: نبدأ بمحرك دون إنترنت تلقائيًا
         if !env.network.isOnline, engine != .offline,
            let c = env.location.location?.coordinate, env.offlineMaps.hasOfflineCoverage(at: c) {
@@ -166,6 +171,12 @@ final class CarPlayMapViewController: UIViewController {
         } else {
             clusterSign.isHidden = true
         }
+    }
+
+    /// تبدّل نهار/ليل السيارة: يُعاد تحميل خريطة MapLibre بالألوان المناسبة (MapKit يتبدّل تلقائيًا).
+    override func traitCollectionDidChange(_ previous: UITraitCollection?) {
+        super.traitCollectionDidChange(previous)
+        if previous?.userInterfaceStyle != traitCollection.userInterfaceStyle, libreView != nil { buildMap() }
     }
 
     // MARK: - المحرك

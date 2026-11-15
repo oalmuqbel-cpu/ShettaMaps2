@@ -112,6 +112,7 @@ struct OfflineMapView: UIViewRepresentable {
         /// إبراز الطرق الترابية والردميات من بيانات OpenStreetMap (طبقة transportation: class=track أو surface=unpaved).
         nonisolated func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
             MainActor.assumeIsolated {
+                if mapView.traitCollection.userInterfaceStyle == .dark { MapLibreNightStyle.apply(to: mapView) }
                 applyDirt(on: mapView)
                 applyCoverage(on: mapView)
                 applyRain(pendingRain.0, hour: pendingRain.1, on: mapView)

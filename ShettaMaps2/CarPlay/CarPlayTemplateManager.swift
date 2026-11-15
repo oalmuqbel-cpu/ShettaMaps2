@@ -208,7 +208,8 @@ final class CarPlayTemplateManager: NSObject {
             return
         }
 
-        let detail: String? = snap.roadRoute == nil ? "خط مباشر — \(Fmt.bearing(p.bearingToTarget)) — ليس طريقًا مضمونًا" : nil
+        // نص قصير يُقرأ بلمحة؛ تنبيه «الخط المباشر ليس طريقًا مضمونًا» يظهر مرة عند بدء الملاحة
+        let detail: String? = snap.roadRoute == nil ? Fmt.bearing(p.bearingToTarget) : nil
         let stepDistance: Double
         let relative: Double?
         if let step = snap.currentRoadStep, let here = env.location.location?.coordinate {
@@ -238,11 +239,11 @@ final class CarPlayTemplateManager: NSObject {
         }
         if Date().timeIntervalSince(lastEstimateUpdate) > 1, let maneuver = session.upcomingManeuvers.first {
             lastEstimateUpdate = Date()
-            let step = CPTravelEstimates(distanceRemaining: Measurement(value: stepDistance, unit: UnitLength.meters),
+            let step = CPTravelEstimates(distanceRemaining: Self.measure(stepDistance),
                                          timeRemaining: 0)
             session.updateEstimates(step, for: maneuver)
             if let trip = currentTrip {
-                let total = CPTravelEstimates(distanceRemaining: Measurement(value: p.remainingDistance, unit: UnitLength.meters),
+                let total = CPTravelEstimates(distanceRemaining: Self.measure(p.remainingDistance),
                                               timeRemaining: p.estimatedSeconds ?? 0)
                 mapTemplate.update(total, for: trip, with: .default)
             }
@@ -265,12 +266,21 @@ final class CarPlayTemplateManager: NSObject {
     private func makeManeuver(text: String, detail: String?, symbol: UIImage, distance: Double) -> CPManeuver {
         let m = CPManeuver()
         var variants = [text]
-        if let detail { variants = [text + " — " + detail, text] }
+        if let detail { variants = [text, text + " · " + detail] }
         m.instructionVariants = variants
         m.symbolImage = symbol
-        m.initialTravelEstimates = CPTravelEstimates(distanceRemaining: Measurement(value: distance, unit: UnitLength.meters),
+        m.initialTravelEstimates = CPTravelEstimates(distanceRemaining: Self.measure(distance),
                                                      timeRemaining: 0)
         return m
+    }
+
+    /// المسافة بوحدة مناسبة للقراءة السريعة: كم بعد الكيلومتر الأول، ومتر مقرّب قبله.
+    static func measure(_ m: Double) -> Measurement<UnitLength> {
+        if m >= 1000 {
+            let km = m / 1000
+            return Measurement(value: km < 10 ? (km * 10).rounded() / 10 : km.rounded(), unit: .kilometers)
+        }
+        return Measurement(value: max(0, (m / 10).rounded() * 10), unit: .meters)
     }
 
     /// رمز المناورة على الطريق حسب زاوية الانعطاف (موجبة لليمين)، وعلم الوصول عند nil.
