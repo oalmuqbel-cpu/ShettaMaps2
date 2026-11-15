@@ -46,7 +46,37 @@ final class CarPlayTemplateManager: NSObject {
         bind()
         env.location.setAutomotive(true)
         env.location.beginBackgroundUpdates(reason: "carplay")
+        #if DEBUG
+        // لقطات شاشة آلية: فتح قائمة محددة بعد الاتصال
+        let args = ProcessInfo.processInfo.arguments
+        if let i = args.firstIndex(of: "-CarPlayScreen"), i + 1 < args.count {
+            let screen = args[i + 1]
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in self?.debugOpen(screen) }
+        }
+        #endif
     }
+
+    #if DEBUG
+    private func debugOpen(_ screen: String) {
+        switch screen {
+        case "layers": showLayers()
+        case "more": showMore()
+        case "destinations": showDestinations()
+        case "nearby": showNearbyKinds()
+        case "rawdah": showNearby(.rawdah)
+        case "regions": showRegions()
+        case "preview":
+            if let e = SearchService.shared.nearest(.rawdah, to: env.location.location?.coordinate
+                ?? CLLocationCoordinate2D(latitude: 25.38, longitude: 47.25), count: 1).first?.0 {
+                preview(Waypoint(name: e.name, coordinate: .init(latitude: e.lat, longitude: e.lon)))
+            }
+        case "pan":
+            mapViewController.beginPan()
+            mapViewController.updatePan(CGPoint(x: 220, y: 0))
+        default: break
+        }
+    }
+    #endif
 
     func disconnect() {
         // الجلسة على CarPlay تنتهي، لكن حالة الملاحة على الهاتف تبقى كما هي

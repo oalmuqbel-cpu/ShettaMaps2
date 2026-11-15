@@ -1,0 +1,65 @@
+name: CarPlay screenshots
+
+on:
+  workflow_dispatch:
+    inputs:
+      screens:
+        description: "قوائم CarPlay المطلوبة"
+        default: "map layers more destinations nearby rawdah preview pan"
+      location:
+        default: "25.3800,47.2500"
+
+jobs:
+  shots:
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select latest Xcode 26
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
+      - name: Build
+        run: |
+          set -o pipefail
+          brew install xcodegen cliclick >/dev/null
+          xcodegen generate
+          UDID=$(python3 ci/pick_simulator.py)
+          echo "UDID=$UDID" >> $GITHUB_ENV
+          xcodebuild build -project ShettaMaps2.xcodeproj -scheme ShettaMaps2 -destination "id=$UDID" -derivedDataPath build | tail -3
+      - name: Capture
+        run: |
+          set -x
+          mkdir -p shots
+          APP=$(find build/Build/Products -name "ShettaMaps2.app" -maxdepth 3 | head -1)
+          BID=com.almuqbel.ShettaMaps2
+          LOC="${{ inputs.location }}"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl privacy "$UDID" grant location-always $BID || true
+          xcrun simctl location "$UDID" set "$LOC"
+          open -a Simulator --args -CurrentDeviceUDID "$UDID" || true
+          sleep 10
+          xcrun simctl launch "$UDID" $BID
+          sleep 15
+          osascript -e 'tell application "Simulator" to activate' -e 'delay 2' \
+            -e 'tell application "System Events" to tell process "Simulator" to click menu item "CarPlay" of menu 1 of menu item "External Displays" of menu 1 of menu bar item "I/O" of menu bar 1'
+          sleep 40
+          osascript -e 'tell application "System Events" to tell process "Simulator" to get {name, position, size} of every window' > shots/windows.txt
+          for S in ${{ inputs.screens }}; do
+            xcrun simctl terminate "$UDID" $BID || true
+            sleep 3
+            if [ "$S" = map ]; then perl -e 'alarm 30; exec @ARGV' xcrun simctl launch "$UDID" $BID || true
+            else perl -e 'alarm 30; exec @ARGV' xcrun simctl launch "$UDID" $BID -CarPlayScreen "$S" || true; fi
+            sleep 4
+            xcrun simctl location "$UDID" set "$LOC"
+            python3 ci/carplay_tap.py shots/windows.txt 205 280 || true
+            sleep 30
+            perl -e 'alarm 30; exec @ARGV' xcrun simctl io "$UDID" screenshot --display=external "shots/cp-$S.png" || true
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: carplay-shots
+          path: shots
