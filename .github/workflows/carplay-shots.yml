@@ -54,10 +54,6 @@ jobs:
           t 30 osascript -e 'tell application "System Events" to tell process "Simulator" to get {name, position, size} of every window' > shots/windows.txt
           cat shots/windows.txt
           t 30 xcrun simctl io "$UDID" screenshot --display=external shots/cp-00-home.png
-          # فحص: هل النقر يعمل؟ (فتح الإعدادات ثم الرجوع)
-          t 30 python3 ci/carplay_tap.py shots/windows.txt 695 100 cliclick
-          sleep 6
-          t 30 xcrun simctl io "$UDID" screenshot --display=external shots/cp-00-probe.png
           for S in ${{ inputs.screens }}; do
             echo "=== $S"
             t 30 xcrun simctl terminate "$UDID" $BID
@@ -66,9 +62,8 @@ jobs:
             else t 40 xcrun simctl launch "$UDID" $BID -CarPlayScreen "$S"; fi
             sleep 4
             t 20 xcrun simctl location "$UDID" set "$LOC"
-            t 30 python3 ci/carplay_tap.py shots/windows.txt 205 280 cliclick
-            sleep 4
-            t 30 python3 ci/carplay_tap.py shots/windows.txt 205 280 osa
+            # أيقونة التطبيق في الشريط الجانبي لـ CarPlay
+            t 30 python3 ci/carplay_tap.py shots/windows.txt 53 200 cliclick
             sleep 7
             t 30 xcrun simctl io "$UDID" screenshot --display=external "shots/cp-$S-a.png"
             sleep 18
