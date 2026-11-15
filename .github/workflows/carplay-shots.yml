@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   shots:
-    runs-on: macos-15-intel
+    runs-on: macos-26
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
           echo "UDID=$UDID" >> $GITHUB_ENV
           xcodebuild build -project ShettaMaps2.xcodeproj -scheme ShettaMaps2 -destination "id=$UDID" -derivedDataPath build | tail -3
       - name: Capture
-        timeout-minutes: 30
+        timeout-minutes: 45
         run: |
           set -x
           t() { local n=$1; shift; perl -e 'alarm shift; exec @ARGV' "$n" "$@" || echo "timeout/fail: $*"; }
@@ -40,13 +40,13 @@ jobs:
           BID=com.almuqbel.ShettaMaps2
           LOC="${{ inputs.location }}"
           t 120 xcrun simctl boot "$UDID"
-          t 240 xcrun simctl bootstatus "$UDID" -b
-          t 120 xcrun simctl install "$UDID" "$APP"
+          t 600 xcrun simctl bootstatus "$UDID" -b
+          t 400 xcrun simctl install "$UDID" "$APP"
           t 30 xcrun simctl privacy "$UDID" grant location-always $BID
           t 30 xcrun simctl location "$UDID" set "$LOC"
           t 30 open -a Simulator --args -CurrentDeviceUDID "$UDID"
           sleep 10
-          t 60 xcrun simctl launch "$UDID" $BID
+          t 120 xcrun simctl launch "$UDID" $BID
           sleep 15
           t 60 osascript -e 'tell application "Simulator" to activate' -e 'delay 2' \
             -e 'tell application "System Events" to tell process "Simulator" to click menu item "CarPlay" of menu 1 of menu item "External Displays" of menu 1 of menu bar item "I/O" of menu bar 1'
