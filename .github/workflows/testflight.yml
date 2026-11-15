@@ -62,6 +62,16 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} 2>&1 | tee archive.log
 
+      # الأرشيف غير موقّع، فلا تُحمل فيه الصلاحيات؛ نوقّعه توقيعًا محليًا مؤقتًا مع ملف الصلاحيات
+      # حتى يحتفظ التصدير بصلاحية CarPlay عند إعادة التوقيع بشهادة التوزيع.
+      - name: Embed entitlements in archive
+        run: |
+          APP="$RUNNER_TEMP/ShettaMaps2.xcarchive/Products/Applications/ShettaMaps2.app"
+          find "$APP/Frameworks" -maxdepth 1 \( -name "*.framework" -o -name "*.dylib" \) -exec codesign -f -s - {} \; 2>/dev/null || true
+          find "$APP/PlugIns" -maxdepth 1 -name "*.appex" -exec codesign -f -s - {} \; 2>/dev/null || true
+          codesign -f -s - --entitlements ShettaMaps2/Resources/ShettaMaps2.entitlements "$APP"
+          codesign -d --entitlements :- "$APP" | grep -q carplay-maps && echo "archive carries CarPlay entitlement"
+
       - name: Upload to App Store Connect
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
