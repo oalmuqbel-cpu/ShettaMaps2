@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import CoreLocation
 
 /// إدارة الخرائط المحفوظة دون إنترنت: تنزيل منطقة، متابعة التقدم، الإيقاف، الحذف، واستيراد MBTiles.
 struct OfflineMapsView: View {
@@ -9,6 +10,11 @@ struct OfflineMapsView: View {
     @EnvironmentObject private var network: NetworkMonitor
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var dirt: DirtRoadsStore
+    @ObservedObject private var package = OfflinePackageService.shared
+    @AppStorage("offlineInclude_dirt") private var includeDirt = true
+    @AppStorage("offlineInclude_speed") private var includeSpeed = true
+    @AppStorage("offlineInclude_community") private var includeCommunity = true
+    @AppStorage("offlineInclude_coverage") private var includeCoverage = true
 
     @State private var regionName = ""
     @State private var minZoom = 6.0
@@ -58,12 +64,10 @@ struct OfflineMapsView: View {
                     Task {
                         defer { isStarting = false }
                         do {
-                            try await offline.download(name: name, sw: b.sw, ne: b.ne, minZoom: Int(minZoom), maxZoom: Int(maxZoom))
+                            // الخريطة ثم كل الطبقات المختارة للمنطقة نفسها لتعمل معًا دون إنترنت
                             regionName = ""
-                            // ردميات المنطقة نفسها لتظهر دون إنترنت
-                            await dirt.download(sw: b.sw, ne: b.ne)
-                            // حدود السرعة للمنطقة نفسها لتعمل دون إنترنت
-                            await SpeedLimitStore.shared.download(sw: b.sw, ne: b.ne)
+                            try await OfflinePackageService.shared.downloadRegion(name: name, sw: b.sw, ne: b.ne,
+                                                                                  minZoom: Int(minZoom), maxZoom: Int(maxZoom))
                         } catch { self.error = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription }
                     }
                 } label: {
@@ -73,8 +77,20 @@ struct OfflineMapsView: View {
                     }
                 }
                 .disabled(mapManager.visibleBounds == nil || !network.isOnline || offline.selectedTilesetID != nil || isStarting)
+                if let status = package.layersStatus {
+                    HStack { ProgressView(); Text(status + "…").font(.footnote).foregroundStyle(.secondary) }
+                }
             } header: { Text("تنزيل منطقة") } footer: {
                 Text("حرّك الخريطة الرئيسية إلى المنطقة المطلوبة قبل فتح هذه الشاشة. يُفضّل التنزيل عبر Wi-Fi، وتحقق من أن ترخيص مزوّد الخرائط يسمح بالتنزيل.")
+            }
+
+            Section {
+                Toggle(isOn: $includeDirt) { Label(OfflineLayerOption.dirt.title, systemImage: OfflineLayerOption.dirt.icon) }
+                Toggle(isOn: $includeSpeed) { Label(OfflineLayerOption.speed.title, systemImage: OfflineLayerOption.speed.icon) }
+                Toggle(isOn: $includeCommunity) { Label(OfflineLayerOption.community.title, systemImage: OfflineLayerOption.community.icon) }
+                Toggle(isOn: $includeCoverage) { Label(OfflineLayerOption.coverage.title, systemImage: OfflineLayerOption.coverage.icon) }
+            } header: { Text("يُنزَّل مع كل خريطة") } footer: {
+                Text("تُنزَّل هذه الطبقات تلقائيًا مع أي منطقة تحفظها ومع أي ملف خرائط تستورده (مثل صور الأقمار الصناعية)، حتى تعمل كلها معًا دون إنترنت. أسماء الأماكن ومحطات الوقود والغيران مضمنة في التطبيق أصلًا.")
             }
 
             Section("المناطق المنزلة") {
@@ -183,10 +199,14 @@ struct OfflineMapsView: View {
                         }
                     }
                     .swipeActions { Button(role: .destructive) { offline.deleteTileset(t) } label: { Label("حذف", systemImage: "trash") } }
+                    .contextMenu {
+                        Button { downloadLayers(for: t) } label: { Label("تنزيل الطبقات لمنطقة هذا الملف", systemImage: "square.3.layers.3d.down.right") }
+                            .disabled(!network.isOnline)
+                    }
                 }
                 Button { importing = true } label: { Label("استيراد ملف MBTiles", systemImage: "square.and.arrow.down") }
             } header: { Text("ملفات خرائط محلية") } footer: {
-                Text("يدعم ملفات MBTiles النقطية (PNG/JPG). اختر ملفًا لجعله مصدر طبقة «دون إنترنت». تأكد من امتلاكك حق استخدام البيانات دون اتصال.")
+                Text("يدعم ملفات MBTiles النقطية (PNG/JPG)، ومنها صور الأقمار الصناعية. اختر ملفًا لجعله مصدر طبقة «دون إنترنت»، وتُنزَّل الردميات والطبقات لمنطقته تلقائيًا عند الاستيراد (أو اضغط مطولًا على الملف). صور الأقمار الصناعية من Apple لا يُسمح بتنزيلها، فتعمل بالإنترنت فقط. تأكد من امتلاكك حق استخدام بيانات الملف دون اتصال.")
             }
         }
         .navigationTitle("الخرائط المحفوظة")
@@ -199,7 +219,10 @@ struct OfflineMapsView: View {
         .onAppear { offline.refreshRegions() }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.mbtiles, .data]) { result in
             if case .success(let url) = result {
-                do { try offline.importMBTiles(from: url) } catch {
+                do {
+                    try offline.importMBTiles(from: url)
+                    if let t = offline.tilesets.last { downloadLayers(for: t) }
+                } catch {
                     self.error = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                 }
             }
@@ -214,6 +237,14 @@ struct OfflineMapsView: View {
         .confirmationDialog("حذف كل المناطق المنزلة؟", isPresented: $confirmDeleteAll, titleVisibility: .visible) {
             Button("حذف الكل", role: .destructive) { offline.deleteAll() }
         }
+    }
+
+    /// الطبقات المرافقة لمنطقة ملف خرائط مستورد.
+    private func downloadLayers(for t: LocalTileset) {
+        guard network.isOnline else { return }
+        let sw = CLLocationCoordinate2D(latitude: t.swLat, longitude: t.swLon)
+        let ne = CLLocationCoordinate2D(latitude: t.neLat, longitude: t.neLon)
+        Task { await OfflinePackageService.shared.downloadLayers(sw: sw, ne: ne) }
     }
 
     private func stateTitle(_ s: OfflineRegionItem.State) -> String {

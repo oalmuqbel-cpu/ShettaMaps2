@@ -80,8 +80,9 @@ final class TaggedMKAnnotation: NSObject, MKAnnotation {
 
 enum MapKitOverlayRenderer {
     @MainActor static func apply(_ set: MapOverlaySet, to mapView: MKMapView) {
-        mapView.removeOverlays(mapView.overlays)
-        mapView.removeAnnotations(mapView.annotations.filter { !($0 is MKUserLocation) })
+        // طبقات البيانات (الردميات والتغطية والأمطار) لها مُحدِّث مستقل فلا تُحذف هنا
+        mapView.removeOverlays(mapView.overlays.filter { $0 is TaggedMKPolyline })
+        mapView.removeAnnotations(mapView.annotations.filter { $0 is TaggedMKAnnotation })
         for line in set.lines where line.coordinates.count > 1 {
             let coords = line.coordinates
             let count = coords.count
@@ -117,6 +118,8 @@ enum MapKitOverlayRenderer {
         default: v.displayPriority = .defaultHigh
         }
         v.canShowCallout = true
+        // أسماء الأماكن المعروفة تظهر عند توفر مساحة فقط حتى لا تزدحم الشاشة
+        v.titleVisibility = a.kind == .landmark || a.kind == .community ? .adaptive : .visible
         return v
     }
 }

@@ -6,14 +6,57 @@ import SwiftData
 import CarPlay
 
 /// محرك الخريطة على شاشة السيارة.
-enum CarPlayMapEngine: String {
-    case mapKitStandard, mapKitSatellite, offline
+enum CarPlayMapEngine: String, CaseIterable {
+    case mapKitStandard, mapKitTerrain, mapKitSatellite, offline
     var title: String {
         switch self {
         case .mapKitStandard: return "خريطة عادية"
+        case .mapKitTerrain: return "تضاريس"
         case .mapKitSatellite: return "أقمار صناعية"
         case .offline: return "دون إنترنت"
         }
+    }
+    var icon: String {
+        switch self {
+        case .mapKitStandard: return "map"
+        case .mapKitTerrain: return "mountain.2"
+        case .mapKitSatellite: return "globe.asia.australia"
+        case .offline: return "arrow.down.circle"
+        }
+    }
+    var needsInternet: Bool { self != .offline }
+}
+
+/// إعدادات العرض المشتركة بين الهاتف والسيارة (نفس مفاتيح شاشة الطبقات في الهاتف).
+enum CarPlaySettings {
+    static let northUpKey = "carPlayNorthUp"
+
+    static func bool(_ key: String, _ fallback: Bool) -> Bool {
+        UserDefaults.standard.object(forKey: key) as? Bool ?? fallback
+    }
+    static func toggle(_ key: String, _ fallback: Bool) {
+        UserDefaults.standard.set(!bool(key, fallback), forKey: key)
+    }
+
+    static var showLandmarks: Bool { bool(SettingsKeys.showLandmarks, true) }
+    static var showCommunity: Bool { bool(SettingsKeys.showCommunity, true) }
+    static var showDirtRoads: Bool { bool(SettingsKeys.showDirtRoads, true) }
+    static var showDetectedRoads: Bool { bool(SettingsKeys.showDetectedRoads, true) }
+    static var showMyTracks: Bool { bool(SettingsKeys.showMyTracks, false) }
+    static var showCoverage: Bool { bool(SettingsKeys.showCoverage, false) }
+    static var coverageOnlyMine: Bool { bool(SettingsKeys.coverageOnlyMine, true) }
+    static var showRainMap: Bool { bool(SettingsKeys.showRainMap, false) }
+    static var northUp: Bool { bool(northUpKey, false) }
+    static var landmarkKinds: Set<PlaceKind> {
+        PlaceKind.decodeSet(UserDefaults.standard.string(forKey: SettingsKeys.landmarkKinds) ?? "")
+    }
+
+    /// بصمة لكل ما يؤثر على الرسم، لاكتشاف تغيّر الإعدادات من الهاتف.
+    static var signature: String {
+        [showLandmarks, showCommunity, showDirtRoads, showDetectedRoads, showMyTracks, showCoverage, coverageOnlyMine,
+         showRainMap, northUp].map { $0 ? "1" : "0" }.joined()
+            + (UserDefaults.standard.string(forKey: SettingsKeys.landmarkKinds) ?? "")
+            + (UserDefaults.standard.string(forKey: SettingsKeys.coverageCarrier) ?? "")
     }
 }
 
@@ -31,6 +74,23 @@ final class CarPlayMapViewController: UIViewController {
     private(set) var isFollowing = true
     private var places: [SavedPlace] = []
     private var lastPlacesFetch = Date.distantPast
+
+    // طبقات البيانات للمنطقة الظاهرة
+    private var dataPins: [MapOverlaySet.Pin] = []
+    private var dataLines: [MapOverlaySet.Line] = []
+    private var dirt: [DirtRoad] = []
+    private var coverageCells: [CoverageCell] = []
+    private var rainCells: [RainCell] = []
+    private var lastDataRegion: MKCoordinateRegion?
+    private var dataWork: DispatchWorkItem?
+    private var settingsSignature = CarPlaySettings.signature
+    private var lastNorthUp = CarPlaySettings.northUp
+    private var tracks: [RecordedTrack] = []
+    private var lastTracksFetch = Date.distantPast
+
+    private var lastPan = CGPoint.zero
+    /// الوجهة المعروضة للمعاينة قبل بدء الملاحة.
+    private(set) var previewCoordinate: CLLocationCoordinate2D?
 
     private let env = AppEnvironment.shared
     private let mapKitDelegate = CarPlayMapKitDelegate()
@@ -52,6 +112,9 @@ final class CarPlayMapViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = Theme.beigeUI
+        mapKitDelegate.onRegionChange = { [weak self] in self?.regionChanged() }
+        libreDelegate.onRegionChange = { [weak self] in self?.regionChanged() }
+        libreDelegate.onStyleLoaded = { [weak self] in self?.applyDataLayers() }
         // بدون إنترنت ومع توفر خرائط محلية: نبدأ بمحرك دون إنترنت تلقائيًا
         if !env.network.isOnline, engine != .offline,
            let c = env.location.location?.coordinate, env.offlineMaps.hasOfflineCoverage(at: c) {
@@ -63,8 +126,9 @@ final class CarPlayMapViewController: UIViewController {
 
     // MARK: - المحرك
 
-    func setEngine(_ e: CarPlayMapEngine) {
-        guard e != engine else { return }
+    /// تغيير نوع الخريطة. force يعيد البناء حتى لو لم يتغير المحرك (مثل تغيير ملف الخرائط المحلي).
+    func setEngine(_ e: CarPlayMapEngine, force: Bool = false) {
+        guard e != engine || force else { return }
         engine = e
         buildMap()
     }
@@ -73,13 +137,18 @@ final class CarPlayMapViewController: UIViewController {
         mapKitView?.removeFromSuperview(); mapKitView = nil
         libreView?.removeFromSuperview(); libreView = nil
         lastOverlays = nil
+        lastDataRegion = nil
 
         switch engine {
-        case .mapKitStandard, .mapKitSatellite:
+        case .mapKitStandard, .mapKitTerrain, .mapKitSatellite:
             let m = MKMapView(frame: view.bounds)
             m.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             m.delegate = mapKitDelegate
-            m.mapType = engine == .mapKitSatellite ? .hybrid : .standard
+            switch engine {
+            case .mapKitSatellite: m.preferredConfiguration = MKHybridMapConfiguration()
+            case .mapKitTerrain: m.preferredConfiguration = MKStandardMapConfiguration(elevationStyle: .realistic, emphasisStyle: .muted)
+            default: m.preferredConfiguration = MKStandardMapConfiguration()
+            }
             m.showsUserLocation = true
             m.showsCompass = role != .cluster
             m.showsScale = role == .main
@@ -87,7 +156,7 @@ final class CarPlayMapViewController: UIViewController {
             m.isPitchEnabled = false
             view.addSubview(m)
             mapKitView = m
-            if let c = env.location.location?.coordinate {
+            if let c = previewCoordinate ?? env.location.location?.coordinate {
                 m.setRegion(MKCoordinateRegion(center: c, latitudinalMeters: zoomMeters, longitudinalMeters: zoomMeters), animated: false)
             }
         case .offline:
@@ -104,9 +173,10 @@ final class CarPlayMapViewController: UIViewController {
             if let c = env.location.location?.coordinate {
                 m.setCenter(c, zoomLevel: role == .cluster ? 14 : 13, animated: false)
             }
-            m.userTrackingMode = .followWithCourse
+            if isFollowing { m.userTrackingMode = CarPlaySettings.northUp ? .follow : .followWithCourse }
         }
         refreshOverlays(force: true)
+        scheduleDataRefresh(force: true)
     }
 
     private var zoomMeters: CLLocationDistance { role == .cluster ? 1200 : 3000 }
@@ -142,20 +212,48 @@ final class CarPlayMapViewController: UIViewController {
                 }
             }
             .store(in: &cancellables)
+
+        // أي تغيير في إعدادات الطبقات من الهاتف أو من السيارة يظهر فورًا
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .debounce(for: .milliseconds(400), scheduler: RunLoop.main)
+            .sink { [weak self] _ in self?.settingsMaybeChanged() }
+            .store(in: &cancellables)
+
+        // اكتمال تنزيل ردميات أو تحديث بيانات المجتمع يعيد الرسم
+        DirtRoadsStore.shared.$installed
+            .dropFirst()
+            .debounce(for: .seconds(1), scheduler: RunLoop.main)
+            .sink { [weak self] _ in self?.collectData(); self?.applyAll() }
+            .store(in: &cancellables)
+    }
+
+    private func settingsMaybeChanged() {
+        let sig = CarPlaySettings.signature
+        guard sig != settingsSignature else { return }
+        settingsSignature = sig
+        if lastNorthUp != CarPlaySettings.northUp {
+            lastNorthUp = CarPlaySettings.northUp
+            if isFollowing { recenter() }
+        }
+        scheduleDataRefresh(force: true)
     }
 
     private func locationChanged(_ loc: CLLocation) {
         guard isFollowing else { return }
+        let northUp = CarPlaySettings.northUp
         if let m = mapKitView {
+            let heading: CLLocationDirection = northUp ? 0 : ((loc.course >= 0 && loc.speed > 3) ? loc.course : m.camera.heading)
             let camera = MKMapCamera(lookingAtCenter: loc.coordinate,
                                      fromDistance: m.camera.centerCoordinateDistance > 0 ? m.camera.centerCoordinateDistance : zoomMeters * 2,
-                                     pitch: 0,
-                                     heading: (loc.course >= 0 && loc.speed > 3) ? loc.course : m.camera.heading)
+                                     pitch: 0, heading: heading)
             m.setCamera(camera, animated: true)
-        } else if let m = libreView, m.userTrackingMode == .none {
-            m.setUserTrackingMode(.followWithCourse, animated: true, completionHandler: nil)
+        } else if let m = libreView {
+            let mode: MLNUserTrackingMode = northUp ? .follow : .followWithCourse
+            if m.userTrackingMode != mode { m.setUserTrackingMode(mode, animated: true, completionHandler: nil) }
         }
     }
+
+    // MARK: - العناصر فوق الخريطة
 
     func refreshOverlays(force: Bool) {
         if Date().timeIntervalSince(lastPlacesFetch) > 20 || force {
@@ -165,25 +263,170 @@ final class CarPlayMapViewController: UIViewController {
         }
         // في شاشة العدادات نعرض الوجهة والمسار فقط لتقليل التشتيت
         let showPlaces = role == .main ? places : []
+        var extra = role == .main ? dataPins : []
+        if let p = previewCoordinate {
+            extra.append(.init(id: "preview", title: "الوجهة", subtitle: nil, coordinate: p, kind: .destination))
+        }
         let set = MapOverlaySet.build(places: showPlaces,
                                       liveSegments: role == .cluster ? [] : env.recorder.liveSegments,
                                       navigation: env.navigation.snapshot,
-                                      currentLocation: env.location.location?.coordinate)
+                                      currentLocation: env.location.location?.coordinate,
+                                      extraPins: extra,
+                                      extraLines: role == .main ? dataLines : [])
         guard force || set != lastOverlays else { return }
         lastOverlays = set
         if let m = mapKitView { MapKitOverlayRenderer.apply(set, to: m) }
         if let m = libreView { MapLibreOverlayRenderer.apply(set, to: m) }
     }
 
+    /// المنطقة الظاهرة حاليًا على شاشة السيارة.
+    var visibleRegion: MKCoordinateRegion? {
+        if let m = mapKitView { return MKCoordinateRegion(m.visibleMapRect) }
+        if let m = libreView {
+            let b = m.visibleCoordinateBounds
+            return MKCoordinateRegion(center: .init(latitude: (b.sw.latitude + b.ne.latitude) / 2, longitude: (b.sw.longitude + b.ne.longitude) / 2),
+                                      span: .init(latitudeDelta: abs(b.ne.latitude - b.sw.latitude), longitudeDelta: abs(b.ne.longitude - b.sw.longitude)))
+        }
+        return nil
+    }
+
+    private func bounds(of r: MKCoordinateRegion) -> (sw: CLLocationCoordinate2D, ne: CLLocationCoordinate2D) {
+        (.init(latitude: r.center.latitude - r.span.latitudeDelta / 2, longitude: r.center.longitude - r.span.longitudeDelta / 2),
+         .init(latitude: r.center.latitude + r.span.latitudeDelta / 2, longitude: r.center.longitude + r.span.longitudeDelta / 2))
+    }
+
+    private func regionChanged() { scheduleDataRefresh(force: false) }
+
+    private func scheduleDataRefresh(force: Bool) {
+        guard role == .main else { return }
+        dataWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            MainActor.assumeIsolated { self?.refreshData(force: force) }
+        }
+        dataWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + (force ? 0.1 : 0.7), execute: work)
+    }
+
+    /// يحدّث طبقات البيانات للمنطقة الظاهرة إذا تحركت الخريطة بما يكفي.
+    private func refreshData(force: Bool) {
+        guard let r = visibleRegion, r.span.latitudeDelta > 0 else { return }
+        if !force, let last = lastDataRegion {
+            let moved = abs(r.center.latitude - last.center.latitude) > last.span.latitudeDelta * 0.2
+                || abs(r.center.longitude - last.center.longitude) > last.span.longitudeDelta * 0.2
+            let zoomed = abs(r.span.latitudeDelta / max(last.span.latitudeDelta, 1e-6) - 1) > 0.25
+            guard moved || zoomed else { return }
+        }
+        lastDataRegion = r
+        collectData()
+        applyAll()
+        fetchRemote(r)
+    }
+
+    /// قراءة البيانات المحلية للمنطقة (بدون شبكة).
+    private func collectData() {
+        guard let r = lastDataRegion ?? visibleRegion else { return }
+        let (sw, ne) = bounds(of: r)
+        let span = r.span.latitudeDelta
+        let online = env.network.isOnline
+
+        var pins: [MapOverlaySet.Pin] = []
+        if CarPlaySettings.showLandmarks, span < 2.5 {
+            pins += SearchService.shared.entries(sw: sw, ne: ne, limit: span < 0.4 ? 60 : 30, kinds: CarPlaySettings.landmarkKinds).map {
+                .init(id: "g-\($0.id)", title: $0.name, subtitle: $0.kind.title,
+                      coordinate: .init(latitude: $0.lat, longitude: $0.lon), kind: .landmark, symbol: $0.kind.icon)
+            }
+        }
+        var lines: [MapOverlaySet.Line] = []
+        if CarPlaySettings.showCommunity, CommunityService.shared.isEnabled, span < 3 {
+            pins += CommunityService.shared.places(in: sw, ne).prefix(60).map {
+                .init(id: "c-\($0.id)", title: $0.name, subtitle: "مشاركة مجتمعية · \($0.kind.title)", coordinate: $0.coordinate,
+                      kind: .community, symbol: nil)
+            }
+            let store = CommunityTrackStore.shared
+            lines += store.tracks(in: sw, ne).prefix(30).map { .init(kind: .community, coordinates: store.coordinates(of: $0)) }
+        }
+        if CarPlaySettings.showMyTracks {
+            if Date().timeIntervalSince(lastTracksFetch) > 60 {
+                let d = FetchDescriptor<RecordedTrack>(sortBy: [SortDescriptor(\.startedAt, order: .reverse)])
+                tracks = (try? env.container.mainContext.fetch(d)) ?? []
+                lastTracksFetch = Date()
+            }
+            lines += MyTracksOverlay.shared.lines(for: tracks, sw: sw, ne: ne)
+        }
+        dataPins = pins
+        dataLines = lines
+
+        if CarPlaySettings.showDirtRoads, span < 0.45 {
+            if online, span < 1 { Task { await DirtRoadsStore.shared.download(sw: sw, ne: ne, auto: true) } }
+            dirt = DirtRoadsStore.shared.roads(sw: sw, ne: ne, limit: span < 0.1 ? 1200 : 600,
+                                               includeDetected: CarPlaySettings.showDetectedRoads && span < 0.25)
+        } else {
+            dirt = []
+        }
+
+        if CarPlaySettings.showCoverage, span <= 0.6 {
+            let mine = CarPlaySettings.coverageOnlyMine
+                ? Carrier(rawValue: UserDefaults.standard.string(forKey: SettingsKeys.coverageCarrier) ?? "") : nil
+            var list = CoverageService.shared.visibleCells(sw: sw, ne: ne, carrier: mine)
+            if mine == nil {
+                var best: [String: CoverageCell] = [:]
+                for c in list {
+                    let key = "\(c.lat)_\(c.lon)"
+                    if let e = best[key], e.level.rank >= c.level.rank { continue }
+                    best[key] = c
+                }
+                list = Array(best.values)
+            }
+            coverageCells = list
+        } else {
+            coverageCells = []
+        }
+        rainCells = CarPlaySettings.showRainMap ? WeatherService.shared.rainCells : []
+    }
+
+    /// جلب ما يحتاج الإنترنت، ثم إعادة الرسم من البيانات المحلية فقط.
+    private func fetchRemote(_ r: MKCoordinateRegion) {
+        guard env.network.isOnline else { return }
+        let (sw, ne) = bounds(of: r)
+        let span = r.span.latitudeDelta
+        Task { [weak self] in
+            if CarPlaySettings.showCommunity, CommunityService.shared.isEnabled, span < 3 {
+                await CommunityService.shared.refresh(sw: sw, ne: ne)
+                await CommunityTrackStore.shared.refresh(sw: sw, ne: ne)
+            }
+            if CarPlaySettings.showCoverage, span <= 0.6 { await CoverageService.shared.refresh(sw: sw, ne: ne) }
+            if CarPlaySettings.showRainMap { await WeatherService.shared.refreshRain(sw: sw, ne: ne) }
+            guard let self else { return }
+            self.collectData()
+            self.applyAll()
+        }
+    }
+
+    private func applyAll() {
+        refreshOverlays(force: false)
+        applyDataLayers()
+    }
+
+    private func applyDataLayers() {
+        guard role == .main else { return }
+        if let m = mapKitView {
+            MapKitDataLayers.apply(dirt: dirt, coverage: coverageCells, rain: rainCells, rainHour: 0, to: m)
+        }
+        if let m = libreView {
+            MapLibreDataLayers.dirt(dirt, on: m)
+            MapLibreDataLayers.coverage(coverageCells, on: m)
+            MapLibreDataLayers.rain(rainCells, hour: 0, on: m)
+            MapLibreDataLayers.highlightStyleDirt(on: m, visible: CarPlaySettings.showDirtRoads)
+        }
+    }
+
     // MARK: - أوامر من قوالب CarPlay
 
     func zoom(in zoomIn: Bool) {
         if let m = mapKitView {
-            var r = m.region
-            let f = zoomIn ? 0.5 : 2.0
-            r.span = MKCoordinateSpan(latitudeDelta: min(max(r.span.latitudeDelta * f, 0.002), 90),
-                                      longitudeDelta: min(max(r.span.longitudeDelta * f, 0.002), 180))
-            m.setRegion(r, animated: true)
+            let cam = m.camera.copy() as! MKMapCamera
+            cam.centerCoordinateDistance = min(max(cam.centerCoordinateDistance * (zoomIn ? 0.5 : 2.0), 200), 20_000_000)
+            m.setCamera(cam, animated: true)
         } else if let m = libreView {
             m.setZoomLevel(m.zoomLevel + (zoomIn ? 1 : -1), animated: true)
         }
@@ -191,39 +434,67 @@ final class CarPlayMapViewController: UIViewController {
 
     func recenter() {
         isFollowing = true
+        if let m = libreView {
+            m.setUserTrackingMode(CarPlaySettings.northUp ? .follow : .followWithCourse, animated: true, completionHandler: nil)
+        }
         if let loc = env.location.location { locationChanged(loc) }
-        libreView?.setUserTrackingMode(.followWithCourse, animated: true, completionHandler: nil)
     }
 
-    /// تحريك الخريطة يدويًا (إلزامي في تطبيقات الملاحة على CarPlay).
+    /// بداية سحب الخريطة باللمس على شاشة السيارة.
+    func beginPan() {
+        lastPan = .zero
+        stopFollowing()
+    }
+
+    /// السحب باللمس: translation تراكمي منذ بداية السحب.
+    func updatePan(_ translation: CGPoint) {
+        let dx = translation.x - lastPan.x, dy = translation.y - lastPan.y
+        lastPan = translation
+        move(by: CGPoint(x: dx, y: dy), animated: false)
+    }
+
+    /// تحريك الخريطة بأزرار الاتجاهات (إلزامي في تطبيقات الملاحة على CarPlay).
     func pan(_ direction: CPMapTemplate.PanDirection) {
-        isFollowing = false
-        var dx = 0.0, dy = 0.0
-        if direction.contains(.left) { dx = -1 }
-        if direction.contains(.right) { dx = 1 }
-        if direction.contains(.up) { dy = 1 }
-        if direction.contains(.down) { dy = -1 }
+        stopFollowing()
+        let w = view.bounds.width * 0.3, h = view.bounds.height * 0.3
+        var t = CGPoint.zero
+        if direction.contains(.left) { t.x = w }
+        if direction.contains(.right) { t.x = -w }
+        if direction.contains(.up) { t.y = h }
+        if direction.contains(.down) { t.y = -h }
+        move(by: t, animated: true)
+    }
+
+    /// يحرك محتوى الخريطة بمقدار نقاط على الشاشة (كأن الإصبع سحبها).
+    private func move(by t: CGPoint, animated: Bool) {
         if let m = mapKitView {
-            var c = m.region.center
-            c.latitude += dy * m.region.span.latitudeDelta * 0.25
-            c.longitude += dx * m.region.span.longitudeDelta * 0.25
-            m.setCenter(c, animated: true)
+            let p = CGPoint(x: m.bounds.midX - t.x, y: m.bounds.midY - t.y)
+            m.setCenter(m.convert(p, toCoordinateFrom: m), animated: animated)
         } else if let m = libreView {
-            m.userTrackingMode = .none
-            let b = m.visibleCoordinateBounds
-            var c = m.centerCoordinate
-            c.latitude += dy * (b.ne.latitude - b.sw.latitude) * 0.25
-            c.longitude += dx * (b.ne.longitude - b.sw.longitude) * 0.25
-            m.setCenter(c, animated: true)
+            let p = CGPoint(x: m.bounds.midX - t.x, y: m.bounds.midY - t.y)
+            m.setCenter(m.convert(p, toCoordinateFrom: m), animated: animated)
         }
     }
 
-    func showWholeRoute() {
-        guard let plan = env.navigation.snapshot.plan else { return }
+    private func stopFollowing() {
         isFollowing = false
-        var coords = plan.allPoints.map(\.coordinate)
-        if let c = env.location.location?.coordinate { coords.append(c) }
+        if let m = libreView, m.userTrackingMode != .none { m.userTrackingMode = .none }
+    }
+
+    /// عرض الوجهة قبل بدء الملاحة (مع موقعي)، أو إلغاء المعاينة بـ nil.
+    func showPreview(_ c: CLLocationCoordinate2D?) {
+        previewCoordinate = c
+        refreshOverlays(force: true)
+        guard let c else { recenter(); return }
+        var coords = [c]
+        if let here = env.location.location?.coordinate { coords.append(here) }
+        fit(coords)
+    }
+
+    /// إظهار منطقة كاملة (مثل منطقة منزلة).
+    func fit(_ coords: [CLLocationCoordinate2D]) {
         guard let box = GeoMath.boundingBox(coords) else { return }
+        stopFollowing()
         if let m = mapKitView {
             let center = CLLocationCoordinate2D(latitude: (box.sw.latitude + box.ne.latitude) / 2,
                                                 longitude: (box.sw.longitude + box.ne.longitude) / 2)
@@ -232,11 +503,17 @@ final class CarPlayMapViewController: UIViewController {
                                                                   longitudeDelta: max(0.01, (box.ne.longitude - box.sw.longitude) * 1.5))),
                         animated: true)
         } else if let m = libreView {
-            m.userTrackingMode = .none
             m.setVisibleCoordinateBounds(MLNCoordinateBounds(sw: box.sw, ne: box.ne),
-                                         edgePadding: UIEdgeInsets(top: 40, left: 40, bottom: 40, right: 40),
+                                         edgePadding: UIEdgeInsets(top: 50, left: 50, bottom: 50, right: 50),
                                          animated: true, completionHandler: nil)
         }
+    }
+
+    func showWholeRoute() {
+        guard let plan = env.navigation.snapshot.plan else { return }
+        var coords = plan.allPoints.map(\.coordinate)
+        if let c = env.location.location?.coordinate { coords.append(c) }
+        fit(coords)
     }
 }
 
@@ -245,16 +522,25 @@ final class CarPlayMapViewController: UIViewController {
 // ولا يمكن لكائن واحد أن يطبّق الاثنين معًا.
 
 final class CarPlayMapKitDelegate: NSObject, MKMapViewDelegate {
+    @MainActor var onRegionChange: (() -> Void)?
+
     nonisolated func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-        MainActor.assumeIsolated { MapKitOverlayRenderer.renderer(for: overlay) }
+        MainActor.assumeIsolated { MapKitDataLayers.renderer(for: overlay) ?? MapKitOverlayRenderer.renderer(for: overlay) }
     }
 
     nonisolated func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
         MainActor.assumeIsolated { MapKitOverlayRenderer.view(for: annotation, in: mapView) }
     }
+
+    nonisolated func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
+        MainActor.assumeIsolated { onRegionChange?() }
+    }
 }
 
 final class CarPlayMapLibreDelegate: NSObject, MLNMapViewDelegate {
+    @MainActor var onRegionChange: (() -> Void)?
+    @MainActor var onStyleLoaded: (() -> Void)?
+
     nonisolated func mapView(_ mapView: MLNMapView, strokeColorForShapeAnnotation annotation: MLNShape) -> UIColor {
         MapLibreOverlayRenderer.strokeColor(for: annotation)
     }
@@ -265,6 +551,14 @@ final class CarPlayMapLibreDelegate: NSObject, MLNMapViewDelegate {
 
     nonisolated func mapView(_ mapView: MLNMapView, imageFor annotation: MLNAnnotation) -> MLNAnnotationImage? {
         MainActor.assumeIsolated { MapLibreOverlayRenderer.image(for: annotation, mapView: mapView) }
+    }
+
+    nonisolated func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
+        MainActor.assumeIsolated { onStyleLoaded?() }
+    }
+
+    nonisolated func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
+        MainActor.assumeIsolated { onRegionChange?() }
     }
 
     nonisolated func mapViewDidFailLoadingMap(_ mapView: MLNMapView, withError error: Error) {

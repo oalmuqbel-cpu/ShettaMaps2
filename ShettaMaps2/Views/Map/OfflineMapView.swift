@@ -105,110 +105,9 @@ struct OfflineMapView: UIViewRepresentable {
 
         init(mapManager: MapManager) { self.mapManager = mapManager }
 
-        /// ردميات بيانات سَمْت: مصدر أشكال مع طبقة خطوط وطبقة نصوص على امتداد الطريق.
-        func applyDirt(on map: MLNMapView) {
-            guard let style = map.style else { return }
-            let features: [MLNPolylineFeature] = pendingDirt.map { r in
-                var coords = r.coordinates
-                let f = MLNPolylineFeature(coordinates: &coords, count: UInt(coords.count))
-                f.attributes = ["kind": r.kind.rawValue, "label": r.name]
-                return f
-            }
-            let shape = MLNShapeCollectionFeature(shapes: features)
-            if let src = style.source(withIdentifier: "samt-dirt-data") as? MLNShapeSource {
-                src.shape = shape
-                return
-            }
-            let src = MLNShapeSource(identifier: "samt-dirt-data", shape: shape, options: nil)
-            style.addSource(src)
-            // إطار تحت الخط ليظهر على الرمل والأقمار الصناعية: أبيض للمؤكدة وداكن للمرصودة
-            let casing = MLNLineStyleLayer(identifier: "samt-dirt-data-casing", source: src)
-            casing.lineColor = NSExpression(format: "TERNARY(kind == 'ms_detected', %@, %@)",
-                                            UIColor.black.withAlphaComponent(0.45), UIColor.white.withAlphaComponent(0.9))
-            casing.lineWidth = NSExpression(format: "TERNARY(kind == 'ms_detected', 4.5, 6)")
-            casing.lineCap = NSExpression(forConstantValue: "round")
-            let line = MLNLineStyleLayer(identifier: "samt-dirt-data-line", source: src)
-            line.lineColor = NSExpression(format: "TERNARY(kind == 'ms_detected', %@, %@)",
-                                          DirtRoadStyle.detectedUI, DirtRoadStyle.confirmedUI)
-            line.lineWidth = NSExpression(format: "TERNARY(kind == 'ms_detected', 2.5, 3.5)")
-            line.lineDashPattern = NSExpression(forConstantValue: [2, 1.2])
-            let text = MLNSymbolStyleLayer(identifier: "samt-dirt-data-label", source: src)
-            text.predicate = NSPredicate(format: "label != ''")
-            text.text = NSExpression(forKeyPath: "label")
-            text.symbolPlacement = NSExpression(forConstantValue: "line")
-            text.textFontSize = NSExpression(forConstantValue: 12)
-            text.textFontNames = NSExpression(forConstantValue: ["Noto Sans Regular"])
-            text.textColor = NSExpression(forConstantValue: UIColor(red: 0.30, green: 0.15, blue: 0.03, alpha: 1))
-            text.textHaloColor = NSExpression(forConstantValue: UIColor.white)
-            text.textHaloWidth = NSExpression(forConstantValue: 2)
-            text.minimumZoomLevel = 12
-            if let firstSymbol = style.layers.first(where: { $0 is MLNSymbolStyleLayer }) {
-                style.insertLayer(casing, below: firstSymbol)
-                style.insertLayer(line, below: firstSymbol)
-            } else {
-                style.addLayer(casing)
-                style.addLayer(line)
-            }
-            style.addLayer(text)
-        }
-
-        /// خريطة الأمطار المتوقعة: مربعات بلون شدة المطر للساعة المختارة.
-        func applyRain(_ cells: [RainCell], hour: Int, on map: MLNMapView) {
-            guard let style = map.style else { return }
-            let polys: [MLNPolygonFeature] = cells.compactMap { cell in
-                let mm = cell.hourly.indices.contains(hour) ? cell.hourly[hour] : 0
-                let l = RainScale.level(mm)
-                guard l > 0 else { return nil }
-                var coords = cell.corners
-                let f = MLNPolygonFeature(coordinates: &coords, count: UInt(coords.count))
-                f.attributes = ["l": l]
-                return f
-            }
-            let shape = MLNShapeCollectionFeature(shapes: polys)
-            if let src = style.source(withIdentifier: "samt-rain") as? MLNShapeSource {
-                src.shape = shape
-                return
-            }
-            let src = MLNShapeSource(identifier: "samt-rain", shape: shape, options: nil)
-            style.addSource(src)
-            let fill = MLNFillStyleLayer(identifier: "samt-rain-fill", source: src)
-            fill.fillColor = NSExpression(format: "TERNARY(l == 1, %@, TERNARY(l == 2, %@, TERNARY(l == 3, %@, %@)))",
-                                          RainScale.colorsUI[1], RainScale.colorsUI[2], RainScale.colorsUI[3], RainScale.colorsUI[4])
-            fill.fillOpacity = NSExpression(forConstantValue: 0.45)
-            if let firstSymbol = style.layers.first(where: { $0 is MLNSymbolStyleLayer }) {
-                style.insertLayer(fill, below: firstSymbol)
-            } else {
-                style.addLayer(fill)
-            }
-        }
-
-        /// مربعات تغطية الشبكة (تعبئة ملونة حسب الحالة).
-        func applyCoverage(on map: MLNMapView) {
-            guard let style = map.style else { return }
-            let polys: [MLNPolygonFeature] = pendingCoverage.map { cell in
-                var coords = cell.corners
-                let f = MLNPolygonFeature(coordinates: &coords, count: UInt(coords.count))
-                f.attributes = ["level": cell.level.rawValue]
-                return f
-            }
-            let shape = MLNShapeCollectionFeature(shapes: polys)
-            if let src = style.source(withIdentifier: "samt-coverage") as? MLNShapeSource {
-                src.shape = shape
-                return
-            }
-            let src = MLNShapeSource(identifier: "samt-coverage", shape: shape, options: nil)
-            style.addSource(src)
-            let fill = MLNFillStyleLayer(identifier: "samt-coverage-fill", source: src)
-            fill.fillColor = NSExpression(format: "TERNARY(level == 'data', %@, TERNARY(level == 'voice', %@, %@))",
-                                          CoverageLevel.data.uiColor, CoverageLevel.voice.uiColor, CoverageLevel.none.uiColor)
-            fill.fillOpacity = NSExpression(forConstantValue: 0.32)
-            fill.fillOutlineColor = NSExpression(forConstantValue: UIColor.black.withAlphaComponent(0.25))
-            if let firstSymbol = style.layers.first(where: { $0 is MLNSymbolStyleLayer }) {
-                style.insertLayer(fill, below: firstSymbol)
-            } else {
-                style.addLayer(fill)
-            }
-        }
+        func applyDirt(on map: MLNMapView) { MapLibreDataLayers.dirt(pendingDirt, on: map) }
+        func applyRain(_ cells: [RainCell], hour: Int, on map: MLNMapView) { MapLibreDataLayers.rain(cells, hour: hour, on: map) }
+        func applyCoverage(on map: MLNMapView) { MapLibreDataLayers.coverage(pendingCoverage, on: map) }
 
         /// إبراز الطرق الترابية والردميات من بيانات OpenStreetMap (طبقة transportation: class=track أو surface=unpaved).
         nonisolated func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
@@ -216,30 +115,7 @@ struct OfflineMapView: UIViewRepresentable {
                 applyDirt(on: mapView)
                 applyCoverage(on: mapView)
                 applyRain(pendingRain.0, hour: pendingRain.1, on: mapView)
-                guard highlightDirtRoads, style.layer(withIdentifier: "samt-dirt-roads") == nil else { return }
-                let vectorSources = style.sources.compactMap { $0 as? MLNVectorTileSource }
-                guard let source = vectorSources.first(where: { $0.identifier == "openmaptiles" }) ?? vectorSources.first else { return }
-                let casing = MLNLineStyleLayer(identifier: "samt-dirt-roads-casing", source: source)
-                casing.sourceLayerIdentifier = "transportation"
-                casing.predicate = NSPredicate(format: "%K == %@ OR %K == %@", "class", "track", "surface", "unpaved")
-                casing.lineColor = NSExpression(forConstantValue: UIColor.white.withAlphaComponent(0.9))
-                casing.lineWidth = NSExpression(forConstantValue: 5.5)
-                casing.minimumZoomLevel = 9
-                let line = MLNLineStyleLayer(identifier: "samt-dirt-roads", source: source)
-                line.sourceLayerIdentifier = "transportation"
-                line.predicate = casing.predicate
-                line.lineColor = NSExpression(forConstantValue: DirtRoadStyle.confirmedUI)
-                line.lineWidth = NSExpression(forConstantValue: 3)
-                line.lineDashPattern = NSExpression(forConstantValue: [2.2, 1.2])
-                line.minimumZoomLevel = 9
-                // تحت الأسماء: قبل أول طبقة رموز إن وجدت
-                if let firstSymbol = style.layers.first(where: { $0 is MLNSymbolStyleLayer }) {
-                    style.insertLayer(casing, below: firstSymbol)
-                    style.insertLayer(line, below: firstSymbol)
-                } else {
-                    style.addLayer(casing)
-                    style.addLayer(line)
-                }
+                if highlightDirtRoads { MapLibreDataLayers.highlightStyleDirt(on: mapView, visible: true) }
             }
         }
 

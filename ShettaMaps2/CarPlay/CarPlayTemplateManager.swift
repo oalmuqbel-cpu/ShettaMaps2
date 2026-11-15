@@ -7,10 +7,10 @@ import SwiftData
 /// يبني قوالب CarPlay الرسمية (CPMapTemplate وCPListTemplate) ويزامن جلسة الملاحة مع الحالة المشتركة على الهاتف.
 @MainActor
 final class CarPlayTemplateManager: NSObject {
-    private let interfaceController: CPInterfaceController
-    private let mapViewController: CarPlayMapViewController
-    private let mapTemplate = CPMapTemplate()
-    private let env = AppEnvironment.shared
+    let interfaceController: CPInterfaceController
+    let mapViewController: CarPlayMapViewController
+    let mapTemplate = CPMapTemplate()
+    let env = AppEnvironment.shared
 
     private var session: CPNavigationSession?
     private var sessionRevision: Int?
@@ -20,7 +20,14 @@ final class CarPlayTemplateManager: NSObject {
     private var lastWeakAlert = Date.distantPast
     private var arrivedAlertShown = false
     private var barShowsNavigation: Bool?
-    private var cancellables = Set<AnyCancellable>()
+    /// الوجهة المعروضة للمعاينة على الخريطة قبل بدء الملاحة.
+    var previewWaypoint: Waypoint?
+    /// قوائم مفتوحة تُحدَّث في مكانها.
+    weak var layersTemplate: CPListTemplate?
+    weak var regionsTemplate: CPListTemplate?
+    weak var moreTemplate: CPListTemplate?
+    weak var kindsTemplate: CPListTemplate?
+    var cancellables = Set<AnyCancellable>()
 
     init(interfaceController: CPInterfaceController, window: CPWindow) {
         self.interfaceController = interfaceController
@@ -66,17 +73,24 @@ final class CarPlayTemplateManager: NSObject {
         updateBarButtons()
     }
 
-    private func updateBarButtons() {
+    /// أزرار الشريط العلوي: بحد أقصى زران في كل جهة (قيد CarPlay).
+    func updateBarButtons() {
         let destinations = CPBarButton(title: "الوجهات") { [weak self] _ in self?.showDestinations() }
-        let options = CPBarButton(title: "خيارات") { [weak self] _ in self?.showOptions() }
-        mapTemplate.leadingNavigationBarButtons = [destinations]
+        let search = CPBarButton(title: "بحث") { [weak self] _ in self?.showSearch() }
+        let layers = CPBarButton(title: "الطبقات") { [weak self] _ in self?.showLayers() }
+        let more = CPBarButton(title: "المزيد") { [weak self] _ in self?.showMore() }
 
-        if env.navigation.snapshot.isNavigating {
+        if previewWaypoint != nil {
+            let cancel = CPBarButton(title: "إلغاء") { [weak self] _ in self?.cancelPreview() }
+            mapTemplate.leadingNavigationBarButtons = [destinations, search]
+            mapTemplate.trailingNavigationBarButtons = [cancel]
+        } else if env.navigation.snapshot.isNavigating {
             let end = CPBarButton(title: "إنهاء") { [weak self] _ in self?.confirmEndNavigation() }
-            let overview = CPBarButton(title: "المسار") { [weak self] _ in self?.mapViewController.showWholeRoute() }
-            mapTemplate.trailingNavigationBarButtons = [end, overview]
+            mapTemplate.leadingNavigationBarButtons = [destinations, layers]
+            mapTemplate.trailingNavigationBarButtons = [end, more]
         } else {
-            mapTemplate.trailingNavigationBarButtons = [options]
+            mapTemplate.leadingNavigationBarButtons = [destinations, search]
+            mapTemplate.trailingNavigationBarButtons = [layers, more]
         }
     }
 
@@ -92,9 +106,25 @@ final class CarPlayTemplateManager: NSObject {
             .throttle(for: .seconds(15), scheduler: RunLoop.main, latest: true)
             .sink { [weak self] _ in self?.checkGPSQuality() }
             .store(in: &cancellables)
+
+        // تقدم تنزيل الخرائط يظهر مباشرة في القوائم المفتوحة
+        env.offlineMaps.$regions
+            .throttle(for: .seconds(2), scheduler: RunLoop.main, latest: true)
+            .sink { [weak self] _ in
+                self?.reloadRegions()
+                self?.reloadLayers()
+            }
+            .store(in: &cancellables)
     }
 
     private func sync(_ snap: NavigationSnapshot) {
+        // بدأت ملاحة (من الهاتف مثلًا) أثناء معاينة وجهة: تُلغى المعاينة
+        if snap.isNavigating, previewWaypoint != nil {
+            mapTemplate.hideTripPreviews()
+            previewWaypoint = nil
+            mapViewController.showPreview(nil)
+            barShowsNavigation = nil
+        }
         if barShowsNavigation != snap.isNavigating {
             barShowsNavigation = snap.isNavigating
             updateBarButtons()
@@ -183,7 +213,7 @@ final class CarPlayTemplateManager: NSObject {
         }
     }
 
-    private func makeTrip(_ plan: NavigationPlan) -> CPTrip {
+    func makeTrip(_ plan: NavigationPlan) -> CPTrip {
         let originCoord = env.location.location?.coordinate ?? plan.origin?.coordinate ?? plan.destination.coordinate
         let origin = MKMapItem(placemark: MKPlacemark(coordinate: originCoord))
         origin.name = "موقعي"
@@ -246,7 +276,7 @@ final class CarPlayTemplateManager: NSObject {
                      duration: 8)
     }
 
-    private func presentAlert(title: String, subtitle: String, duration: TimeInterval) {
+    func presentAlert(title: String, subtitle: String, duration: TimeInterval) {
         guard mapTemplate.currentNavigationAlert == nil else { return }
         let ok = CPAlertAction(title: "حسنًا", style: .default) { _ in }
         let alert = CPNavigationAlert(titleVariants: [title], subtitleVariants: [subtitle], image: nil,
@@ -261,7 +291,7 @@ final class CarPlayTemplateManager: NSObject {
         presentAlert(title: "دقة GPS ضعيفة", subtitle: "قد تكون المسافة والاتجاه غير دقيقة حاليًا.", duration: 6)
     }
 
-    private func confirmEndNavigation() {
+    func confirmEndNavigation() {
         let end = CPAlertAction(title: "إنهاء الملاحة", style: .destructive) { [weak self] _ in
             self?.env.navigation.stop()
             self?.interfaceController.dismissTemplate(animated: true, completion: nil)
@@ -273,151 +303,6 @@ final class CarPlayTemplateManager: NSObject {
                                             animated: true, completion: nil)
     }
 
-    // MARK: - القوائم
-
-    private func showDestinations() {
-        let ctx = env.container.mainContext
-        let places = (try? ctx.fetch(FetchDescriptor<SavedPlace>())) ?? []
-        let here = env.location.location?.coordinate
-        let limit = max(4, CPListTemplate.maximumItemCount - 6)
-
-        var sections: [CPListSection] = []
-
-        // الرحلة النشطة
-        var tripItems: [CPListItem] = []
-        if let trip = env.trips.activeTrip {
-            if let start = trip.startCoordinate {
-                let item = CPListItem(text: "العودة إلى نقطة البداية",
-                                      detailText: here.map { Fmt.distance(GeoMath.distance($0, start)) },
-                                      image: UIImage(systemName: "arrow.uturn.backward.circle"))
-                item.handler = { [weak self] _, done in
-                    self?.env.trips.returnToStart(of: trip)
-                    self?.interfaceController.popToRootTemplate(animated: true, completion: nil)
-                    done()
-                }
-                tripItems.append(item)
-            }
-            if !trip.stops.isEmpty || trip.destination != nil {
-                let item = CPListItem(text: "الملاحة عبر نقاط التوقف", detailText: "\(trip.stops.count) توقف",
-                                      image: UIImage(systemName: "point.3.connected.trianglepath.dotted"))
-                item.handler = { [weak self] _, done in
-                    self?.env.trips.navigateTrip(trip)
-                    self?.interfaceController.popToRootTemplate(animated: true, completion: nil)
-                    done()
-                }
-                tripItems.append(item)
-            }
-        }
-        if !tripItems.isEmpty { sections.append(CPListSection(items: tripItems, header: "الرحلة النشطة", sectionIndexTitle: nil)) }
-
-        let favorites = places.filter(\.isFavorite)
-        if !favorites.isEmpty {
-            sections.append(CPListSection(items: Array(sortByDistance(favorites, here).prefix(6)).map { listItem(for: $0, here: here) },
-                                          header: "المفضلة", sectionIndexTitle: nil))
-        }
-        let others = places.filter { !$0.isFavorite }
-        if !others.isEmpty {
-            sections.append(CPListSection(items: Array(sortByDistance(others, here).prefix(limit)).map { listItem(for: $0, here: here) },
-                                          header: "الأقرب من المواقع المحفوظة", sectionIndexTitle: nil))
-        }
-        if sections.isEmpty {
-            let empty = CPListItem(text: "لا توجد مواقع محفوظة", detailText: "احفظ المواقع من الهاتف لتظهر هنا")
-            sections.append(CPListSection(items: [empty]))
-        }
-
-        let list = CPListTemplate(title: "الوجهات", sections: sections)
-        list.emptyViewTitleVariants = ["لا توجد وجهات"]
-        interfaceController.pushTemplate(list, animated: true, completion: nil)
-    }
-
-    private func sortByDistance(_ list: [SavedPlace], _ here: CLLocationCoordinate2D?) -> [SavedPlace] {
-        guard let here else { return list.sorted { $0.name < $1.name } }
-        return list.sorted { GeoMath.distance(here, $0.coordinate) < GeoMath.distance(here, $1.coordinate) }
-    }
-
-    private func listItem(for place: SavedPlace, here: CLLocationCoordinate2D?) -> CPListItem {
-        let detail = here.map { "\(Fmt.distance(GeoMath.distance($0, place.coordinate))) · \(GeoMath.cardinalName(GeoMath.bearing(from: $0, to: place.coordinate)))" }
-        let item = CPListItem(text: place.name, detailText: detail ?? place.category?.name,
-                              image: UIImage(systemName: place.category?.iconName ?? "mappin"))
-        let waypoint = place.asWaypoint
-        item.handler = { [weak self] _, done in
-            self?.env.navigation.navigate(to: waypoint)
-            self?.interfaceController.popToRootTemplate(animated: true, completion: nil)
-            done()
-        }
-        return item
-    }
-
-    private func showOptions() {
-        var items: [CPListItem] = []
-
-        if let loc = env.location.location {
-            let info = CPListItem(text: "موقعي الحالي",
-                                  detailText: "\(CoordinateUtilities.shareString(loc.coordinate)) · \(Fmt.accuracy(loc.horizontalAccuracy))",
-                                  image: UIImage(systemName: "location"))
-            items.append(info)
-
-            let save = CPListItem(text: "حفظ الموقع الحالي", detailText: "يُحفظ باسم تلقائي ويمكن تعديله من الهاتف",
-                                  image: UIImage(systemName: "mappin.and.ellipse"))
-            save.handler = { [weak self] _, done in
-                self?.quickSave(loc)
-                done()
-            }
-            items.append(save)
-        }
-
-        let rec = env.recorder
-        let recordItem = CPListItem(text: rec.isActive ? "إنهاء تسجيل المسار" : "بدء تسجيل المسار",
-                                    detailText: rec.isActive ? "\(Fmt.distance(rec.distance)) · \(Fmt.duration(rec.elapsed))" : nil,
-                                    image: UIImage(systemName: rec.isActive ? "stop.circle" : "record.circle"))
-        recordItem.handler = { [weak self] _, done in
-            guard let self else { done(); return }
-            if self.env.recorder.isActive { self.env.recorder.finish() } else { self.env.recorder.start(trip: self.env.trips.activeTrip) }
-            self.interfaceController.popToRootTemplate(animated: true, completion: nil)
-            done()
-        }
-        items.append(recordItem)
-
-        for engine in [CarPlayMapEngine.mapKitStandard, .mapKitSatellite, .offline] {
-            let selected = mapViewController.engine == engine
-            let item = CPListItem(text: engine.title, detailText: engineDetail(engine),
-                                  image: UIImage(systemName: selected ? "checkmark.circle.fill" : "circle"))
-            item.handler = { [weak self] _, done in
-                self?.mapViewController.setEngine(engine)
-                self?.interfaceController.popToRootTemplate(animated: true, completion: nil)
-                done()
-            }
-            items.append(item)
-        }
-
-        let list = CPListTemplate(title: "خيارات", sections: [
-            CPListSection(items: Array(items.prefix(3)), header: "الموقع والتسجيل", sectionIndexTitle: nil),
-            CPListSection(items: Array(items.dropFirst(3)), header: "نوع الخريطة", sectionIndexTitle: nil)
-        ])
-        interfaceController.pushTemplate(list, animated: true, completion: nil)
-    }
-
-    private func engineDetail(_ e: CarPlayMapEngine) -> String {
-        switch e {
-        case .mapKitStandard, .mapKitSatellite: return env.network.isOnline ? "يتطلب الإنترنت" : "غير متاح حاليًا: لا يوجد اتصال"
-        case .offline:
-            if let c = env.location.location?.coordinate {
-                return env.offlineMaps.hasOfflineCoverage(at: c) ? "خريطة محملة لهذه المنطقة" : "لا توجد خريطة محملة لهذه المنطقة"
-            }
-            return "الخرائط المحملة مسبقًا"
-        }
-    }
-
-    private func quickSave(_ loc: CLLocation) {
-        let ctx = env.container.mainContext
-        let place = SavedPlace(name: "موقع من السيارة \(Fmt.dateTime.string(from: Date()))", coordinate: loc.coordinate,
-                               altitude: loc.verticalAccuracy >= 0 ? loc.altitude : nil, horizontalAccuracy: loc.horizontalAccuracy)
-        ctx.insert(place)
-        try? ctx.save()
-        mapViewController.refreshOverlays(force: true)
-        interfaceController.popToRootTemplate(animated: true, completion: nil)
-        presentAlert(title: "تم حفظ الموقع", subtitle: CoordinateUtilities.shareString(loc.coordinate), duration: 4)
-    }
 }
 
 // MARK: - CPMapTemplateDelegate
@@ -426,6 +311,17 @@ extension CarPlayTemplateManager: CPMapTemplateDelegate {
     nonisolated func mapTemplate(_ mapTemplate: CPMapTemplate, panWith direction: CPMapTemplate.PanDirection) {
         MainActor.assumeIsolated { mapViewController.pan(direction) }
     }
+
+    // السحب باللمس على شاشات السيارات التي تدعمه
+    nonisolated func mapTemplateDidBeginPanGesture(_ mapTemplate: CPMapTemplate) {
+        MainActor.assumeIsolated { mapViewController.beginPan() }
+    }
+
+    nonisolated func mapTemplate(_ mapTemplate: CPMapTemplate, didUpdatePanGestureWithTranslation translation: CGPoint, velocity: CGPoint) {
+        MainActor.assumeIsolated { mapViewController.updatePan(translation) }
+    }
+
+    nonisolated func mapTemplate(_ mapTemplate: CPMapTemplate, didEndPanGestureWithVelocity velocity: CGPoint) {}
 
     nonisolated func mapTemplateDidDismissPanningInterface(_ mapTemplate: CPMapTemplate) {}
 
@@ -440,7 +336,11 @@ extension CarPlayTemplateManager: CPMapTemplateDelegate {
         MainActor.assumeIsolated {
             mapTemplate.hideTripPreviews()
             let c = trip.destination.placemark.coordinate
-            env.navigation.navigate(to: Waypoint(name: trip.destination.name ?? "الوجهة", coordinate: c))
+            let w = previewWaypoint ?? Waypoint(name: trip.destination.name ?? "الوجهة", coordinate: c)
+            previewWaypoint = nil
+            mapViewController.showPreview(nil)
+            env.navigation.navigate(to: w)
+            updateBarButtons()
         }
     }
 }
