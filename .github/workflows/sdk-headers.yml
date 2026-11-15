@@ -14,7 +14,7 @@ jobs:
           X=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1); sudo xcode-select -s "$X"
           SDK=$(xcrun --sdk iphoneos --show-sdk-path); echo $SDK
           H=$SDK/System/Library/Frameworks/CarPlay.framework/Headers
-          sed -n 315,400p $H/CPMapTemplate.h
+          sed -n 270,340p $H/CPMapTemplate.h; grep -n "panGesture\|PanGesture\|translation\|velocity" $H/CPMapTemplate.h
           echo ---- IC
           sed -n 20,80p $H/CPInstrumentClusterController.h
           echo ---- ENUM
