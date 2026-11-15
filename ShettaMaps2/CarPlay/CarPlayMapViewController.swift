@@ -390,7 +390,7 @@ final class CarPlayMapViewController: UIViewController {
         var pins: [MapOverlaySet.Pin] = []
         if CarPlaySettings.showLandmarks, span < 2.5 {
             pins += SearchService.shared.entries(sw: sw, ne: ne, limit: span < 0.4 ? 60 : 30, kinds: CarPlaySettings.landmarkKinds).map {
-                .init(id: "g-\($0.id)", title: $0.name, subtitle: $0.kind.title,
+                .init(id: "g-\($0.id)", title: $0.name, subtitle: [$0.kind.title, $0.region].compactMap { $0 }.joined(separator: " · "),
                       coordinate: .init(latitude: $0.lat, longitude: $0.lon), kind: .landmark, symbol: $0.kind.icon)
             }
         }

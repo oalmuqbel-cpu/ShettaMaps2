@@ -100,7 +100,7 @@ struct MapScreen: View {
               r.span.latitudeDelta < (filtered ? 8 : 3) else { return [] }
         return search.entries(sw: b.sw, ne: b.ne, limit: r.span.latitudeDelta < 0.5 ? 150 : 70,
                               kinds: kinds, nameFilter: nameFilter).map {
-            .init(id: "g-\($0.id)", title: $0.name, subtitle: $0.kind.title, coordinate: .init(latitude: $0.lat, longitude: $0.lon),
+            .init(id: "g-\($0.id)", title: $0.name, subtitle: [$0.kind.title, $0.region].compactMap { $0 }.joined(separator: " · "), coordinate: .init(latitude: $0.lat, longitude: $0.lon),
                   kind: .landmark, symbol: $0.kind.icon)
         }
     }

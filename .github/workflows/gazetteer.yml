@@ -17,16 +17,20 @@ jobs:
             sed "s/__CC__/$CC/" ci/overpass_query.txt > q.txt
             for attempt in 1 2 3; do
               if curl -sS --fail -A "Samt-gazetteer-builder/1.0 (github.com/oalmuqbel-cpu)" \
-                   --data-urlencode "data@q.txt" https://overpass-api.de/api/interpreter -o "osm/$CC.json"; then
+                   --max-time 1200 --data-urlencode "data@q.txt" https://overpass-api.de/api/interpreter -o "osm/$CC.json" \
+                 && python3 -c "import json;json.load(open('osm/$CC.json'))['elements']" 2>/dev/null; then
                 echo "$CC: $(python3 -c "import json;print(len(json.load(open('osm/$CC.json'))['elements']))") elements"; break
               fi
-              echo "retry $CC"; sleep 60
+              rm -f "osm/$CC.json"; echo "retry $CC"; sleep 120
             done
             sleep 20
           done
       - name: Build GeoJSON
         run: |
+          # حماية: لا نستبدل القاعدة إن فشل تنزيل أي دولة
+          for CC in SA AE KW QA BH OM; do test -s "osm/$CC.json" || { echo "::error::missing $CC"; exit 1; }; done
           python3 tools/build_gazetteer.py osm/*.json ShettaMaps2/Resources/gazetteer.geojson
+          python3 -c "import json,sys; n=len(json.load(open('ShettaMaps2/Resources/gazetteer.geojson'))['features']); print(n); sys.exit(0 if n > 20000 else 1)"
           ls -la ShettaMaps2/Resources/gazetteer.geojson
           python3 -c "
           import json,collections
