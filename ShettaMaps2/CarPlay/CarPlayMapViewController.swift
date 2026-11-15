@@ -313,6 +313,7 @@ final class CarPlayMapViewController: UIViewController {
     // MARK: - العناصر فوق الخريطة
 
     func refreshOverlays(force: Bool) {
+        if gestureActive && !force { return }
         if Date().timeIntervalSince(lastPlacesFetch) > 20 || force {
             let descriptor = FetchDescriptor<SavedPlace>(sortBy: [SortDescriptor(\.name)])
             places = (try? env.container.mainContext.fetch(descriptor)) ?? []
@@ -352,7 +353,7 @@ final class CarPlayMapViewController: UIViewController {
          .init(latitude: r.center.latitude + r.span.latitudeDelta / 2, longitude: r.center.longitude + r.span.longitudeDelta / 2))
     }
 
-    private func regionChanged() { scheduleDataRefresh(force: false) }
+    private func regionChanged() { if !gestureActive { scheduleDataRefresh(force: false) } }
 
     private func scheduleDataRefresh(force: Bool) {
         guard role == .main else { return }
@@ -497,29 +498,109 @@ final class CarPlayMapViewController: UIViewController {
         if let loc = env.location.location { locationChanged(loc) }
     }
 
+    // MARK: - اللمس (سحب، قرص، أزرار الاتجاهات)
+    //
+    // مبادئ مثل خرائط Google وWaze: الخريطة تتبع الإصبع تمامًا، إيماءة واحدة في كل مرة،
+    // انزلاق خفيف بعد رفع الإصبع، ولا تحديثات ثقيلة أثناء اللمس، وعودة تلقائية للتتبع أثناء الملاحة.
+
+    /// إيماءة جارية: لا نعيد رسم الطبقات أثناءها حتى تبقى الحركة سلسة.
+    private(set) var gestureActive = false
+    private var zoomActive = false
+    private var zoomBase: Double = 0
+    private var arrowTimer: Timer?
+    private var recenterWork: DispatchWorkItem?
+
+    private func gestureBegan() {
+        gestureActive = true
+        recenterWork?.cancel()
+        stopFollowing()
+    }
+
+    private func gestureEnded() {
+        gestureActive = false
+        refreshOverlays(force: false)
+        scheduleDataRefresh(force: false)
+        scheduleAutoRecenter()
+    }
+
+    /// أثناء الملاحة: العودة لتتبع السيارة بعد ١٥ ثانية دون لمس (مثل Waze).
+    private func scheduleAutoRecenter() {
+        recenterWork?.cancel()
+        guard env.navigation.snapshot.isNavigating, previewCoordinate == nil else { return }
+        let work = DispatchWorkItem { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, !self.gestureActive, !self.isFollowing, self.env.navigation.snapshot.isNavigating else { return }
+                self.recenter()
+            }
+        }
+        recenterWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15, execute: work)
+    }
+
     /// بداية سحب الخريطة باللمس على شاشة السيارة.
     func beginPan() {
         lastPan = .zero
-        stopFollowing()
+        gestureBegan()
     }
 
-    /// السحب باللمس: translation تراكمي منذ بداية السحب.
+    /// السحب باللمس: translation تراكمي منذ بداية السحب (نطبق الفرق فقط فتتبع الخريطة الإصبع).
     func updatePan(_ translation: CGPoint) {
-        let dx = translation.x - lastPan.x, dy = translation.y - lastPan.y
+        if !gestureActive { beginPan() }
+        // أثناء القرص بإصبعين لا نحرك الخريطة بالسحب حتى لا تتداخل الحركتان
+        guard !zoomActive else { lastPan = translation; return }
+        var dx = translation.x - lastPan.x, dy = translation.y - lastPan.y
         lastPan = translation
+        // حماية من القفزات (قراءة شاذة أو بداية سحب جديدة دون إشعار)
+        let maxStep = max(view.bounds.width, view.bounds.height) * 0.25
+        dx = max(-maxStep, min(maxStep, dx)); dy = max(-maxStep, min(maxStep, dy))
         move(by: CGPoint(x: dx, y: dy), animated: false)
     }
 
-    /// تحريك الخريطة بأزرار الاتجاهات (إلزامي في تطبيقات الملاحة على CarPlay).
+    /// نهاية السحب: انزلاق قصير بحسب سرعة الإصبع ثم توقف.
+    func endPan(velocity: CGPoint) {
+        let speed = hypot(velocity.x, velocity.y)
+        if speed > 250, !zoomActive {
+            let limit = min(view.bounds.width, view.bounds.height) * 0.35
+            let f = min(0.18, limit / speed)
+            move(by: CGPoint(x: velocity.x * f, y: velocity.y * f), animated: true)
+        }
+        gestureEnded()
+    }
+
+    /// زر اتجاه ضغطة قصيرة: خطوة ثابتة.
     func pan(_ direction: CPMapTemplate.PanDirection) {
         stopFollowing()
-        let w = view.bounds.width * 0.3, h = view.bounds.height * 0.3
+        move(by: arrowStep(direction, fraction: 0.3), animated: true)
+        scheduleAutoRecenter()
+    }
+
+    /// زر اتجاه مضغوط باستمرار: حركة متواصلة حتى رفع الإصبع.
+    func beginContinuousPan(_ direction: CPMapTemplate.PanDirection) {
+        stopFollowing()
+        arrowTimer?.invalidate()
+        arrowTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.move(by: self.arrowStep(direction, fraction: 0.02), animated: false)
+            }
+        }
+    }
+
+    func endContinuousPan() {
+        arrowTimer?.invalidate()
+        arrowTimer = nil
+        scheduleDataRefresh(force: false)
+        scheduleAutoRecenter()
+    }
+
+    private func arrowStep(_ direction: CPMapTemplate.PanDirection, fraction: CGFloat) -> CGPoint {
+        let w = view.bounds.width * fraction, h = view.bounds.height * fraction
         var t = CGPoint.zero
         if direction.contains(.left) { t.x = w }
         if direction.contains(.right) { t.x = -w }
         if direction.contains(.up) { t.y = h }
         if direction.contains(.down) { t.y = -h }
-        move(by: t, animated: true)
+        return t
     }
 
     /// يحرك محتوى الخريطة بمقدار نقاط على الشاشة (كأن الإصبع سحبها).
@@ -538,43 +619,32 @@ final class CarPlayMapViewController: UIViewController {
         if let m = libreView, m.userTrackingMode != .none { m.userTrackingMode = .none }
     }
 
-    private var zoomBase: Double = 0
-    private var rotationBase: Double = 0
-
+    /// بداية القرص بإصبعين.
     func beginZoom() {
-        stopFollowing()
+        gestureBegan()
+        zoomActive = true
         if let m = mapKitView { zoomBase = m.camera.centerCoordinateDistance }
         if let m = libreView { zoomBase = m.zoomLevel }
     }
 
-    /// scale تراكمي منذ بداية القرص (أكبر من ١ = تكبير).
+    /// scale تراكمي منذ بداية القرص (أكبر من ١ = تكبير، أصغر = تصغير)، مثل قرص الجوال.
     func updateZoom(scale: CGFloat) {
-        guard scale > 0, zoomBase > 0 else { return }
+        guard scale.isFinite, scale > 0.05 else { return }
+        // بعض الأنظمة ترسل التحديث دون إشعار البداية (مثل النقر المزدوج بإصبعين للتصغير)
+        if !zoomActive { beginZoom() }
+        let s = Double(min(max(scale, 0.05), 20))
         if let m = mapKitView {
             let cam = m.camera.copy() as! MKMapCamera
-            cam.centerCoordinateDistance = min(max(zoomBase / Double(scale), 200), 20_000_000)
+            cam.centerCoordinateDistance = min(max(zoomBase / s, 200), 20_000_000)
             m.setCamera(cam, animated: false)
         } else if let m = libreView {
-            m.setZoomLevel(zoomBase + log2(Double(scale)), animated: false)
+            m.setZoomLevel(min(max(zoomBase + log2(s), m.minimumZoomLevel), m.maximumZoomLevel), animated: false)
         }
     }
 
-    func beginRotation() {
-        stopFollowing()
-        if let m = mapKitView { rotationBase = m.camera.heading }
-        if let m = libreView { rotationBase = m.direction }
-    }
-
-    /// rotation تراكمي بالراديان (موجب = مع عقارب الساعة).
-    func updateRotation(radians: CGFloat) {
-        let heading = (rotationBase - Double(radians) * 180 / .pi + 360).truncatingRemainder(dividingBy: 360)
-        if let m = mapKitView {
-            let cam = m.camera.copy() as! MKMapCamera
-            cam.heading = heading
-            m.setCamera(cam, animated: false)
-        } else if let m = libreView {
-            m.setDirection(heading, animated: false)
-        }
+    func endZoom() {
+        zoomActive = false
+        gestureEnded()
     }
 
     /// عرض الوجهة قبل بدء الملاحة (مع موقعي)، أو إلغاء المعاينة بـ nil.

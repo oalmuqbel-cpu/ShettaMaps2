@@ -380,9 +380,21 @@ extension CarPlayTemplateManager: CPMapTemplateDelegate {
         MainActor.assumeIsolated { mapViewController.updatePan(translation) }
     }
 
-    nonisolated func mapTemplate(_ mapTemplate: CPMapTemplate, didEndPanGestureWithVelocity velocity: CGPoint) {}
+    nonisolated func mapTemplate(_ mapTemplate: CPMapTemplate, didEndPanGestureWithVelocity velocity: CGPoint) {
+        MainActor.assumeIsolated { mapViewController.endPan(velocity: velocity) }
+    }
 
-    // التكبير والتدوير باللمس (iOS 26 وما بعده، في السيارات التي تدعمه)
+    // الضغط المستمر على أسهم التحريك
+    nonisolated func mapTemplate(_ mapTemplate: CPMapTemplate, panBeganWith direction: CPMapTemplate.PanDirection) {
+        MainActor.assumeIsolated { mapViewController.beginContinuousPan(direction) }
+    }
+
+    nonisolated func mapTemplate(_ mapTemplate: CPMapTemplate, panEndedWith direction: CPMapTemplate.PanDirection) {
+        MainActor.assumeIsolated { mapViewController.endContinuousPan() }
+    }
+
+    // التكبير والتصغير بإصبعين (iOS 26 وما بعده، في السيارات التي تدعم اللمس المتعدد).
+    // التدوير بإصبعين غير مفعّل عمدًا: يربك السائق، والخريطة تدور مع اتجاه السير تلقائيًا.
     @available(iOS 26.0, *)
     nonisolated func mapTemplateDidBeginZoomGesture(_ mapTemplate: CPMapTemplate) {
         MainActor.assumeIsolated { mapViewController.beginZoom() }
@@ -394,16 +406,8 @@ extension CarPlayTemplateManager: CPMapTemplateDelegate {
     }
 
     @available(iOS 26.0, *)
-    nonisolated func mapTemplate(_ mapTemplate: CPMapTemplate, didEndZoomGestureWithVelocity velocity: CGFloat) {}
-
-    @available(iOS 26.0, *)
-    nonisolated func mapTemplateDidBeginRotationGesture(_ mapTemplate: CPMapTemplate) {
-        MainActor.assumeIsolated { mapViewController.beginRotation() }
-    }
-
-    @available(iOS 26.0, *)
-    nonisolated func mapTemplate(_ mapTemplate: CPMapTemplate, didRotateWithCenter center: CGPoint, rotation: CGFloat, velocity: CGFloat) {
-        MainActor.assumeIsolated { mapViewController.updateRotation(radians: rotation) }
+    nonisolated func mapTemplate(_ mapTemplate: CPMapTemplate, didEndZoomGestureWithVelocity velocity: CGFloat) {
+        MainActor.assumeIsolated { mapViewController.endZoom() }
     }
 
     nonisolated func mapTemplateDidDismissPanningInterface(_ mapTemplate: CPMapTemplate) {}
