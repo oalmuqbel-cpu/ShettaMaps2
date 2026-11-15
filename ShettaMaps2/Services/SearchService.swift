@@ -4,7 +4,7 @@ import SwiftData
 
 /// تصنيفات البحث الصحراوي.
 enum PlaceKind: String, CaseIterable, Identifiable, Codable {
-    case all, mountain, valley, rawdah, shaib, camp, water, cave, fuel, landmark, saved
+    case all, mountain, valley, rawdah, nafud, shaib, camp, water, cave, fuel, landmark, saved
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -12,6 +12,7 @@ enum PlaceKind: String, CaseIterable, Identifiable, Codable {
         case .mountain: return "جبال"
         case .valley: return "أودية"
         case .rawdah: return "فياض وروضات"
+        case .nafud: return "نفود وعروق ورمال"
         case .shaib: return "شعبان"
         case .camp: return "مخيمات ومواقع برية"
         case .water: return "مياه وآبار"
@@ -27,6 +28,7 @@ enum PlaceKind: String, CaseIterable, Identifiable, Codable {
         case .mountain: return "mountain.2"
         case .valley: return "water.waves"
         case .rawdah: return "leaf"
+        case .nafud: return "sun.dust"
         case .shaib: return "point.topleft.down.to.point.bottomright.curvepath"
         case .camp: return "tent"
         case .water: return "drop"
@@ -38,7 +40,7 @@ enum PlaceKind: String, CaseIterable, Identifiable, Codable {
     }
 
     /// أنواع الأماكن المعروفة التي تظهر أسماؤها على الخريطة (للفلترة).
-    static let mapKinds: [PlaceKind] = [.rawdah, .mountain, .valley, .shaib, .water, .cave, .fuel, .camp, .landmark]
+    static let mapKinds: [PlaceKind] = [.rawdah, .nafud, .mountain, .valley, .shaib, .water, .cave, .fuel, .camp, .landmark]
 
     /// يحوّل قيمة الفلتر المحفوظة ("rawdah,valley") إلى مجموعة؛ الفارغة تعني الكل.
     static func decodeSet(_ raw: String) -> Set<PlaceKind> {
@@ -246,7 +248,7 @@ final class SearchService: ObservableObject {
     /// kinds الفارغة تعني كل الأنواع، و nameFilter يطابق الاسم أو الأسماء البديلة بعد التطبيع.
     func entries(sw: CLLocationCoordinate2D, ne: CLLocationCoordinate2D, limit: Int = 120,
                  kinds: Set<PlaceKind> = [], nameFilter: String = "") -> [GazetteerEntry] {
-        let priority: [PlaceKind: Int] = [.rawdah: 0, .valley: 1, .mountain: 2, .cave: 3, .camp: 4, .water: 5, .fuel: 6, .shaib: 7, .landmark: 8]
+        let priority: [PlaceKind: Int] = [.nafud: 0, .rawdah: 0, .valley: 1, .mountain: 2, .cave: 3, .camp: 4, .water: 5, .fuel: 6, .shaib: 7, .landmark: 8]
         let key = Self.searchKey(nameFilter)
         var found: [GazetteerEntry] = []
         for item in normalizedIndex {
@@ -255,10 +257,22 @@ final class SearchService: ObservableObject {
                   kinds.isEmpty || kinds.contains(e.kind),
                   key.isEmpty || item.keys.contains(where: { $0.contains(key) }) else { continue }
             found.append(e)
-            if found.count > limit * 6 { break }
+            if found.count > limit * 6, kinds != [.nafud] { break }
         }
-        found.sort { (priority[$0.kind] ?? 9) < (priority[$1.kind] ?? 9) }
+        // النفود والعروق الكبرى (الدهناء، النفود الكبير...) قبل الطعوس والكثبان الصغيرة
+        func rank(_ e: GazetteerEntry) -> Int {
+            let base = (priority[e.kind] ?? 9) * 2
+            return e.kind == .nafud && !Self.isMajorSand(e.name) ? base + 1 : base
+        }
+        found.sort { rank($0) < rank($1) }
         return Array(found.prefix(limit))
+    }
+
+    /// أسماء المناطق الرملية الكبرى.
+    nonisolated static func isMajorSand(_ name: String) -> Bool {
+        let n = normalizeArabic(name)
+        return ["نفود", "النفود", "عروق", "العروق", "الدهناء", "الربع الخالي", "الجافوره", "رمله", "رمال", "الرمال"]
+            .contains { n == $0 || n.hasPrefix($0 + " ") }
     }
 
     /// أقرب أماكن من نوع معيّن (مثل محطات الوقود) لموقعك، دون إنترنت.

@@ -11,10 +11,17 @@
   2) python3 tools/build_gazetteer.py osm.json gazetteer.geojson
   3) استورد gazetteer.geojson من شاشة البحث في التطبيق، أو ضعه مكان الملف المضمن في Resources.
 """
-import json, sys
+import json, os, sys
+
+SAND_WORDS = ("نفود", "النفود", "نفد", "عرق", "عروق", "العرق", "العروق", "عريق", "العريق", "رملة", "رمله", "الرملة", "رمال",
+              "الرمال", "الدهناء", "دهناء", "الربع الخالي", "الجافورة", "كثيب", "الكثيب", "كثبان", "طعس", "طعوس", "الطعوس",
+              "طعيس", "نقا", "النقا", "نقيان", "برقة", "زبارة", "زبارات", "زبائر", "نازية", "نوازي", "خيط", "خيوط", "قوز",
+              "قيزان", "جرعاء", "حمرور", "دكاكة", "جذماء", "خرفية")
 
 def kind_for(tags: dict, name: str) -> str:
     n = name.strip()
+    if tags.get("natural") in ("sand", "dune", "desert") or any(n == w or n.startswith(w + " ") for w in SAND_WORDS):
+        return "nafud"
     if tags.get("natural") == "cave_entrance" or n.startswith(("غار ", "الغار", "كهف")):
         return "cave"
     if tags.get("amenity") == "fuel":
@@ -82,7 +89,11 @@ def main(srcs, dst):
         if alts: props["alt_names"] = alts[:3]
         features.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": [round(lon, 5), round(lat, 5)]},
                          "properties": props})
-    json.dump({"type": "FeatureCollection", "attribution": "© OpenStreetMap contributors", "license": "ODbL",
+    # أسماء النفود والعروق الإضافية (GeoNames CC BY 4.0، ويكي بيانات CC0) التي جمعتها tools/nafud/build_nafud.py
+    extra = os.path.join(os.path.dirname(__file__), "nafud", "nafud-extra.geojson")
+    if os.path.exists(extra):
+        features += json.load(open(extra, encoding="utf-8"))["features"]
+    json.dump({"type": "FeatureCollection", "attribution": "© OpenStreetMap contributors; GeoNames (CC BY 4.0); Wikidata (CC0)", "license": "ODbL",
                "features": features}, open(dst, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
     print(f"تم إنشاء {len(features)} مكان في {dst}")
 

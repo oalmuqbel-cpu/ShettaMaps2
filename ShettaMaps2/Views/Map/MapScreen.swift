@@ -96,8 +96,15 @@ struct MapScreen: View {
         let kinds = PlaceKind.decodeSet(landmarkKindsRaw)
         let filtered = !kinds.isEmpty || !nameFilter.isEmpty
         // عند الفلترة تقل الأسماء، فيُسمح بعرضها على مساحة أوسع
-        guard showLandmarks, let b = mapManager.visibleBounds, let r = mapManager.visibleRegion,
-              r.span.latitudeDelta < (filtered ? 8 : 3) else { return [] }
+        guard showLandmarks, let b = mapManager.visibleBounds, let r = mapManager.visibleRegion else { return [] }
+        // النفود والعروق مناطق واسعة: أسماؤها تظهر من مسافة أبعد من بقية الأماكن
+        if r.span.latitudeDelta >= (filtered ? 8 : 3) {
+            guard r.span.latitudeDelta < 12, kinds.isEmpty || kinds.contains(.nafud) else { return [] }
+            return search.entries(sw: b.sw, ne: b.ne, limit: 40, kinds: [.nafud], nameFilter: nameFilter).map {
+                .init(id: "g-\($0.id)", title: $0.name, subtitle: $0.kind.title, coordinate: .init(latitude: $0.lat, longitude: $0.lon),
+                      kind: .landmark, symbol: $0.kind.icon)
+            }
+        }
         return search.entries(sw: b.sw, ne: b.ne, limit: r.span.latitudeDelta < 0.5 ? 150 : 70,
                               kinds: kinds, nameFilter: nameFilter).map {
             .init(id: "g-\($0.id)", title: $0.name, subtitle: [$0.kind.title, $0.region].compactMap { $0 }.joined(separator: " · "), coordinate: .init(latitude: $0.lat, longitude: $0.lon),

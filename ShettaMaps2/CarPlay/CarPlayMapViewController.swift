@@ -388,6 +388,14 @@ final class CarPlayMapViewController: UIViewController {
         let online = env.network.isOnline
 
         var pins: [MapOverlaySet.Pin] = []
+        if CarPlaySettings.showLandmarks, span >= 2.5, span < 12,
+           CarPlaySettings.landmarkKinds.isEmpty || CarPlaySettings.landmarkKinds.contains(.nafud) {
+            // أسماء النفود والعروق تظهر من مسافة أبعد
+            pins += SearchService.shared.entries(sw: sw, ne: ne, limit: 25, kinds: [.nafud]).map {
+                .init(id: "g-\($0.id)", title: $0.name, subtitle: $0.kind.title,
+                      coordinate: .init(latitude: $0.lat, longitude: $0.lon), kind: .landmark, symbol: $0.kind.icon)
+            }
+        }
         if CarPlaySettings.showLandmarks, span < 2.5 {
             pins += SearchService.shared.entries(sw: sw, ne: ne, limit: span < 0.4 ? 60 : 30, kinds: CarPlaySettings.landmarkKinds).map {
                 .init(id: "g-\($0.id)", title: $0.name, subtitle: [$0.kind.title, $0.region].compactMap { $0 }.joined(separator: " · "),

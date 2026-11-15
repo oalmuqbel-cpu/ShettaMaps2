@@ -214,3 +214,23 @@ final class GuidanceTests: XCTestCase {
         XCTAssertEqual(RecentDestinations.load(d).first?.name, "11")
     }
 }
+
+final class NafudTests: XCTestCase {
+    func testMajorSandNames() {
+        XCTAssertTrue(SearchService.isMajorSand("نفود الثويرات"))
+        XCTAssertTrue(SearchService.isMajorSand("الدهناء"))
+        XCTAssertTrue(SearchService.isMajorSand("عروق بني معارض"))
+        XCTAssertFalse(SearchService.isMajorSand("طعس ام عنيقر"))
+        XCTAssertFalse(SearchService.isMajorSand("جبل طويق"))
+    }
+
+    func testBundledGazetteerHasNafud() throws {
+        let url = try XCTUnwrap(Bundle(for: SearchService.self).url(forResource: "gazetteer", withExtension: "geojson")
+            ?? Bundle.main.url(forResource: "gazetteer", withExtension: "geojson"))
+        let entries = try SearchService.parseGeoJSON(Data(contentsOf: url))
+        let nafud = entries.filter { $0.kind == .nafud }
+        XCTAssertGreaterThan(nafud.count, 2500)
+        XCTAssertTrue(nafud.contains { $0.name == "نفود الثويرات" })
+        XCTAssertTrue(nafud.contains { $0.name == "الدهناء" })
+    }
+}

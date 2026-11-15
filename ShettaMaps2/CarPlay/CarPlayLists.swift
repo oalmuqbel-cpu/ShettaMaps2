@@ -227,7 +227,7 @@ extension CarPlayTemplateManager {
     }
 
     func showNearbyKinds() {
-        let kinds: [PlaceKind] = [.rawdah, .mountain, .valley, .water, .cave, .camp, .shaib, .landmark, .fuel]
+        let kinds: [PlaceKind] = [.nafud, .rawdah, .mountain, .valley, .water, .cave, .camp, .shaib, .landmark, .fuel]
         let items = kinds.map { k in folder(k.title, icon: k.icon) { [weak self] in self?.showNearby(k) } }
         _ = push("أماكن قريبة", [CPListSection(items: items)])
     }
