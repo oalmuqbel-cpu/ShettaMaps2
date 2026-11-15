@@ -49,7 +49,7 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SUPPORTS_MACCATALYST: NO
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
-        # الأجهزة الحقيقية: بدون صلاحية CarPlay حتى توافق Apple على الطلب
+        # الأجهزة الحقيقية: صلاحية CarPlay للملاحة (وافقت عليها Apple، Case-ID 23457818)
         CODE_SIGN_ENTITLEMENTS: ShettaMaps2/Resources/ShettaMaps2.entitlements
         # المحاكي: مع صلاحية CarPlay لاختبار CarPlay Simulator داخل Xcode
         "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": ShettaMaps2/Resources/ShettaMaps2-CarPlay.entitlements

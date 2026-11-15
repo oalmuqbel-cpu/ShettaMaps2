@@ -47,6 +47,7 @@ jobs:
         run: |
           pip3 install --quiet --break-system-packages pyjwt cryptography || pip3 install --quiet pyjwt cryptography
           ASC_KEY_PATH="$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8" python3 ci/register_bundle_id.py com.almuqbel.ShettaMaps2 "Shetta Maps 2"
+          ASC_KEY_PATH="$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8" python3 ci/carplay_capability.py com.almuqbel.ShettaMaps2 || true
 
       # الأرشفة بدون توقيع، ثم يوقّع Xcode بشهادة التوزيع السحابية أثناء التصدير (لا يحتاج أجهزة مسجلة)
       - name: Archive
@@ -76,6 +77,24 @@ jobs:
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" 2>&1 | tee export.log
 
+      - name: Verify CarPlay entitlement in IPA
+        run: |
+          cd "$RUNNER_TEMP/export" && ls -la && unzip -q -o *.ipa -d ipa
+          codesign -d --entitlements :- ipa/Payload/*.app 2>/dev/null | tee "$GITHUB_WORKSPACE/ents.plist"
+          grep -q "com.apple.developer.carplay-maps" "$GITHUB_WORKSPACE/ents.plist" || { echo "::error::CarPlay entitlement missing"; exit 1; }
+          echo "CarPlay entitlement present"
+
+      - name: Upload IPA
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          set -o pipefail
+          mkdir -p ~/.appstoreconnect/private_keys
+          cp "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8" ~/.appstoreconnect/private_keys/
+          xcrun altool --upload-app -f "$(ls "$RUNNER_TEMP"/export/*.ipa)" -t ios \
+            --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID" 2>&1 | tee upload.log
+          rm -rf ~/.appstoreconnect/private_keys
+
       - name: Remove key
         if: always()
         run: rm -rf "$RUNNER_TEMP/keys"
@@ -88,4 +107,6 @@ jobs:
           path: |
             archive.log
             export.log
+            upload.log
+            ents.plist
           if-no-files-found: ignore
