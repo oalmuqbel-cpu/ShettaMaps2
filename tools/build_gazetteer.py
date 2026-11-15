@@ -29,7 +29,8 @@ def kind_for(tags: dict, name: str) -> str:
         return "mountain"
     if tags.get("tourism") in ("camp_site", "picnic_site") or tags.get("leisure") == "picnic_table":
         return "camp"
-    if tags.get("natural") == "spring" or tags.get("man_made") in ("water_well", "water_tower") or tags.get("amenity") == "drinking_water":
+    if tags.get("natural") == "spring" or tags.get("man_made") in ("water_well", "water_tower", "water_tap") \
+            or tags.get("amenity") in ("drinking_water", "water_point"):
         return "water"
     return "landmark"
 
@@ -56,6 +57,14 @@ def main(srcs, dst):
             # الغيران ومحطات الوقود مفيدة حتى دون اسم مسجل
             if tags.get("natural") == "cave_entrance":
                 name = "غار"
+            elif tags.get("amenity") == "water_point":
+                name = "نقطة تعبئة ماء"
+            elif tags.get("amenity") == "drinking_water" or tags.get("man_made") == "water_tap":
+                name = "ماء شرب"
+            elif tags.get("man_made") == "water_well":
+                name = "بئر"
+            elif tags.get("natural") == "spring":
+                name = "عين ماء"
             elif tags.get("amenity") == "fuel":
                 brand = tags.get("brand:ar") or tags.get("brand") or tags.get("operator")
                 name = f"محطة {brand}" if brand else "محطة وقود"
