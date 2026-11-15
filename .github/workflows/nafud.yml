@@ -1,0 +1,19 @@
+name: Nafud names
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: python3 tools/nafud/build_nafud.py nafud.geojson
+      - name: Commit for review
+        run: |
+          mkdir -p ci-shots/nafud && cp nafud.geojson ci-shots/nafud/
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git add ci-shots/nafud; git commit -m "nafud candidates" || true
+          git pull --rebase -q && git push
