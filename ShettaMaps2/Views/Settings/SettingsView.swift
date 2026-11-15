@@ -20,6 +20,10 @@ struct SettingsView: View {
     @AppStorage(SettingsKeys.appearanceMode) private var appearanceRaw = AppearanceMode.sun.rawValue
     @AppStorage(SettingsKeys.userMarkerStyle) private var markerStyleRaw = UserMarkerStyle.dot.rawValue
     @AppStorage(SettingsKeys.showSpeed) private var showSpeed = true
+    @AppStorage(SpeedAlertSettings.enabledKey) private var speedAlert = true
+    @AppStorage(SpeedAlertSettings.marginKey) private var speedMargin = 5
+    @AppStorage(SpeedAlertSettings.soundKey) private var speedSound = true
+    @AppStorage(VoicePrompter.enabledKey) private var voiceGuidance = true
 
     @State private var backupURL: URL?
     @State private var restoring = false
@@ -60,11 +64,25 @@ struct SettingsView: View {
                 NavigationLink { UserMarkerSettingsView() } label: {
                     LabeledContent("شكل موقعي على الخريطة", value: (UserMarkerStyle(rawValue: markerStyleRaw) ?? .dot).title)
                 }
-                Toggle("عرض سرعتي على الخريطة", isOn: $showSpeed)
+                Toggle("عرض سرعتي وحد السرعة", isOn: $showSpeed)
                 Toggle("تباين عالٍ للاستخدام تحت الشمس", isOn: $highContrast)
                 Picker("صيغة الإحداثيات", selection: $formatRaw) {
                     ForEach(CoordinateFormat.allCases) { Text($0.title).tag($0.rawValue) }
                 }
+            }
+
+            Section {
+                Toggle("الإرشاد الصوتي", isOn: $voiceGuidance)
+                Toggle("تنبيه تجاوز حد السرعة", isOn: $speedAlert)
+                    .disabled(!showSpeed)
+                if speedAlert && showSpeed {
+                    Picker("ينبّه عند", selection: $speedMargin) {
+                        ForEach(SpeedAlertSettings.marginOptions, id: \.self) { Text(SpeedAlertSettings.marginText($0)).tag($0) }
+                    }
+                    Toggle("صوت مع التنبيه", isOn: $speedSound)
+                }
+            } header: { Text("الملاحة والسرعة") } footer: {
+                Text("الهامش يحدد متى يصدر التنبيه فقط، ولا يغيّر الحد النظامي المعروض. الحدود من بيانات OpenStreetMap، ولا يُعرض حد لطريق ليس له حد مسجل. تُطبَّق هذه الإعدادات على الهاتف وشاشة السيارة معًا، والتزم دائمًا باللوحات على الطريق.")
             }
 
             Section {

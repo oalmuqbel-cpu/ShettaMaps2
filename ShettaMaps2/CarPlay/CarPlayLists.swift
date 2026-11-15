@@ -100,12 +100,23 @@ extension CarPlayTemplateManager {
         let dest = MKMapItem(placemark: MKPlacemark(coordinate: w.coordinate))
         dest.name = w.name
         let summary = distanceText(to: w.coordinate) ?? w.name
-        let choice = CPRouteChoice(summaryVariants: [summary],
-                                   additionalInformationVariants: ["تعليمات الطرق عند توفرها، وإلا خط مباشر بالاتجاه والمسافة"],
-                                   selectionSummaryVariants: [summary])
-        let trip = CPTrip(origin: origin, destination: dest, routeChoices: [choice])
+        // خياران: عبر الطرق (عند توفر الإنترنت) أو خط مباشر للصحراء
+        var choices: [CPRouteChoice] = []
+        if env.network.isOnline {
+            let road = CPRouteChoice(summaryVariants: ["عبر الطرق", "طرق"],
+                                     additionalInformationVariants: ["تعليمات منعطف بمنعطف من خرائط Apple عند توفر طريق"],
+                                     selectionSummaryVariants: ["عبر الطرق · \(summary)"])
+            road.userInfo = GuidanceMode.road.rawValue
+            choices.append(road)
+        }
+        let direct = CPRouteChoice(summaryVariants: ["خط مباشر", "مباشر"],
+                                   additionalInformationVariants: ["اتجاه ومسافة فقط، وليس طريقًا مضمونًا. يعمل دون إنترنت"],
+                                   selectionSummaryVariants: ["خط مباشر · \(summary)"])
+        direct.userInfo = GuidanceMode.direct.rawValue
+        choices.append(direct)
+        let trip = CPTrip(origin: origin, destination: dest, routeChoices: choices)
         mapTemplate.showTripPreviews([trip], textConfiguration: CPTripPreviewTextConfiguration(
-            startButtonTitle: "ابدأ", additionalRoutesButtonTitle: nil, overviewButtonTitle: nil))
+            startButtonTitle: "ابدأ", additionalRoutesButtonTitle: "خيارات", overviewButtonTitle: nil))
         mapViewController.showPreview(w.coordinate)
         updateBarButtons()
     }
@@ -149,15 +160,27 @@ extension CarPlayTemplateManager {
         }
         if !tripItems.isEmpty { sections.append(CPListSection(items: tripItems, header: "الرحلة النشطة", sectionIndexTitle: nil)) }
 
-        // المواقع المحفوظة
-        let favorites = places.filter(\.isFavorite)
-        var saved: [CPListItem] = []
-        if !favorites.isEmpty {
-            saved.append(folder("المفضلة", detail: "\(favorites.count)", icon: "star.fill") { [weak self] in
-                guard let self else { return }
-                _ = self.push("المفضلة", [CPListSection(items: self.placeItems(favorites))])
-            })
+        // الأخيرة: وجهة سابقة بلمستين («ابدأ» بعدها)
+        let recents = RecentDestinations.load().prefix(3).map {
+            navItem($0.name, detail: nil, icon: "clock.arrow.circlepath", coordinate: $0.coordinate, id: $0.id)
         }
+        if !recents.isEmpty { sections.append(CPListSection(items: Array(recents), header: "الأخيرة", sectionIndexTitle: nil)) }
+
+        // المفضلة مباشرة (الأقرب أولًا)
+        let favorites = places.filter(\.isFavorite)
+        if !favorites.isEmpty {
+            var fav = Array(placeItems(favorites).prefix(4))
+            if favorites.count > 4 {
+                fav.append(folder("كل المفضلة", detail: "\(favorites.count)", icon: "star.fill") { [weak self] in
+                    guard let self else { return }
+                    _ = self.push("المفضلة", [CPListSection(items: self.placeItems(favorites))])
+                })
+            }
+            sections.append(CPListSection(items: fav, header: "المفضلة", sectionIndexTitle: nil))
+        }
+
+        // المواقع المحفوظة
+        var saved: [CPListItem] = []
         if !places.isEmpty {
             saved.append(folder("كل مواقعي (الأقرب أولًا)", detail: "\(places.count)", icon: "mappin.and.ellipse") { [weak self] in
                 guard let self else { return }
@@ -465,8 +488,31 @@ extension CarPlayTemplateManager {
                                            image: symbol("cloud.sun")))
         }
 
+        // إعدادات القيادة (مشتركة مع الهاتف)
+        let voiceOn = VoicePrompter.enabled
+        let voice = CPListItem(text: "الإرشاد الصوتي", detailText: voiceOn ? "مفعّل" : "متوقف", image: checkImage(voiceOn))
+        voice.handler = { [weak self] _, done in
+            UserDefaults.standard.set(!VoicePrompter.enabled, forKey: VoicePrompter.enabledKey)
+            self?.reloadMore(); done()
+        }
+        let alertOn = SpeedAlertSettings.enabled
+        let speed = CPListItem(text: "تنبيه تجاوز حد السرعة", detailText: alertOn ? "مفعّل" : "متوقف", image: checkImage(alertOn))
+        speed.handler = { [weak self] _, done in
+            UserDefaults.standard.set(!SpeedAlertSettings.enabled, forKey: SpeedAlertSettings.enabledKey)
+            self?.reloadMore(); done()
+        }
+        let margin = CPListItem(text: "ينبّه عند", detailText: SpeedAlertSettings.marginText(SpeedAlertSettings.margin) + " · اضغط للتغيير",
+                                image: symbol("gauge.with.dots.needle.50percent"))
+        margin.handler = { [weak self] _, done in
+            UserDefaults.standard.set(SpeedAlertSettings.nextMargin(), forKey: SpeedAlertSettings.marginKey)
+            self?.reloadMore(); done()
+        }
+        var driving = [voice, speed]
+        if alertOn { driving.append(margin) }
+
         return [
             CPListSection(items: location, header: "الموقع والتسجيل", sectionIndexTitle: nil),
+            CPListSection(items: driving, header: "القيادة", sectionIndexTitle: nil),
             CPListSection(items: [download, regions], header: "الخرائط دون إنترنت", sectionIndexTitle: nil),
             CPListSection(items: weatherItems, header: "الطقس الآن", sectionIndexTitle: nil)
         ]

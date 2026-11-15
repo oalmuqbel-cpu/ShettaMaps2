@@ -1,0 +1,216 @@
+import XCTest
+import CoreLocation
+@testable import ShettaMaps2
+
+/// اختبارات منطق السرعة والإرشاد المستخدم في الهاتف وCarPlay.
+final class OverspeedMonitorTests: XCTestCase {
+    private let t0 = Date(timeIntervalSince1970: 1_000_000)
+    private func at(_ s: Double) -> Date { t0.addingTimeInterval(s) }
+
+    func testNoAlertWithoutLimitData() {
+        var m = OverspeedMonitor()
+        for i in 0..<10 { XCTAssertNil(m.update(limit: nil, speedKmh: 180, at: at(Double(i)))) }
+        XCTAssertFalse(m.isOver)
+    }
+
+    func testMarginControlsAlertTimingOnly() {
+        var m = OverspeedMonitor(margin: 10)
+        // ١٠٨ على طريق حده ١٠٠ وهامش ١٠: لا تنبيه
+        for i in 0..<5 { XCTAssertNil(m.update(limit: 100, speedKmh: 108, at: at(Double(i)))) }
+        XCTAssertFalse(m.isOver)
+        // ١١٢ لمدة ثانيتين: تنبيه بالحد النظامي نفسه (١٠٠) وليس بالحد + الهامش
+        XCTAssertNil(m.update(limit: 100, speedKmh: 112, at: at(10)))
+        XCTAssertNil(m.update(limit: 100, speedKmh: 112, at: at(11)))
+        XCTAssertEqual(m.update(limit: 100, speedKmh: 112, at: at(12)), .alert(limit: 100))
+        XCTAssertTrue(m.isOver)
+    }
+
+    func testShortSpikeDoesNotAlert() {
+        var m = OverspeedMonitor(margin: 5)
+        XCTAssertNil(m.update(limit: 80, speedKmh: 95, at: at(0)))
+        XCTAssertNil(m.update(limit: 80, speedKmh: 95, at: at(1)))
+        XCTAssertNil(m.update(limit: 80, speedKmh: 70, at: at(1.5)))
+        XCTAssertNil(m.update(limit: 80, speedKmh: 95, at: at(2.5)))
+        XCTAssertFalse(m.isOver)
+    }
+
+    func testSingleAlertPerEpisodeAndNoRepeatWhileOscillating() {
+        var m = OverspeedMonitor(margin: 5, sustain: 2, cooldown: 30)
+        var alerts = 0
+        // يتذبذب حول عتبة التنبيه دون النزول تحت الحد النظامي لمدة دقيقة
+        for i in 0..<60 {
+            let v: Double = i % 4 < 2 ? 130 : 123   // الحد ١٢٠: فوق العتبة ثم بين الحد والعتبة
+            if m.update(limit: 120, speedKmh: v, at: at(Double(i))) != nil { alerts += 1 }
+        }
+        XCTAssertLessThanOrEqual(alerts, 1)
+    }
+
+    func testCooldownAfterEpisodeEnds() {
+        var m = OverspeedMonitor(margin: 0, sustain: 2, cooldown: 30)
+        XCTAssertNil(m.update(limit: 100, speedKmh: 110, at: at(0)))
+        XCTAssertEqual(m.update(limit: 100, speedKmh: 110, at: at(2)), .alert(limit: 100))
+        XCTAssertNil(m.update(limit: 100, speedKmh: 90, at: at(5)))     // انتهى التجاوز
+        XCTAssertNil(m.update(limit: 100, speedKmh: 110, at: at(10)))
+        XCTAssertNil(m.update(limit: 100, speedKmh: 110, at: at(12)))   // داخل المهلة: بلا تكرار
+        XCTAssertNil(m.update(limit: 100, speedKmh: 90, at: at(15)))
+        XCTAssertNil(m.update(limit: 100, speedKmh: 110, at: at(40)))
+        XCTAssertEqual(m.update(limit: 100, speedKmh: 110, at: at(42)), .alert(limit: 100))   // بعد المهلة
+    }
+
+    /// الانتقال بين طرق بحدود مختلفة.
+    func testEnteringLowerLimitRoadWhileOverAlertsOnceForNewLimit() {
+        var m = OverspeedMonitor(margin: 5)
+        XCTAssertNil(m.update(limit: 120, speedKmh: 130, at: at(0)))
+        XCTAssertEqual(m.update(limit: 120, speedKmh: 130, at: at(2)), .alert(limit: 120))
+        // دخول طريق حده ٨٠ بنفس السرعة: تنبيه فوري واحد للحد الجديد
+        XCTAssertEqual(m.update(limit: 80, speedKmh: 128, at: at(3)), .alert(limit: 80))
+        XCTAssertNil(m.update(limit: 80, speedKmh: 128, at: at(4)))
+        XCTAssertNil(m.update(limit: 80, speedKmh: 128, at: at(10)))
+    }
+
+    func testEnteringHigherLimitRoadClearsOverState() {
+        var m = OverspeedMonitor(margin: 5)
+        _ = m.update(limit: 80, speedKmh: 100, at: at(0))
+        XCTAssertEqual(m.update(limit: 80, speedKmh: 100, at: at(2)), .alert(limit: 80))
+        XCTAssertNil(m.update(limit: 120, speedKmh: 100, at: at(3)))
+        XCTAssertFalse(m.isOver)
+    }
+
+    /// فقد GPS: لا تجاوز معروض، ولا تنبيه مكرر عند عودة الإشارة لنفس التجاوز.
+    func testGPSLossClearsDisplayWithoutRepeatingAlert() {
+        var m = OverspeedMonitor(margin: 5)
+        _ = m.update(limit: 100, speedKmh: 120, at: at(0))
+        XCTAssertEqual(m.update(limit: 100, speedKmh: 120, at: at(2)), .alert(limit: 100))
+        XCTAssertNil(m.update(limit: 100, speedKmh: nil, at: at(3)))
+        XCTAssertFalse(m.isOver)
+        XCTAssertNil(m.update(limit: 100, speedKmh: 120, at: at(8)))
+        XCTAssertNil(m.update(limit: 100, speedKmh: 120, at: at(10)))
+        XCTAssertTrue(m.isOver)
+    }
+
+    func testMarginOptionsAndText() {
+        XCTAssertEqual(SpeedAlertSettings.marginOptions, [0, 5, 10, 15, 20])
+        XCTAssertTrue(SpeedAlertSettings.marginText(10).contains("10"))
+    }
+}
+
+final class SpeedLimitMatcherTests: XCTestCase {
+    // طريق يتجه شرقًا عند خط عرض ٢٥
+    private let east = [CLLocationCoordinate2D(latitude: 25, longitude: 46.0), CLLocationCoordinate2D(latitude: 25, longitude: 46.01)]
+    // طريق يتجه شمالًا يتقاطع معه
+    private let north = [CLLocationCoordinate2D(latitude: 24.995, longitude: 46.005), CLLocationCoordinate2D(latitude: 25.005, longitude: 46.005)]
+    private let here = CLLocationCoordinate2D(latitude: 25.00005, longitude: 46.005)
+
+    func testDirectionSelectsForwardOrBackwardLimit() {
+        let road = SpeedLimitMatcher.Road(forward: 120, backward: 100, oneway: false, name: "طريق", points: east)
+        XCTAssertEqual(SpeedLimitMatcher.best(at: here, course: 90, roads: [road])?.limit, 120)
+        XCTAssertEqual(SpeedLimitMatcher.best(at: here, course: 270, roads: [road])?.limit, 100)
+    }
+
+    func testOnewayAgainstDirectionIsIgnored() {
+        let road = SpeedLimitMatcher.Road(forward: 120, backward: 120, oneway: true, name: nil, points: east)
+        XCTAssertNil(SpeedLimitMatcher.best(at: here, course: 270, roads: [road]))
+    }
+
+    func testCrossingRoadIsNotMatchedAtIntersection() {
+        let main = SpeedLimitMatcher.Road(forward: 120, backward: 120, oneway: false, name: "رئيسي", points: east)
+        let cross = SpeedLimitMatcher.Road(forward: 60, backward: 60, oneway: false, name: "فرعي", points: north)
+        // عند التقاطع ونحن نتجه شرقًا: حد الطريق الرئيسي وليس الفرعي
+        let r = SpeedLimitMatcher.best(at: CLLocationCoordinate2D(latitude: 25, longitude: 46.005), course: 88, roads: [cross, main])
+        XCTAssertEqual(r?.limit, 120)
+        XCTAssertEqual(r?.name, "رئيسي")
+    }
+
+    func testTooFarFromRoadMeansUnknown() {
+        let road = SpeedLimitMatcher.Road(forward: 80, backward: 80, oneway: false, name: nil, points: east)
+        let far = CLLocationCoordinate2D(latitude: 25.001, longitude: 46.005)   // ~١١٠ م
+        XCTAssertNil(SpeedLimitMatcher.best(at: far, course: 90, roads: [road]))
+    }
+
+    func testMissingLimitValueIsNotGuessed() {
+        let road = SpeedLimitMatcher.Road(forward: 0, backward: 0, oneway: false, name: nil, points: east)
+        XCTAssertNil(SpeedLimitMatcher.best(at: here, course: 90, roads: [road]))
+    }
+}
+
+final class LiveSpeedTests: XCTestCase {
+    func testStaleOrInaccurateSpeedIsNotLive() {
+        let now = Date()
+        let fresh = CLLocation(coordinate: .init(latitude: 25, longitude: 46), altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
+                               course: 90, courseAccuracy: 5, speed: 25, speedAccuracy: 1, timestamp: now)
+        XCTAssertEqual(LiveSpeed.kmh(fresh, now: now) ?? 0, 90, accuracy: 0.01)
+        let old = CLLocation(coordinate: .init(latitude: 25, longitude: 46), altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
+                             course: 90, courseAccuracy: 5, speed: 25, speedAccuracy: 1, timestamp: now.addingTimeInterval(-10))
+        XCTAssertNil(LiveSpeed.kmh(old, now: now))
+        let noisy = CLLocation(coordinate: .init(latitude: 25, longitude: 46), altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
+                               course: 90, courseAccuracy: 5, speed: 25, speedAccuracy: 9, timestamp: now)
+        XCTAssertNil(LiveSpeed.kmh(noisy, now: now))
+        XCTAssertNil(LiveSpeed.kmh(nil, now: now))
+    }
+
+    func testLimitStateNotes() {
+        XCTAssertEqual(SpeedLimitState.known(80).limit, 80)
+        XCTAssertNil(SpeedLimitState.noData.limit)
+        XCTAssertNotNil(SpeedLimitState.noData.note)
+        XCTAssertNotNil(SpeedLimitState.weakSignal.note)
+        XCTAssertNil(SpeedLimitState.known(80).note)
+    }
+}
+
+final class GuidanceTests: XCTestCase {
+    private let a = CLLocationCoordinate2D(latitude: 25, longitude: 46)
+
+    func testArabicDistancePhrases() {
+        XCTAssertEqual(VoicePhrases.distance(800), "800 متر")
+        XCTAssertEqual(VoicePhrases.distance(1000), "كيلومتر")
+        XCTAssertEqual(VoicePhrases.distance(1500), "كيلومتر ونصف")
+        XCTAssertEqual(VoicePhrases.distance(2000), "كيلومترين")
+        XCTAssertEqual(VoicePhrases.distance(3000), "3 كيلومترات")
+        XCTAssertEqual(VoicePhrases.distance(25_000), "25 كيلومتر")
+    }
+
+    private func snapshot(revision: Int, distance: Double, status: NavigationStatus = .active) -> NavigationSnapshot {
+        var s = NavigationSnapshot()
+        let dest = Waypoint(name: "روضة خريم", coordinate: .init(latitude: 25.4, longitude: 47.3))
+        s.status = status
+        s.plan = NavigationPlan(origin: nil, waypoints: [], destination: dest)
+        s.planRevision = revision
+        s.progress = NavigationProgress(targetIndex: 0, target: dest, distanceToTarget: distance, bearingToTarget: 45,
+                                        remainingDistance: distance, relativeBearing: 0, estimatedSeconds: nil, isFinalTarget: true)
+        return s
+    }
+
+    func testPlannerAnnouncesStartThresholdsAndArrivalOnce() {
+        var p = VoiceGuidancePlanner()
+        let start = p.phrases(for: snapshot(revision: 1, distance: 12_000), here: a)
+        XCTAssertEqual(start.count, 1)
+        XCTAssertTrue(start[0].hasPrefix("بدأت الملاحة"))
+        XCTAssertTrue(p.phrases(for: snapshot(revision: 1, distance: 11_000), here: a).isEmpty)
+        XCTAssertEqual(p.phrases(for: snapshot(revision: 1, distance: 4_900), here: a).count, 1)
+        XCTAssertTrue(p.phrases(for: snapshot(revision: 1, distance: 4_800), here: a).isEmpty)   // لا تكرار
+        XCTAssertEqual(p.phrases(for: snapshot(revision: 1, distance: 950), here: a).count, 1)
+        XCTAssertEqual(p.phrases(for: snapshot(revision: 1, distance: 180), here: a).count, 1)
+        let arrived = p.phrases(for: snapshot(revision: 1, distance: 20, status: .arrived), here: a)
+        XCTAssertEqual(arrived, [VoicePhrases.arrived("روضة خريم")])
+        XCTAssertTrue(p.phrases(for: snapshot(revision: 1, distance: 15, status: .arrived), here: a).isEmpty)
+    }
+
+    func testRemainingRoadDistanceUsesRouteNotStraightLine() {
+        let s1 = RoadStep(instruction: "انعطف يمينًا", distance: 1000, endCoordinate: .init(latitude: 25.009, longitude: 46))
+        let s2 = RoadStep(instruction: "استمر", distance: 3000, endCoordinate: .init(latitude: 25.009, longitude: 46.03))
+        let route = RoadRoute(coordinates: [], steps: [s1, s2], distance: 4000, expectedTravelTime: 240)
+        let d = SharedNavigationState.remainingRoadDistance(route: route, stepIndex: 0, at: a)
+        XCTAssertEqual(d, GeoMath.distance(a, s1.endCoordinate) + 3000, accuracy: 1)
+        XCTAssertEqual(SharedNavigationState.remainingRoadDistance(route: route, stepIndex: 5, at: a), 0)
+    }
+
+    func testRecentDestinationsDedupeAndCap() {
+        let d = UserDefaults(suiteName: "test-recents-\(UUID().uuidString)")!
+        RecentDestinations.record(Waypoint(name: "أ", coordinate: a), d)
+        RecentDestinations.record(Waypoint(name: "أ مكرر", coordinate: .init(latitude: 25.0002, longitude: 46)), d)  // ~٢٢ م
+        XCTAssertEqual(RecentDestinations.load(d).map(\.name), ["أ مكرر"])
+        for i in 0..<12 { RecentDestinations.record(Waypoint(name: "\(i)", coordinate: .init(latitude: 20 + Double(i), longitude: 46)), d) }
+        XCTAssertEqual(RecentDestinations.load(d).count, RecentDestinations.maxCount)
+        XCTAssertEqual(RecentDestinations.load(d).first?.name, "11")
+    }
+}

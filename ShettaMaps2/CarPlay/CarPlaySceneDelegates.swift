@@ -82,10 +82,37 @@ final class CarPlayDashboardSceneDelegate: UIResponder, CPTemplateApplicationDas
 final class CarPlayInstrumentClusterSceneDelegate: UIResponder, CPTemplateApplicationInstrumentClusterSceneDelegate,
                                                    CPInstrumentClusterControllerDelegate {
     private var mapController: CarPlayMapViewController?
+    private weak var controller: CPInstrumentClusterController?
+
+    /// يسمح برسم حد السرعة إذا فعّلته السيارة، أو تركته لتفضيل المستخدم وهو مفعّل في التطبيق.
+    private static func allowed(_ s: CPInstrumentClusterSetting, userPref: Bool) -> Bool {
+        switch s {
+        case .enabled: return true
+        case .userPreference: return userPref
+        default: return false
+        }
+    }
+
+    @MainActor private func applySettings() {
+        guard let c = controller, let vc = mapController else { return }
+        vc.clusterSpeedLimitAllowed = Self.allowed(c.speedLimitSetting, userPref: SpeedLimitStore.shared.enabled)
+        vc.clusterCompassAllowed = Self.allowed(c.compassSetting, userPref: true)
+    }
+
+    func instrumentClusterController(_ instrumentClusterController: CPInstrumentClusterController,
+                                     didChangeSpeedLimitSetting speedLimitSetting: CPInstrumentClusterSetting) {
+        MainActor.assumeIsolated { applySettings() }
+    }
+
+    func instrumentClusterController(_ instrumentClusterController: CPInstrumentClusterController,
+                                     didChangeCompassSetting compassSetting: CPInstrumentClusterSetting) {
+        MainActor.assumeIsolated { applySettings() }
+    }
 
     func templateApplicationInstrumentClusterScene(_ templateApplicationInstrumentClusterScene: CPTemplateApplicationInstrumentClusterScene,
                                                    didConnect instrumentClusterController: CPInstrumentClusterController) {
         MainActor.assumeIsolated {
+            controller = instrumentClusterController
             instrumentClusterController.delegate = self
             instrumentClusterController.inactiveDescriptionVariants = ["سَمْت"]
             CarPlayConnectionMonitor.shared.setInstrumentCluster(true)
@@ -105,6 +132,8 @@ final class CarPlayInstrumentClusterSceneDelegate: UIResponder, CPTemplateApplic
             let vc = CarPlayMapViewController(role: .cluster)
             instrumentClusterWindow.rootViewController = vc
             mapController = vc
+            vc.loadViewIfNeeded()
+            applySettings()
         }
     }
 

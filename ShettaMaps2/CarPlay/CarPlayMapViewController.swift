@@ -122,6 +122,50 @@ final class CarPlayMapViewController: UIViewController {
         }
         buildMap()
         bind()
+        if role == .cluster { setupClusterSign() }
+    }
+
+    // MARK: - شاشة العدادات: لوحة حد السرعة
+
+    /// تسمح السيارة (أو تفضيل المستخدم) برسم حد السرعة والبوصلة في شاشة العدادات.
+    var clusterSpeedLimitAllowed = false { didSet { updateClusterSign() } }
+    var clusterCompassAllowed = true { didSet { mapKitView?.showsCompass = clusterCompassAllowed; libreView?.compassView.isHidden = !clusterCompassAllowed } }
+    private let clusterSign = UILabel()
+
+    private func setupClusterSign() {
+        clusterSign.translatesAutoresizingMaskIntoConstraints = false
+        clusterSign.textAlignment = .center
+        clusterSign.font = .systemFont(ofSize: 20, weight: .heavy)
+        clusterSign.textColor = .black
+        clusterSign.backgroundColor = .white
+        clusterSign.layer.cornerRadius = 24
+        clusterSign.layer.borderColor = UIColor.systemRed.cgColor
+        clusterSign.layer.borderWidth = 5
+        clusterSign.clipsToBounds = true
+        clusterSign.isHidden = true
+        view.addSubview(clusterSign)
+        NSLayoutConstraint.activate([
+            clusterSign.widthAnchor.constraint(equalToConstant: 48),
+            clusterSign.heightAnchor.constraint(equalToConstant: 48),
+            clusterSign.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -8),
+            clusterSign.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -8)
+        ])
+        SpeedLimitStore.shared.$state
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updateClusterSign() }
+            .store(in: &cancellables)
+    }
+
+    private func updateClusterSign() {
+        guard role == .cluster else { return }
+        // حد موثوق فقط، ولا يظهر دون إذن السيارة
+        if clusterSpeedLimitAllowed, let limit = SpeedLimitStore.shared.currentLimit {
+            clusterSign.text = "\(limit)"
+            clusterSign.isHidden = false
+            view.bringSubviewToFront(clusterSign)
+        } else {
+            clusterSign.isHidden = true
+        }
     }
 
     // MARK: - المحرك
@@ -177,6 +221,7 @@ final class CarPlayMapViewController: UIViewController {
         }
         refreshOverlays(force: true)
         scheduleDataRefresh(force: true)
+        if role == .cluster { view.bringSubviewToFront(clusterSign); updateClusterSign() }
     }
 
     private var zoomMeters: CLLocationDistance { role == .cluster ? 1200 : 3000 }
@@ -240,7 +285,8 @@ final class CarPlayMapViewController: UIViewController {
 
     private func locationChanged(_ loc: CLLocation) {
         guard isFollowing else { return }
-        let northUp = CarPlaySettings.northUp
+        // شاشة العدادات: الاتجاه للأعلى دائمًا (إرشادات Apple)
+        let northUp = role == .cluster ? false : CarPlaySettings.northUp
         if let m = mapKitView {
             let heading: CLLocationDirection = northUp ? 0 : ((loc.course >= 0 && loc.speed > 3) ? loc.course : m.camera.heading)
             let camera = MKMapCamera(lookingAtCenter: loc.coordinate,
@@ -479,6 +525,45 @@ final class CarPlayMapViewController: UIViewController {
     private func stopFollowing() {
         isFollowing = false
         if let m = libreView, m.userTrackingMode != .none { m.userTrackingMode = .none }
+    }
+
+    private var zoomBase: Double = 0
+    private var rotationBase: Double = 0
+
+    func beginZoom() {
+        stopFollowing()
+        if let m = mapKitView { zoomBase = m.camera.centerCoordinateDistance }
+        if let m = libreView { zoomBase = m.zoomLevel }
+    }
+
+    /// scale تراكمي منذ بداية القرص (أكبر من ١ = تكبير).
+    func updateZoom(scale: CGFloat) {
+        guard scale > 0, zoomBase > 0 else { return }
+        if let m = mapKitView {
+            let cam = m.camera.copy() as! MKMapCamera
+            cam.centerCoordinateDistance = min(max(zoomBase / Double(scale), 200), 20_000_000)
+            m.setCamera(cam, animated: false)
+        } else if let m = libreView {
+            m.setZoomLevel(zoomBase + log2(Double(scale)), animated: false)
+        }
+    }
+
+    func beginRotation() {
+        stopFollowing()
+        if let m = mapKitView { rotationBase = m.camera.heading }
+        if let m = libreView { rotationBase = m.direction }
+    }
+
+    /// rotation تراكمي بالراديان (موجب = مع عقارب الساعة).
+    func updateRotation(radians: CGFloat) {
+        let heading = (rotationBase - Double(radians) * 180 / .pi + 360).truncatingRemainder(dividingBy: 360)
+        if let m = mapKitView {
+            let cam = m.camera.copy() as! MKMapCamera
+            cam.heading = heading
+            m.setCamera(cam, animated: false)
+        } else if let m = libreView {
+            m.setDirection(heading, animated: false)
+        }
     }
 
     /// عرض الوجهة قبل بدء الملاحة (مع موقعي)، أو إلغاء المعاينة بـ nil.

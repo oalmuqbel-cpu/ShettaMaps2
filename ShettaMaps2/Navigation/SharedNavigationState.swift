@@ -38,6 +38,7 @@ final class SharedNavigationState: ObservableObject {
     private weak var location: LocationManager?
     private var subscription: AnyCancellable?
     private var lastRouteRequest = Date.distantPast
+    private var offRouteCount = 0
     private var routingTask: Task<Void, Never>?
     private let storeKey = "activeNavigationPlan"
     private static let backgroundReason = "navigation"
@@ -66,6 +67,7 @@ final class SharedNavigationState: ObservableObject {
         }
         snapshot = s
         persist(plan, targetIndex: 0)
+        RecentDestinations.record(plan.destination)
         location?.requestFullAccuracyIfNeeded()
         location?.beginBackgroundUpdates(reason: Self.backgroundReason)
         if let loc = location?.location { update(with: loc) }
@@ -141,9 +143,18 @@ final class SharedNavigationState: ObservableObject {
             } else {
                 snapshot.instruction = NavigationEngine.instruction(for: p)
             }
-            if offRoute(route, loc.coordinate) { requestRoadRoute(force: false) }
-            if let s = speed(of: loc), s > 2 {
-                p.estimatedSeconds = p.remainingDistance / s
+            // الخروج عن المسار: قراءتان متتاليتان بعيدتان (تجنب إعادة الحساب بسبب قفزة GPS)، ثم إعادة الحساب خلال ثوانٍ
+            if offRoute(route, loc.coordinate), loc.horizontalAccuracy < 50 {
+                offRouteCount += 1
+                if offRouteCount >= 2 { requestRoadRoute(force: false, minInterval: 8) }
+            } else {
+                offRouteCount = 0
+            }
+            // المسافة والوقت المتبقيان على الطريق نفسه (لا بالخط المباشر)
+            let remaining = Self.remainingRoadDistance(route: route, stepIndex: snapshot.roadStepIndex, at: loc.coordinate)
+            if remaining > 0 {
+                p.remainingDistance = remaining
+                p.estimatedSeconds = route.distance > 0 ? route.expectedTravelTime * min(1, remaining / route.distance) : nil
             } else {
                 p.estimatedSeconds = route.expectedTravelTime
             }
@@ -174,9 +185,23 @@ final class SharedNavigationState: ObservableObject {
         return true
     }
 
-    private func requestRoadRoute(force: Bool) {
+    /// المسافة المتبقية على الطريق: حتى نهاية الخطوة الحالية ثم بقية الخطوات.
+    nonisolated static func remainingRoadDistance(route: RoadRoute, stepIndex: Int, at c: CLLocationCoordinate2D) -> Double {
+        guard stepIndex < route.steps.count else { return 0 }
+        let current = GeoMath.distance(c, route.steps[stepIndex].endCoordinate)
+        return current + route.steps.dropFirst(stepIndex + 1).reduce(0) { $0 + $1.distance }
+    }
+
+    /// عند عودة الإنترنت أثناء ملاحة «عبر الطرق» بلا مسار: يُحسب المسار فورًا.
+    func networkBecameAvailable() {
+        guard snapshot.isNavigating, snapshot.plan?.mode == .road, snapshot.roadRoute == nil else { return }
+        requestRoadRoute(force: true)
+    }
+
+    private func requestRoadRoute(force: Bool, minInterval: TimeInterval = 30) {
         guard let from = location?.location?.coordinate, let target = snapshot.progress?.target ?? snapshot.plan?.targets.first else { return }
-        guard force || Date().timeIntervalSince(lastRouteRequest) > 30 else { return }
+        guard force || Date().timeIntervalSince(lastRouteRequest) > minInterval else { return }
+        offRouteCount = 0
         lastRouteRequest = Date()
         routingTask?.cancel()
         let revision = snapshot.planRevision

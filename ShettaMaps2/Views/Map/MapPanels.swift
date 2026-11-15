@@ -314,6 +314,8 @@ struct SpeedBubble: View {
     let speedMS: Double?
     var limit: Int?
     var over = false
+    /// سبب عدم معرفة الحد (لا يُخمَّن حد غير مسجل).
+    var limitNote: String? = nil
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -333,6 +335,10 @@ struct SpeedBubble: View {
             if let limit {
                 SpeedLimitSign(limit: limit)
                     .offset(x: -16, y: -16)
+            } else if limitNote != nil {
+                // حد غير معروف: إشارة رمادية بلا رقم بدل تخمين حد
+                UnknownLimitSign()
+                    .offset(x: -16, y: -16)
             }
         }
         .environment(\.layoutDirection, .leftToRight)
@@ -342,9 +348,21 @@ struct SpeedBubble: View {
 
     private var accessibility: String {
         var s = speedMS.map { "سرعتك \(Int(($0 * 3.6).rounded())) كيلومتر في الساعة" } ?? "السرعة غير متاحة"
-        if let limit { s += "، والحد \(limit)" }
+        if let limit { s += "، والحد \(limit)" } else if let limitNote { s += "، \(limitNote)" }
         if over { s += "، تجاوزت الحد" }
         return s
+    }
+}
+
+/// حد السرعة غير معروف أو غير موثوق.
+struct UnknownLimitSign: View {
+    var body: some View {
+        Text("—")
+            .font(.system(size: 15, weight: .heavy, design: .rounded))
+            .foregroundStyle(.secondary)
+            .frame(width: 30, height: 30)
+            .background(Circle().fill(.regularMaterial))
+            .overlay(Circle().stroke(Color.gray.opacity(0.6), style: StrokeStyle(lineWidth: 2.5, dash: [3, 2])))
     }
 }
 

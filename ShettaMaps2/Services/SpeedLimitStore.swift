@@ -4,6 +4,7 @@ import CryptoKit
 import SQLite3
 import UIKit
 import AudioToolbox
+import Combine
 
 /// حدود السرعة المسجلة في OpenStreetMap: تنزيل خلايا 1°×1° تلقائيًا، وتحديد الطريق الذي تسير عليه،
 /// وتنبيه عند تجاوز الحد. لا يُخمَّن حد لطريق لا يحمل حدًا مسجلًا.
@@ -11,8 +12,6 @@ import AudioToolbox
 final class SpeedLimitStore: ObservableObject {
     static let shared = SpeedLimitStore()
     static let releaseBase = "https://github.com/oalmuqbel-cpu/ShettaMaps2/releases/download/speed-v1"
-    /// هامش التجاوز قبل التنبيه (كم/س).
-    static let tolerance = 5.0
 
     struct Cell: Codable, Hashable {
         var file: String; var lat: Int; var lon: Int; var roads: Int; var bytes: Int; var sha256: String
@@ -20,10 +19,16 @@ final class SpeedLimitStore: ObservableObject {
     }
     struct Manifest: Codable { var version: Int; var built: String; var cellSize: Double; var attribution: String; var cells: [Cell] }
 
-    /// الحد للطريق الحالي (كم/س) أو nil إن لم يُعرف.
-    @Published private(set) var currentLimit: Int?
+    /// حالة الحد للطريق الحالي (معروف، غير مسجل، غير منزل، إشارة ضعيفة).
+    @Published private(set) var state: SpeedLimitState = .off
     @Published private(set) var roadName: String?
+    /// السرعة فوق (الحد + هامش التنبيه).
     @Published private(set) var isOver = false
+    /// يصدر الحد عند كل تنبيه تجاوز (تستخدمه CarPlay لعرض تنبيه ملاحي).
+    let alerts = PassthroughSubject<Int, Never>()
+
+    /// الحد للطريق الحالي (كم/س) أو nil إن لم يُعرف بثقة.
+    var currentLimit: Int? { state.limit }
 
     private var manifest: Manifest?
     private var installed: Set<String> = []
@@ -31,9 +36,10 @@ final class SpeedLimitStore: ObservableObject {
     private var failedAt: [String: Date] = [:]
     private var downloading: Set<String> = []
     private var lastCheck = Date.distantPast
-    private var overSince: Date?
-    private var alerted = false
+    private var lastFix: CLLocation?
     private var lostAt: Date?
+    private var monitor = OverspeedMonitor()
+    private var staleTimer: Timer?
 
     private var dir: URL {
         let d = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -65,60 +71,66 @@ final class SpeedLimitStore: ObservableObject {
 
     /// يُستدعى مع كل تحديث للموقع.
     func observe(_ loc: CLLocation) {
-        guard enabled, loc.horizontalAccuracy >= 0, loc.horizontalAccuracy < 40 else { return }
-        if Date().timeIntervalSince(lastCheck) >= 1 {
+        guard enabled else { setState(.off, nil); evaluate(nil); return }
+        startStaleTimer()
+        guard loc.horizontalAccuracy >= 0 else { return }
+        lastFix = loc
+        if loc.horizontalAccuracy > 25 {
+            // لا نحدد الطريق بإشارة ضعيفة؛ نبقي الحد السابق ثوانيَ قليلة ثم نعلن أنه غير مؤكد
+            if lostAt == nil { lostAt = Date() }
+            if let l = lostAt, Date().timeIntervalSince(l) > 6 { setState(.weakSignal, nil) }
+        } else if Date().timeIntervalSince(lastCheck) >= 1 {
             lastCheck = Date()
             updateLimit(at: loc)
         }
-        checkOverspeed(loc)
+        evaluate(LiveSpeed.kmh(loc))
     }
 
     private func updateLimit(at loc: CLLocation) {
         let key = Self.key(loc.coordinate)
         if !installed.contains(key) {
             if NetworkMonitor.shared.isOnline { Task { await ensureCell(key) } }
-            setLimit(nil, nil)
+            setState(.notDownloaded, nil)
             return
         }
         let course = loc.course >= 0 && loc.speed > 2 ? loc.course : nil
         if let (limit, name) = match(loc.coordinate, course: course, key: key) {
             lostAt = nil
-            setLimit(limit, name)
+            setState(.known(limit), name)
         } else {
-            // نبقي الحد لثوانٍ قليلة عند تقاطع أو انقطاع قصير، ثم نخفيه
+            // نبقي الحد لثوانٍ قليلة عند تقاطع أو انقطاع قصير، ثم نعلن أن الطريق بلا حد مسجل
             if lostAt == nil { lostAt = Date() }
-            if let l = lostAt, Date().timeIntervalSince(l) > 6 { setLimit(nil, nil) }
+            if let l = lostAt, Date().timeIntervalSince(l) > 6 { setState(.noData, nil) }
         }
     }
 
-    private func setLimit(_ limit: Int?, _ name: String?) {
-        if currentLimit != limit { currentLimit = limit }
+    private func setState(_ s: SpeedLimitState, _ name: String?) {
+        if state != s { state = s }
         if roadName != name { roadName = name }
     }
 
-    private func checkOverspeed(_ loc: CLLocation) {
-        guard let limit = currentLimit, loc.speed >= 0 else {
-            if isOver { isOver = false }
-            overSince = nil; alerted = false
-            return
-        }
-        let kmh = loc.speed * 3.6
-        if kmh > Double(limit) + Self.tolerance {
-            if overSince == nil { overSince = Date() }
-            // تنبيه بعد ثانيتين متواصلتين فوق الحد، مرة واحدة لكل تجاوز
-            if let s = overSince, Date().timeIntervalSince(s) >= 2 {
-                if !isOver { isOver = true }
-                if !alerted {
-                    alerted = true
-                    UINotificationFeedbackGenerator().notificationOccurred(.warning)
-                    AudioServicesPlaySystemSound(1315)
-                }
+    /// انقطاع GPS: لا تبقى سرعة قديمة ولا تجاوز معروض.
+    private func startStaleTimer() {
+        guard staleTimer == nil else { return }
+        staleTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, let fix = self.lastFix else { return }
+                let age = Date().timeIntervalSince(fix.timestamp)
+                if age > LiveSpeed.maxAge { self.evaluate(nil) }
+                if age > 10, self.state.limit != nil { self.setState(.weakSignal, nil) }
             }
-        } else if kmh < Double(limit) {
-            overSince = nil
-            if isOver { isOver = false }
-            alerted = false
         }
+    }
+
+    private func evaluate(_ kmh: Double?) {
+        monitor.margin = Double(SpeedAlertSettings.margin)
+        let alertsOn = enabled && SpeedAlertSettings.enabled
+        let event = monitor.update(limit: alertsOn ? state.limit : nil, speedKmh: kmh, at: Date())
+        if isOver != monitor.isOver { isOver = monitor.isOver }
+        guard case .alert(let limit) = event else { return }
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+        if SpeedAlertSettings.sound { VoicePrompter.shared.speak("تجاوزت حد السرعة \(limit)", tone: true) }
+        alerts.send(limit)
     }
 
     // MARK: - المطابقة مع الطريق
@@ -136,45 +148,15 @@ final class SpeedLimitStore: ObservableObject {
         defer { sqlite3_finalize(stmt) }
         sqlite3_bind_double(stmt, 1, c.latitude - d); sqlite3_bind_double(stmt, 2, c.latitude + d)
         sqlite3_bind_double(stmt, 3, c.longitude - d); sqlite3_bind_double(stmt, 4, c.longitude + d)
-        var best: (dist: Double, limit: Int, name: String?)?
+        var roads: [SpeedLimitMatcher.Road] = []
         while sqlite3_step(stmt) == SQLITE_ROW {
-            let fwd = Int(sqlite3_column_int(stmt, 0)), bwd = Int(sqlite3_column_int(stmt, 1))
-            let oneway = sqlite3_column_int(stmt, 2) == 1
-            let name = sqlite3_column_text(stmt, 3).map { String(cString: $0) }
             guard let pc = sqlite3_column_text(stmt, 4) else { continue }
-            let pts = PolylineCodec.decode(String(cString: pc))
-            guard pts.count > 1 else { continue }
-            for i in 0..<(pts.count - 1) {
-                let a = pts[i], b = pts[i + 1]
-                let dist = Self.distanceToSegment(c, a, b)
-                guard dist < 25 else { continue }
-                var limit = fwd
-                if let course {
-                    let segBearing = GeoMath.bearing(from: a, to: b)
-                    let diff = abs(((course - segBearing + 540).truncatingRemainder(dividingBy: 360)) - 180)
-                    if diff > 135 {
-                        // نسير عكس اتجاه رسم الطريق
-                        if oneway { continue }
-                        limit = bwd
-                    } else if diff > 45 {
-                        continue  // طريق متقاطع وليس الذي نسير عليه
-                    }
-                }
-                guard limit > 0 else { continue }
-                if best == nil || dist < best!.dist { best = (dist, limit, (name?.isEmpty ?? true) ? nil : name) }
-            }
+            roads.append(.init(forward: Int(sqlite3_column_int(stmt, 0)), backward: Int(sqlite3_column_int(stmt, 1)),
+                               oneway: sqlite3_column_int(stmt, 2) == 1,
+                               name: sqlite3_column_text(stmt, 3).map { String(cString: $0) },
+                               points: PolylineCodec.decode(String(cString: pc))))
         }
-        return best.map { ($0.limit, $0.name) }
-    }
-
-    nonisolated static func distanceToSegment(_ p: CLLocationCoordinate2D, _ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Double {
-        let kx = cos(p.latitude * .pi / 180) * 111_320, ky = 110_540.0
-        let ax = (a.longitude - p.longitude) * kx, ay = (a.latitude - p.latitude) * ky
-        let bx = (b.longitude - p.longitude) * kx, by = (b.latitude - p.latitude) * ky
-        let dx = bx - ax, dy = by - ay
-        let l2 = dx * dx + dy * dy
-        let t = l2 == 0 ? 0 : max(0, min(1, -(ax * dx + ay * dy) / l2))
-        return hypot(ax + t * dx, ay + t * dy)
+        return SpeedLimitMatcher.best(at: c, course: course, roads: roads).map { ($0.limit, $0.name) }
     }
 
     // MARK: - البيانات

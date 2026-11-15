@@ -99,6 +99,7 @@ final class AppEnvironment {
         nav.attach(location: loc)
         seedIfNeeded()
         recorder.recoverUnfinishedTrackIfNeeded()
+        NavigationVoice.shared.start()
         // قياس تغطية الشبكة وتحديث موقع الرحلة الآمنة مع كل تحديث للموقع (حتى في الخلفية أثناء التسجيل)
         loc.$location.compactMap { $0 }
             .sink { l in
@@ -110,6 +111,7 @@ final class AppEnvironment {
         NetworkMonitor.shared.$isOnline.removeDuplicates().filter { $0 }
             .sink { _ in
                 SafeTripManager.shared.networkBecameAvailable()
+                SharedNavigationState.shared.networkBecameAvailable()
                 Task { await FollowService.shared.refresh() }
                 Task { await CoverageService.shared.uploadPending() }
             }

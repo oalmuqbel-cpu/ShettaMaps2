@@ -405,9 +405,10 @@ struct MapScreen: View {
     /// العمود الثاني: المنظور ثلاثي الأبعاد، مساراتي السابقة، والشمال.
     /// السرعة الحالية إذا كانت موثوقة وأعلى من المشي البطيء.
     private var currentSpeed: Double? {
-        guard let l = location.location, Date().timeIntervalSince(l.timestamp) < 15, l.speed >= 0 else { return nil }
+        // سرعة حية فقط (أحدث من ٣ ثوانٍ وبدقة مقبولة)؛ القديمة لا تُعرض كأنها حالية
+        guard let kmh = LiveSpeed.kmh(location.location) else { return nil }
         // أقل من ٤ كم/س تقريبًا يعني واقف (ضجيج GPS)
-        return l.speed > 1.2 ? l.speed : 0
+        return kmh > 4.3 ? kmh / 3.6 : 0
     }
 
     /// الطقس المعروض يخص منطقتك (أقل من ٥٠ كم) وعمره أقل من ٣ ساعات.
@@ -424,8 +425,9 @@ struct MapScreen: View {
                     .buttonStyle(.plain)
             }
             if showSpeed {
-                SpeedBubble(speedMS: currentSpeed, limit: speedLimits.currentLimit, over: speedLimits.isOver)
-                    .padding(.top, speedLimits.currentLimit == nil ? 0 : 14)
+                SpeedBubble(speedMS: currentSpeed, limit: speedLimits.currentLimit, over: speedLimits.isOver,
+                            limitNote: speedLimits.state.note)
+                    .padding(.top, 14)
             }
             Button { mapManager.send(.pitch(!mapManager.is3D)) } label: {
                 Text(mapManager.is3D ? "2D" : "3D")

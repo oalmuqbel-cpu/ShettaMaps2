@@ -137,6 +137,12 @@ final class CarPlayTemplateManager: NSObject {
             .sink { [weak self] _ in self?.checkGPSQuality() }
             .store(in: &cancellables)
 
+        // تنبيه تجاوز السرعة: تنبيه ملاحي قصير من قوالب CarPlay (لا يُرسم شيء فوق الخريطة)
+        SpeedLimitStore.shared.alerts
+            .receive(on: RunLoop.main)
+            .sink { [weak self] limit in self?.presentSpeedAlert(limit) }
+            .store(in: &cancellables)
+
         // تقدم تنزيل الخرائط يظهر مباشرة في القوائم المفتوحة
         env.offlineMaps.$regions
             .throttle(for: .seconds(2), scheduler: RunLoop.main, latest: true)
@@ -306,6 +312,18 @@ final class CarPlayTemplateManager: NSObject {
                      duration: 8)
     }
 
+    private func presentSpeedAlert(_ limit: Int) {
+        // يستبدل أي تنبيه سرعة سابق ولا يحتاج لمسة: يختفي تلقائيًا
+        if mapTemplate.currentNavigationAlert != nil { mapTemplate.dismissNavigationAlert(animated: false) { _ in } }
+        let img = UIImage(systemName: "gauge.with.dots.needle.67percent",
+                          withConfiguration: UIImage.SymbolConfiguration(pointSize: 30, weight: .bold))?
+            .withTintColor(.systemRed, renderingMode: .alwaysOriginal)
+        let alert = CPNavigationAlert(titleVariants: ["تجاوزت حد السرعة \(limit)", "الحد \(limit)"],
+                                      subtitleVariants: ["الحد النظامي لهذا الطريق \(limit) كم/س"],
+                                      image: img, primaryAction: nil, secondaryAction: nil, duration: 5)
+        mapTemplate.present(navigationAlert: alert, animated: true)
+    }
+
     func presentAlert(title: String, subtitle: String, duration: TimeInterval) {
         guard mapTemplate.currentNavigationAlert == nil else { return }
         let ok = CPAlertAction(title: "حسنًا", style: .default) { _ in }
@@ -353,6 +371,30 @@ extension CarPlayTemplateManager: CPMapTemplateDelegate {
 
     nonisolated func mapTemplate(_ mapTemplate: CPMapTemplate, didEndPanGestureWithVelocity velocity: CGPoint) {}
 
+    // التكبير والتدوير باللمس (iOS 26 وما بعده، في السيارات التي تدعمه)
+    @available(iOS 26.0, *)
+    nonisolated func mapTemplateDidBeginZoomGesture(_ mapTemplate: CPMapTemplate) {
+        MainActor.assumeIsolated { mapViewController.beginZoom() }
+    }
+
+    @available(iOS 26.0, *)
+    nonisolated func mapTemplate(_ mapTemplate: CPMapTemplate, didUpdateZoomGestureWithCenter center: CGPoint, scale: CGFloat, velocity: CGFloat) {
+        MainActor.assumeIsolated { mapViewController.updateZoom(scale: scale) }
+    }
+
+    @available(iOS 26.0, *)
+    nonisolated func mapTemplate(_ mapTemplate: CPMapTemplate, didEndZoomGestureWithVelocity velocity: CGFloat) {}
+
+    @available(iOS 26.0, *)
+    nonisolated func mapTemplateDidBeginRotationGesture(_ mapTemplate: CPMapTemplate) {
+        MainActor.assumeIsolated { mapViewController.beginRotation() }
+    }
+
+    @available(iOS 26.0, *)
+    nonisolated func mapTemplate(_ mapTemplate: CPMapTemplate, didRotateWithCenter center: CGPoint, rotation: CGFloat, velocity: CGFloat) {
+        MainActor.assumeIsolated { mapViewController.updateRotation(radians: rotation) }
+    }
+
     nonisolated func mapTemplateDidDismissPanningInterface(_ mapTemplate: CPMapTemplate) {}
 
     nonisolated func mapTemplateDidCancelNavigation(_ mapTemplate: CPMapTemplate) {
@@ -367,9 +409,10 @@ extension CarPlayTemplateManager: CPMapTemplateDelegate {
             mapTemplate.hideTripPreviews()
             let c = trip.destination.placemark.coordinate
             let w = previewWaypoint ?? Waypoint(name: trip.destination.name ?? "الوجهة", coordinate: c)
+            let mode = (routeChoice.userInfo as? String).flatMap(GuidanceMode.init(rawValue:)) ?? .direct
             previewWaypoint = nil
             mapViewController.showPreview(nil)
-            env.navigation.navigate(to: w)
+            env.navigation.navigate(to: w, mode: mode)
             updateBarButtons()
         }
     }
