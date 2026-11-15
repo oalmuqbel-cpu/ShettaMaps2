@@ -131,14 +131,54 @@ final class SearchService: ObservableObject {
             gazetteer = []; return
         }
         // التحليل في الخلفية لأن القاعدة كبيرة
+        let extraURL = Self.extraURL
         Task.detached(priority: .userInitiated) {
-            let entries = (try? Data(contentsOf: url)).flatMap { try? SearchService.parseGeoJSON($0) } ?? []
-            let index = entries.map { e in (e, ([e.name] + e.altNames).map(SearchService.searchKey)) }
+            let base = (try? Data(contentsOf: url)).flatMap { try? SearchService.parseGeoJSON($0) } ?? []
+            let extra = (try? Data(contentsOf: extraURL)).flatMap { try? SearchService.parseGeoJSON($0) } ?? []
             await MainActor.run {
-                self.gazetteer = entries
-                self.normalizedIndex = index
+                self.baseEntries = base
+                self.extraEntries = extra
+                self.rebuildIndex()
             }
+            await self.refreshExtra()
         }
+    }
+
+    // MARK: - طبقات أماكن تُحدَّث من الإنترنت دون نسخة جديدة من التطبيق
+    // (مثل قائمة «مارد ماء» لموارد المياه بإذن صاحبها). تُخزَّن محليًا فتعمل دون إنترنت.
+
+    nonisolated static let extraRemote = URL(string: "https://oalmuqbel-cpu.github.io/ShettaMaps2/data/places-extra.geojson")!
+    nonisolated static var extraURL: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("places-extra.geojson")
+    }
+    private var baseEntries: [GazetteerEntry] = []
+    private var extraEntries: [GazetteerEntry] = []
+    /// مصادر الطبقات الإضافية للعرض في الإعدادات.
+    @Published private(set) var extraSources: [String: Int] = [:]
+
+    private func rebuildIndex() {
+        let all = baseEntries + extraEntries
+        gazetteer = all
+        normalizedIndex = all.map { e in (e, ([e.name] + e.altNames).map(Self.searchKey)) }
+        extraSources = Dictionary(grouping: extraEntries, by: \.source).mapValues(\.count)
+    }
+
+    /// تحديث الطبقات الإضافية (مرة كل ٦ ساعات كحد أقصى).
+    func refreshExtra(force: Bool = false) async {
+        let key = "extraPlacesFetchedAt"
+        if !force, let last = UserDefaults.standard.object(forKey: key) as? Date, Date().timeIntervalSince(last) < 6 * 3600 { return }
+        guard NetworkMonitor.shared.isOnline else { return }
+        var req = URLRequest(url: Self.extraRemote, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
+        req.setValue("Samt/1.0", forHTTPHeaderField: "User-Agent")
+        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let entries = try? Self.parseGeoJSON(data) else { return }
+        try? FileManager.default.createDirectory(at: Self.extraURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? data.write(to: Self.extraURL, options: .atomic)
+        UserDefaults.standard.set(Date(), forKey: key)
+        extraEntries = entries
+        rebuildIndex()
     }
 
     func importGazetteer(from source: URL) throws -> Int {
@@ -147,8 +187,8 @@ final class SearchService: ObservableObject {
         let data = try Data(contentsOf: source)
         let entries = try Self.parseGeoJSON(data)
         try data.write(to: userGazetteerURL, options: .atomic)
-        gazetteer = entries
-        normalizedIndex = entries.map { e in (e, ([e.name] + e.altNames).map(Self.searchKey)) }
+        baseEntries = entries
+        rebuildIndex()
         gazetteerSource = "قاعدة مستوردة"
         return entries.count
     }
