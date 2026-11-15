@@ -5,7 +5,7 @@ on:
     inputs:
       screens:
         description: "قوائم CarPlay المطلوبة"
-        default: "map layers more destinations nearby rawdah preview pan"
+        default: "map layers"
       location:
         default: "25.3800,47.2500"
 
@@ -63,9 +63,16 @@ jobs:
             sleep 4
             t 20 xcrun simctl location "$UDID" set "$LOC"
             t 30 python3 ci/carplay_tap.py shots/windows.txt 205 280
-            sleep 25
+            sleep 7
+            t 30 xcrun simctl io "$UDID" screenshot --display=external "shots/cp-$S-a.png"
+            sleep 18
             t 30 xcrun simctl io "$UDID" screenshot --display=external "shots/cp-$S.png"
           done
+          # تقارير الانهيار إن وجدت
+          mkdir -p shots/crash
+          find ~/Library/Logs/DiagnosticReports -name "ShettaMaps2*" -mmin -60 -exec cp {} shots/crash/ \; 2>/dev/null || true
+          ls -la shots/crash
+          for f in shots/crash/*; do [ -f "$f" ] && head -c 6000 "$f"; done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -76,6 +83,7 @@ jobs:
         run: |
           OUT=ci-shots/carplay
           mkdir -p "$OUT"; rm -f "$OUT"/*
+          mkdir -p "$OUT/crash"; cp shots/crash/* "$OUT/crash/" 2>/dev/null || true
           for f in shots/*.png; do sips -s format jpeg -s formatOptions 80 "$f" --out "$OUT/$(basename "${f%.png}").jpg" >/dev/null; done
           ls "$OUT"
           git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
