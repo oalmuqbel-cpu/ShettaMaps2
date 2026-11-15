@@ -1,0 +1,19 @@
+name: SDK headers
+
+on:
+  workflow_dispatch:
+    inputs:
+      pattern:
+        default: "Gesture|speedLimit|SpeedLimit|compassSetting|promptStyle|CPRouteChoice|userInfo|maneuverType|junctionType|trafficSide|PromptStyle"
+
+jobs:
+  grep:
+    runs-on: macos-26
+    steps:
+      - run: |
+          X=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1); sudo xcode-select -s "$X"
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path); echo $SDK
+          H=$SDK/System/Library/Frameworks/CarPlay.framework/Headers
+          grep -nE "${{ inputs.pattern }}" $H/*.h | grep -v "^\s*$" | cut -c1-260
+          echo ---- AV
+          grep -nE "promptStyle|AVAudioSessionPromptStyle|VoicePrompt|InterruptSpokenAudio" $SDK/System/Library/Frameworks/AVFAudio.framework/Headers/AVAudioSession*.h | cut -c1-220
