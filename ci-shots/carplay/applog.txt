@@ -1,0 +1,832 @@
++ local n=120
++ shift
++ perl -e 'alarm shift; exec @ARGV' 120 xcrun simctl spawn FCC5F673-7BEC-4A7D-8F2A-4DC35E2668EC log show --last 20m --style compact --predicate 'process == "ShettaMaps2" AND (eventMessage CONTAINS[c] "scene" OR eventMessage CONTAINS[c] "carplay" OR messageType == error OR messageType == fault)'
+getpwuid_r did not find a match for uid 501
+Timestamp               Ty Process[PID:TID]
+2026-11-15 12:06:11.176 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UIApplicationSceneKeyboardSettings on FBSSceneSettings
+2026-11-15 12:06:11.176 Df ShettaMaps2[7091:6c5e] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x1071097c0 com.apple.frontboard.systemappservices> attempting immediate handshake from activate
+2026-11-15 12:06:11.177 Df ShettaMaps2[7091:6c5e] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x1071097c0 com.apple.frontboard.systemappservices> sent handshake
+2026-11-15 12:06:11.177 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneOcclusionSettings> on FBSSceneSettings
+2026-11-15 12:06:11.177 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneInterfaceProtectionSettings> on FBSSceneSettings
+2026-11-15 12:06:11.178 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferencesHostSettingsExtension on FBSSceneSettings
+2026-11-15 12:06:11.179 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneSafeAreaSettingsExtension on FBSSceneSettings
+2026-11-15 12:06:11.180 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferenceClientSettingsExtension on FBSSceneClientSettings
+2026-11-15 12:06:11.180 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UIHomeAffordanceHostSceneSettings> on FBSSceneSettings
+2026-11-15 12:06:11.180 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISystemShellSceneHostingEnvironmentSettings on FBSSceneSettings
+2026-11-15 12:06:11.180 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneRenderingEnvironmentSettings on FBSSceneSettings
+2026-11-15 12:06:11.181 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneRenderingEnvironmentClientSettings> on FBSSceneClientSettings
+2026-11-15 12:06:11.182 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneTransitioningHostSettings> on FBSSceneSettings
+2026-11-15 12:06:11.182 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneFocusSystemSettings> on FBSSceneSettings
+2026-11-15 12:06:11.182 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneOrientationSettingsExtension on FBSSceneSettings
+2026-11-15 12:06:11.182 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneOrientationClientSettingsExtension on FBSSceneClientSettings
+2026-11-15 12:06:11.183 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneWindowingControlClientSettings on FBSSceneClientSettings
+2026-11-15 12:06:11.184 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingContentSizePreferenceClientSettings> on FBSSceneClientSettings
+2026-11-15 12:06:11.184 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneHostingTraitCollectionPropagationSettings on FBSSceneSettings
+2026-11-15 12:06:11.186 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationSettings> on FBSSceneSettings
+2026-11-15 12:06:11.187 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationClientSettings> on FBSSceneClientSettings
+2026-11-15 12:06:11.187 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingEventDeferringSettings> on FBSSceneSettings
+2026-11-15 12:06:11.189 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneSettings
+2026-11-15 12:06:11.190 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneClientSettings
+2026-11-15 12:06:11.190 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingViewControllerPreferencePropagationClientSettings> on FBSSceneClientSettings
+2026-11-15 12:06:11.190 Df ShettaMaps2[7091:6c78] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneZoomTransitionSettings> on FBSSceneSettings
+2026-11-15 12:06:11.191 Df ShettaMaps2[7091:6c7a] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneSettingsCore on FBSSceneSettings
+2026-11-15 12:06:11.192 Df ShettaMaps2[7091:6c7a] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneClientSettingsCore on FBSSceneClientSettings
+2026-11-15 12:06:11.195 Df ShettaMaps2[7091:6c7a] [com.apple.FrontBoard:SceneExtension] UIMutableApplicationSceneSettings setting counterpart class: UIApplicationSceneSettings
+2026-11-15 12:06:11.196 Df ShettaMaps2[7091:6c7a] [com.apple.FrontBoard:SceneExtension] UIMutableApplicationSceneClientSettings setting counterpart class: UIApplicationSceneClientSettings
+2026-11-15 12:06:11.196 Df ShettaMaps2[7091:6c7a] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneTransitionContextCore on FBSSceneTransitionContext
+2026-11-15 12:06:11.322 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:BackgroundTask] Will add backgroundTask with taskName: Persistent SceneSession Map Update, expirationHandler: <__NSGlobalBlock__: 0x1e78c84e8>
+2026-11-15 12:06:11.322 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:BackgroundTask] Created background task <_UIBackgroundTaskInfo: 0x1073e1940>: taskID = 2, taskName = Persistent SceneSession Map Update, creationTime = 511 (elapsed = 0).
+2026-11-15 12:06:11.323 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:InterfaceStyle] Should send trait collection or coordinate space update, interface style 1 -> 1, <UIWindowScene: 0x10a914000> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:06:11.325 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10a914000> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:06:11.325 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:HomeAffordanceObservation] Initializing: <_UIHomeAffordanceSceneNotifier: 0x10a801340>; with scene: <UIWindowScene: 0x10a914000>
+2026-11-15 12:06:11.325 Df ShettaMaps2[7091:6c5e] [com.apple.BacklightServices:scenes] 0x10a8c58c0 setDelegate:<0x10a8c5950 _UIBacklightEnvironment> hasDelegate:YES for environment:sceneID:com.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:06:11.326 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10a914000> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:06:11.326 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:EventDeferring] [0x10a8013b0] Initialized with scene: <UIWindowScene: 0x10a914000>; behavior: <_UIEventDeferringBehavior_iOS: 0x1073bf800>; availableForProcess: 1, systemShellManagesKeyboardFocus: 1
+2026-11-15 12:06:11.328 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:KeyWindow] Scene target of keyboard event deferring environment did change: 1; scene: UIWindowScene: 0x10a914000; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:06:11.328 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:EventDeferring] [0x10a8013b0] Scene target of event deferring environments did update: scene: 0x10a914000; current systemShellManagesKeyboardFocus: 1; systemShellManagesKeyboardFocusForScene: 1; eligibleForRecordRemoval: 1;
+2026-11-15 12:06:11.328 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:KeyWindow] Scene became target of keyboard event deferring environment: UIWindowScene: 0x10a914000; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:06:11.328 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:KeyWindow] Stack[KeyWindow] 0x10a8c5c20: Taking no further action for migration from LastOneWins -> SystemShellManaged as there are no scenes
+2026-11-15 12:06:11.329 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:KeyWindow] Key window needs update: 0; currentKeyWindowScene: 0x0; evaluatedKeyWindowScene: 0x10a914000; currentApplicationKeyWindow: 0x0; evaluatedApplicationKeyWindow: 0x0; reason: UIWindowScene: 0x10a914000: Window scene became target of keyboard environment
+2026-11-15 12:06:11.329 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10a914000> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:06:11.330 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10a914000> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:06:11.332 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10a914000> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:06:11.467 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:Orientation] <UIWindowScene: 0x10a914000> (106BF590-9CF6-4F5D-983D-1288442D2C8B) Scene updated orientation preferences: none -> ( Pu Ll Lr )
+2026-11-15 12:06:11.481 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:KeyWindow] Key window API is scene-level: YES
+2026-11-15 12:06:11.481 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:KeyWindow] UIWindowScene: 0x10a914000: Window became key in scene: UIWindow: 0x10719c400; contextId: 0x432F32D0: reason: UIWindowScene: 0x10a914000: Window requested to become key in scene: 0x10719c400
+2026-11-15 12:06:11.481 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:KeyWindow] Key window needs update: 1; currentKeyWindowScene: 0x0; evaluatedKeyWindowScene: 0x10a914000; currentApplicationKeyWindow: 0x0; evaluatedApplicationKeyWindow: 0x10719c400; reason: UIWindowScene: 0x10a914000: Window requested to become key in scene: 0x10719c400
+2026-11-15 12:06:11.481 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:KeyWindow] Window did become application key: UIWindow: 0x10719c400; contextId: 0x432F32D0; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:06:11.481 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:EventDeferring] [0x10a8013b0] Begin local event deferring requested for token: 0x1073e5b00; environments: 1; reason: UIWindowScene: 0x10a914000: Begin event deferring in keyboardFocus for window: 0x10719c400
+2026-11-15 12:06:11.484 Df ShettaMaps2[7091:6c79] [com.apple.BackBoard:EventDelivery] policyStatus:<BKSHIDEventDeliveryPolicyObserver: 0x1073e6340; token: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B; status: ancestor> was:target
+2026-11-15 12:06:11.484 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10a914000> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:06:11.487 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B  persistentID: 106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:06:11.489 Df ShettaMaps2[7091:6c5e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneIntelligenceSupportSettings> on FBSSceneSettings
+2026-11-15 12:06:11.493 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10a914000> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:06:11.831 Df ShettaMaps2[7091:6c88] [com.apple.UIKit:BackgroundTask] Ending task with identifier 2 and description: <_UIBackgroundTaskInfo: 0x1073e1940>: taskID = 2, taskName = Persistent SceneSession Map Update, creationTime = 511 (elapsed = 1), _expireHandler: <__NSGlobalBlock__: 0x1e78c84e8>
+2026-11-15 12:06:11.831 Df ShettaMaps2[7091:6c88] [com.apple.UIKit:BackgroundTask] Decrementing reference count for assertion <BKSProcessAssertion: 0x107188c80> (used by background task with identifier 2: <_UIBackgroundTaskInfo: 0x1073e1940>: taskID = 2, taskName = Persistent SceneSession Map Update, creationTime = 511 (elapsed = 1))
+2026-11-15 12:06:12.142 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10a914000> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:06:13.032 E  ShettaMaps2[7091:6c5e] [com.apple.GeoServices:ResourceManifest] Failed to locate resource named "default.csv"
+2026-11-15 12:06:13.144 E  ShettaMaps2[7091:6c5e] [com.apple.coreanimation:API] CAMetalLayer ignoring invalid setDrawableSize width=0.000000 height=0.000000
+2026-11-15 12:06:13.578 Df ShettaMaps2[7091:6c5e] [com.apple.FrontBoard:SceneClient] [(FBSceneManager):sceneID:com.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B] Sending action(s): BLSInvalidateFrameSpecifiersAction
+2026-11-15 12:06:13.711 E  ShettaMaps2[7091:6c8a] [com.apple.app_launch_measurement:General] Failed to send CA Event for app launch measurements for ca_event_type: 0 event_name: com.apple.app_launch_measurement.FirstFramePresentationMetric
+2026-11-15 12:06:13.714 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B  persistentID: 106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:06:13.714 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10a914000> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:06:13.748 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:EventDeferring] [0x10a8013b0] Scene target of event deferring environments did update: scene: 0x10a914000; current systemShellManagesKeyboardFocus: 1; systemShellManagesKeyboardFocusForScene: 1; eligibleForRecordRemoval: 1;
+2026-11-15 12:06:13.748 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:KeyWindow] Scene became target of keyboard event deferring environment: UIWindowScene: 0x10a914000; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:06:13.816 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10a914000> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:06:13.817 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B  persistentID: 106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:06:14.096 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:KeyboardSceneDelegate] Reloading input views for key-window scene responder: <(null): 0x0; > force:Y
+2026-11-15 12:06:14.276 E  ShettaMaps2[7091:6c5e] (libCoreFSCache.dylib) fopen failed for data file: errno = 2 (No such file or directory)
+2026-11-15 12:06:15.001 E  ShettaMaps2[7091:6c5e] (libCoreFSCache.dylib) fopen failed for data file: errno = 2 (No such file or directory)
+2026-11-15 12:06:18.670 E  ShettaMaps2[7091:6c8a] [com.apple.app_launch_measurement:General] Failed to send CA Event for app launch measurements for ca_event_type: 1 event_name: com.apple.app_launch_measurement.ExtendedLaunchMetrics
+2026-11-15 12:06:32.821 Df ShettaMaps2[7091:6c5e] [com.apple.KeyboardArbiter:Client] RX sceneBecameFocused:(null)
+2026-11-15 12:06:34.633 E  ShettaMaps2[7091:6d36] [com.apple.CFNetwork:Default] Task <F3108937-E898-476F-9403-68E6369B6CDC>.<1> finished with error [-1001] Error Domain=NSURLErrorDomain Code=-1001 "انتهت مهلة الطلب." UserInfo={_kCFStreamErrorCodeKey=-2102, NSUnderlyingError=0x121aa7780 {Error Domain=kCFErrorDomainCFNetwork Code=-1001 "(null)" UserInfo={_kCFStreamErrorCodeKey=-2102, _kCFStreamErrorDomainKey=4}}, _NSURLErrorFailingURLSessionTaskErrorKey=LocalDataTask <F3108937-E898-476F-9403-68E6369B6CDC>.<1>, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+    "LocalDataTask <F3108937-E898-476F-9403-68E6369B6CDC>.<1>"
+), NSLocalizedDescription=انتهت مهلة الطلب., NSErrorFailingURLStringKey=https://api.open-meteo.com/v1/forecast?latitude=37.7858&longitude=-122.4064&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,precipitation,visibility&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability,precipitation,weather_code&daily=sunrise,sunset&forecast_days=2&timezone=auto&timef
+2026-11-15 12:06:38.983 Df ShettaMaps2[7091:7634] [com.apple.BoardServices:XPCErrors] [C:3] Alloc 8112:FBWorkspace-com.apple.CarPlayTemplateUIHost
+2026-11-15 12:06:38.983 Df ShettaMaps2[7091:7634] [com.apple.FrontBoard:Common] FBSWorkspace registering source: 8112:FBWorkspace-com.apple.CarPlayTemplateUIHost
+2026-11-15 12:06:38.983 Df ShettaMaps2[7091:7634] [com.apple.FrontBoard:Common] FBSWorkspace connected to endpoint : <BSServiceConnectionEndpoint: 0x10aa13a80; target: 8112:FBWorkspace-com.apple.CarPlayTemplateUIHost; service: com.apple.frontboard.workspace-service>
+2026-11-15 12:06:38.983 Df ShettaMaps2[7091:7634] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x120572d00 8112:FBWorkspace-com.apple.CarPlayTemplateUIHost> attempting immediate handshake from activate
+2026-11-15 12:06:38.983 Df ShettaMaps2[7091:7634] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x120572d00 8112:FBWorkspace-com.apple.CarPlayTemplateUIHost> sent handshake
+2026-11-15 12:06:38.987 E  ShettaMaps2[7091:0] [com.apple.os_debug_log:] assertion failed: 25G332 23F77: libxpc.dylib + 56208 [FF603B08-461E-35C4-82E6-3AD8E5D12848]: 0x87
+2026-11-15 12:06:39.026 Df ShettaMaps2[7091:6d36] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneCarPlaySessionSettings on FBSSceneSettings
+2026-11-15 12:06:39.029 Df ShettaMaps2[7091:6d36] [com.apple.FrontBoard:SceneExtension] CRSUIMutableTemplateDashboardWidgetSceneSettings setting counterpart class: CRSUITemplateDashboardWidgetSceneSettings
+2026-11-15 12:06:39.035 E  ShettaMaps2[7091:6d36] [com.apple.carkit:General] Provided status bar edge is invalid, assigning default
+2026-11-15 12:06:39.038 Df ShettaMaps2[7091:7634] [com.apple.FrontBoard:SceneExtension] CPUIMutableTemplateApplicationSceneSettings setting counterpart class: CPUITemplateApplicationSceneSettings
+2026-11-15 12:06:39.053 E  ShettaMaps2[7091:6c5e] [com.apple.carkit:General] Provided status bar edge is invalid, assigning default
+2026-11-15 12:06:39.061 Df ShettaMaps2[7091:6c5e] [com.apple.carplayframework:General] Template dashboard scene updated to unrestricted frame rate
+2026-11-15 12:06:39.062 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:HomeAffordanceObservation] Initializing: <_UIHomeAffordanceSceneNotifier: 0x121a350a0>; with scene: <CPTemplateApplicationDashboardScene: 0x129b2ca80>
+2026-11-15 12:06:39.062 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:EventDeferring] [0x121a34d20] Initialized with scene: <CPTemplateApplicationDashboardScene: 0x129b2ca80>; behavior: <_UIEventDeferringBehavior_CarPlay: 0x10aa104e0>; availableForProcess: 1, systemShellManagesKeyboardFocus: 0
+2026-11-15 12:06:39.068 Df ShettaMaps2[7091:6c5e] [com.apple.carplayframework:General] Connecting to dashboard listener endpoint for scene identifier: Car[2-3]:com.almuqbel.ShettaMaps2:dashboard endpoint <xpc object>
+2026-11-15 12:06:39.068 Df ShettaMaps2[7091:6c5e] [com.apple.carplayframework:General] Scene will connect observer fired
+2026-11-15 12:06:39.068 Df ShettaMaps2[7091:6c5e] [com.apple.carplayframework:General] App supports CPTemplateApplicationDashboardScene method
+2026-11-15 12:06:39.122 E  ShettaMaps2[7091:6c5e] [com.apple.coreanimation:API] CAMetalLayer ignoring invalid setDrawableSize width=0.000000 height=0.000000
+2026-11-15 12:06:39.216 E  ShettaMaps2[7091:6c5e] [com.apple.coreui:framework] CoreUI: CUIThemeStore: No theme registered with id=0
+2026-11-15 12:06:39.216 F  ShettaMaps2[7091:6c5e] [com.apple.coreui:framework] CoreUI: CUIThemeStore: No theme registered with id=0
+2026-11-15 12:06:39.238 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B  persistentID: 106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:06:39.239 Df ShettaMaps2[7091:6c5e] [com.apple.FrontBoard:SceneExtension] Ingesting properties from CRSUITemplateDashboardWidgetSceneSettings...
+2026-11-15 12:06:39.239 Df ShettaMaps2[7091:6c5e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <CRSUITemplateDashboardWidgetSceneSettings[derived]> on FBSSceneSettings
+2026-11-15 12:06:39.239 Df ShettaMaps2[7091:6c5e] [com.apple.FrontBoard:SceneExtension] Ingesting properties from CRSUIDashboardWidgetSceneSettings...
+2026-11-15 12:06:39.240 Df ShettaMaps2[7091:6c5e] [com.apple.FrontBoard:SceneExtension] CRSUIDashboardWidgetSceneSettings setting counterpart class: CRSUIMutableDashboardWidgetSceneSettings
+2026-11-15 12:06:39.240 Df ShettaMaps2[7091:6c5e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <CRSUIDashboardWidgetSceneSettings[derived]> on FBSSceneSettings
+2026-11-15 12:06:39.240 Df ShettaMaps2[7091:6c5e] [com.apple.FrontBoard:SceneExtension] Ingesting properties from UICarPlayApplicationSceneSettings...
+2026-11-15 12:06:39.240 Df ShettaMaps2[7091:6c5e] [com.apple.FrontBoard:SceneExtension] UICarPlayApplicationSceneSettings setting counterpart class: UIMutableCarPlayApplicationSceneSettings
+2026-11-15 12:06:39.240 Df ShettaMaps2[7091:6c5e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UICarPlayApplicationSceneSettings[derived]> on FBSSceneSettings
+2026-11-15 12:06:39.240 Df ShettaMaps2[7091:6c5e] [com.apple.FrontBoard:SceneExtension] Ingesting properties from UIApplicationSceneSettings...
+2026-11-15 12:06:39.242 Df ShettaMaps2[7091:6c5e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIApplicationSceneSettings[derived]> on FBSSceneSettings
+2026-11-15 12:06:39.242 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:UIScreen] CarPlay session settings updated for scene: 8112:FBWorkspace-com.apple.CarPlayTemplateUIHost/FBSceneManager:Car%5B2-3%5D%3Acom.almuqbel.ShettaMaps2%3Adashboard, availableInteractionModels: touch|knob, primaryInteractionModel: knob, touchLevel: lowFidelity
+2026-11-15 12:06:39.243 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10a914000> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:06:39.245 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B  persistentID: 106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:06:39.267 Df ShettaMaps2[7091:6c5e] [com.apple.carplayframework:General] Template scene content style updated to dark
+2026-11-15 12:06:39.267 Df ShettaMaps2[7091:6c5e] [com.apple.carplayframework:General] Template app scene updated to unrestricted frame rate
+2026-11-15 12:06:39.267 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:HomeAffordanceObservation] Initializing: <_UIHomeAffordanceSceneNotifier: 0x121a36140>; with scene: <CPTemplateApplicationScene: 0x129b2cf00>
+2026-11-15 12:06:39.268 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:EventDeferring] [0x121a36290] Initialized with scene: <CPTemplateApplicationScene: 0x129b2cf00>; behavior: <_UIEventDeferringBehavior_CarPlay: 0x116af7560>; availableForProcess: 1, systemShellManagesKeyboardFocus: 0
+2026-11-15 12:06:39.274 Df ShettaMaps2[7091:6c5e] [com.apple.carplayframework:General] Connecting to listener endpoint for scene identifier: Car[2-3]:com.almuqbel.ShettaMaps2
+2026-11-15 12:06:39.278 Df ShettaMaps2[7091:6c5e] [com.apple.carplayframework:General] Scene will connect observer fired
+2026-11-15 12:06:39.279 Df ShettaMaps2[7091:6c5e] [com.apple.carplayframework:General] App supports CPTemplateApplicationScene method with window
+2026-11-15 12:06:39.347 E  ShettaMaps2[7091:6c5e] [com.apple.coreanimation:API] CAMetalLayer ignoring invalid setDrawableSize width=0.000000 height=0.000000
+2026-11-15 12:06:39.450 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B  persistentID: 106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:06:39.450 Df ShettaMaps2[7091:6c5e] [com.apple.FrontBoard:SceneExtension] Ingesting properties from CPUITemplateApplicationSceneSettings...
+2026-11-15 12:06:39.450 Df ShettaMaps2[7091:6c5e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <CPUITemplateApplicationSceneSettings[derived]> on FBSSceneSettings
+2026-11-15 12:06:39.953 Sd ShettaMaps2[7091:0] (6EC25614-313C-338C-AAD1-AEC830781487) <GEOResourceManifestManager 0x10a8c3100>
+{
+    "Auth Token State" =     {
+        "Has MAT" = 0;
+        "Has MRT" = 0;
+    };
+    "Configured Environment" = prod;
+    "Downloaded Regional Resources" =     (
+        "Localized_Poi_RUS_Icons-199@3x.icondatapack",
+        "Localized_Poi_INTL_PostOfficeHorn_Icons-398@3x.iconconfigpack",
+        "Africa_North_Europe_Central_Shields-128@3x.iconconfigpack",
+        "Africa_North_Europe_Central_Shields-129@3x.icondatapack",
+        "Localized_Poi_INTL_Heart_Icons-185@3x.icondatapack",
+        "Asia_Southwest_Icons-224@3x.icondatapack",
+        "Localized_Poi_INTL_Rupee_Icons-182@3x.icondatapack",
+        "Localized_Poi_INTL_Rial_Icons-13@3x.icondatapack",
+        "Africa_North_Asia_Southwest_Shields-128@3x.icondatapack",
+        "Localized_Poi_TUR_Icons-186@3x.iconconfigpack",
+        "Localized_Poi_INTL_ContinentEast_icons-168@3x.icondatapack",
+        "Localized_Poi_INTL_Dollar_Icons-411@3x.iconconfigpack",
+        "india_icons_Landmarks-69@3x.icondatapack",
+        "Localized_Poi_Arab_Icons-197@3x.icondatapack",
+        "india_icons_Landmarks-68@3x.iconconfigpack",
+        "Localized_Poi_INTL_PostOfficeHorn_Icons-393@3x.icondatapack",
+        "Localized_Poi_TUR_Icons-181@3x.icondatapack",
+        "Africa_Northeast_Icons-231@3x.iconconfigpack",
+        "Localized_Poi_RUS_Icons-204@3x.iconconfigpack",
+        "Localized_Poi_INTL_Krone_Icons-177@3x.icondatapack",
+        "Asia_East_Northwest_Southwest_Shields-196@3x.icondatapack",
+        "Localized_Poi_INTL_Krone_Icons-182@3x.iconconfigpack",
+        "Localized_Poi_INTL_ContinentEast_icons-173@3x.iconconfigpack",
+        "Localized_Poi_INTL_Euro_Icons-406@3x.icondatapack",
+        "Localized_Poi_SAU_Icons-187@3x.iconconfigpack",
+        "North_America_Shields-257@3x.icondatapack",
+        "Localized_Poi_INTL_Euro_Icons-411@3x.iconconfigpack",
+        "Africa_North_Shields-210@3x.iconconfigpack",
+        "Localized_Poi_INTL_Heart_Icons-190@3x.iconconfigpack",
+        "Localized_Poi_INTL_Crescent_Icons-2597@3x.iconconfigpack",
+        "Localized_Poi_Arab_Icons-202@3x.iconconfigpack",
+        "Asia_Southwest_Shields-241@3x.iconconfigpack",
+        "Localized_Poi_INTL_Dollar_Icons-406@3x.icondatapack",
+        "Asia_East_Northwest_Southwest_Shields-195@3x.iconconfigpack",
+        "North_America_Shields-256@3x.iconconfigpack",
+        "Africa_Northeast_Icons-232@3x.icondatapack",
+        "Asia_Southwest_Shields-242@3x.icondatapack",
+        "Localized_Poi_SAU_Icons-182@3x.icondatapack",
+        "Asia_Southwest_Icons-217@3x.iconconfigpack",
+        "Africa_North_Asia_Southwest_Shields-127@3x.iconconfigpack",
+        "Localized_Poi_INTL_Rupee_Icons-187@3x.iconconfigpack",
+        "Localized_Poi_INTL_Pound_Icons-201@3x.iconconfigpack",
+        "Africa_North_Northwest_Europe_Central_Shields-98@3x.icondatapack",
+        "Localized_Poi_INTL_Crescent_Icons-2592@3x.icondatapack",
+        "Africa_North_Shields-211@3x.icondatapack",
+        "Localized_Poi_INTL_Pound_Icons-196@3x.icondatapack",
+        "Localized_Poi_INTL_Rial_Icons-18@3x.iconconfigpack",
+        "Africa_North_Northwest_Europe_Central_Shields-97@3x.iconconfigpack"
+    );
+    "Downloaded Resources" =     (
+        "regions-3.tbz",
+        "Guides_Icons_Default-228@3x.iconconfigpack",
+        "Expert_Partners_Icons-32@3x.icondatapack",
+        "lane_change_chevron-1@3x.png",
+        "default-search-1153@3x.styl",
+        "sand-1@3x.png",
+        "Expert_Partners_Icons-31@3x.iconconfigpack",
+        "LocalizationStyleAttributes-8.plist",
+        "Default_Shields-365@3x.iconconfigpack",
+        "regional_vehicle_info-7.pb",
+        "sky20Grey3-5@3x.png",
+        "sky20Grey2-5@3x.png",
+        "Railroad_Crossing-1@3x.iconconfigpack",
+        "globe-default-18599@3x.styl",
+        "publisher_attribution_manifest_index-82.pb",
+        "sky20Grey1-6@3x.png",
+        "southpole-1.c3h",
+        "streaks_hz-1@3x.png",
+        "default-search-car-1101@3x.styl",
+        "SFShieldsSemicondensed-Bold-1.otf",
+        "default-42763@3x.styl",
+        "supportedCountriesDirections-29.plist",
+        "supportedCountriesCommute-1.plist",
+        "timezones-4.tbz",
+        "Default_Icons-27998@3x.icondatapack",
+        "SFDisplayShields-CompressedBold-1.otf",
+        "Railroad_Crossing-5@3x.icondatapack",
+        "Guides_Icons_Default-229@3x.icondatapack",
+        "SFDisplayShields-Bold-1.otf",
+        "Default-29809@3x.iconmappack",
+        "land-carplay-1@3x.png",
+        "road-noise-light-1@3x.png",
+        "northpole-1.c3h",
+        "territories-3.tbz",
+        "checker-1@3x.png",
+        "southpole_0_0_0-1.c3b",
+        "Default_Shields-363@3x.icondatapack",
+        "scene-1061@3x.styl",
+        "supportedEVInfo-30.json",
+        "night-land-carplay-1@3x.png",
+        "streaks_lz-1@3x.png",
+        "sky20Grey0-5@3x.png",
+        "northpole_0_0_0-1.c3b",
+        "altitude-1427.xml",
+        "default-search-car-1412@2x.styl",
+        "SFShieldsCondensed-Bold-1.otf",
+        "default-car-14338@3x.styl",
+        "default-snapshotter-13312@3x.styl",
+        "supportedCountriesTraffic-14.plist",
+        "road-noise-1@3x.png",
+        "tunnel_shine-1@3x.png",
+        "Default_Icons-28058@3x.iconconfigpack",
+        "concrete-1@3x.png",
+        "localizationRegions-4.plist",
+        "solid-fill-1@3x.png",
+        "publisher_attribution_dot_coms-99.pb",
+        "supportedCountriesCustomRouteCreation-3.plist",
+        "supportedCountriesAvoidStairs-3.plist",
+        "POITypeMapping-9.json",
+        "venues-ceiling-1@3x.png",
+        "hybrid-18964@3x.styl",
+        "night-concrete-1@3x.png",
+        "sky20Grey5-6@3x.png",
+        "scene-car-539@3x.styl",
+        "sky20Grey4-6@3x.png",
+        "routing_features-1433.pb",
+        "supportedCountriesEVDirections-23.plist",
+        "default-search-4923@2x.styl",
+        "lane_change_chevron_gradient-1@3x.png"
+    );
+    "Has Resource Manifest" = YES;
+    "Tile Group Environment" = prod;
+    "Tile Group ID" = "https://gspe35-ssl.ls.apple.com/geo_manifest/dynamic/config?application=geod&application_version=1&country_code=US&hardware=iPhone18,1&os=ios&os_build=23F77&os_version=26.5:2611142:13:scl=3&scn=2&dsid=0&gsd=1791786265";
+}
+2026-11-15 12:06:46.021 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.021 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.022 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.022 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.022 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.023 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.023 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.024 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.024 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.040 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.041 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.042 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.042 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.043 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.043 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.044 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.044 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.046 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.046 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.046 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.046 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.052 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.052 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.052 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.052 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.053 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.053 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.053 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.053 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.053 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.055 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.055 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.055 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.056 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.056 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.056 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.056 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.056 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.057 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.057 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.057 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.057 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.058 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.059 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.059 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.061 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.062 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.062 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.062 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.062 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.062 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.067 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [North America Shields, 2.000000]
+2026-11-15 12:06:46.068 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:North America Shields.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Came<…>
+2026-11-15 12:06:46.068 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key North America Shields
+2026-11-15 12:06:46.068 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [North America Northwest Southwest Shields, 2.000000]
+2026-11-15 12:06:46.069 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:North America Northwest Southwest Shields.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack,<…>
+2026-11-15 12:06:46.069 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key North America Northwest Southwest Shields
+2026-11-15 12:06:46.070 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [North America Northwest Southwest Shields, 2.000000]
+2026-11-15 12:06:46.071 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:North America Northwest Southwest Shields.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack,<…>
+2026-11-15 12:06:46.071 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key North America Northwest Southwest Shields
+2026-11-15 12:06:46.075 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [North America Shields, 2.000000]
+2026-11-15 12:06:46.075 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:North America Shields.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Came<…>
+2026-11-15 12:06:46.075 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key North America Shields
+2026-11-15 12:06:46.076 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [North America Shields, 2.000000]
+2026-11-15 12:06:46.076 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:North America Shields.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Came<…>
+2026-11-15 12:06:46.077 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key North America Shields
+2026-11-15 12:06:46.216 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.216 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.217 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.217 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.217 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.218 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.218 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.219 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.219 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.219 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.220 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.220 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.231 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.231 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.232 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.237 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.237 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.237 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.238 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.238 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.238 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.239 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.239 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.239 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.240 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.240 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.240 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.240 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.240 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.241 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.241 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.241 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.241 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.241 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.241 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.242 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.242 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.242 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.242 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.243 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.243 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.243 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.243 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.243 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.243 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.244 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.244 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.244 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.244 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.244 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.245 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.249 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.249 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.250 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.251 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.251 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.251 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.252 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Transit Icons, 2.000000]
+2026-11-15 12:06:46.252 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Transit Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffi<…>
+2026-11-15 12:06:46.253 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Transit Icons
+2026-11-15 12:06:46.254 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.254 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.254 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.254 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.255 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.255 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.255 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.256 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.256 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.256 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.256 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.257 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.257 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.258 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.258 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.258 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.259 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.259 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.260 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [SPR USA Bay Area Landmarks, 2.000000]
+2026-11-15 12:06:46.260 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:SPR USA Bay Area Landmarks.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic<…>
+2026-11-15 12:06:46.260 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key SPR USA Bay Area Landmarks
+2026-11-15 12:06:46.261 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [San Francisco Icons, 2.000000]
+2026-11-15 12:06:46.261 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:San Francisco Icons.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Camera<…>
+2026-11-15 12:06:46.261 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key San Francisco Icons
+2026-11-15 12:06:46.267 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [North America Shields, 2.000000]
+2026-11-15 12:06:46.269 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:North America Shields.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Came<…>
+2026-11-15 12:06:46.269 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key North America Shields
+2026-11-15 12:06:46.270 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [North America Shields, 2.000000]
+2026-11-15 12:06:46.270 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:North America Shields.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Came<…>
+2026-11-15 12:06:46.271 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key North America Shields
+2026-11-15 12:06:46.278 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [North America Northwest Southwest Shields, 2.000000]
+2026-11-15 12:06:46.278 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:North America Northwest Southwest Shields.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack,<…>
+2026-11-15 12:06:46.278 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key North America Northwest Southwest Shields
+2026-11-15 12:06:46.279 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [North America Shields, 2.000000]
+2026-11-15 12:06:46.279 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:North America Shields.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack, Mexico_Traffic_Came<…>
+2026-11-15 12:06:46.279 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key North America Shields
+2026-11-15 12:06:46.280 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No packs of type config available for key: [North America Northwest Southwest Shields, 2.000000]
+2026-11-15 12:06:46.280 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] Failed to resolve packName for packKey:North America Northwest Southwest Shields.2.000000 packType:config with resourceNames:[Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack, Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack, North_America_Southeast_Southwest_Shields-121@3x.icondatapack, San_Francisco_Transit_Icons-233@3x.iconconfigpack, San_Francisco_Transit_Icons-234@3x.icondatapack, San_Francisco_Icons-280@3x.iconconfigpack, San_Francisco_Icons-281@3x.icondatapack, SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack, SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack, Las_Vegas_Custom_Icons-229@3x.iconconfigpack, Las_Vegas_Custom_Icons-230@3x.icondatapack, Utah_Transit_Icons-208@3x.iconconfigpack, Utah_Transit_Icons-209@3x.icondatapack, California_Transit_Icons-234@3x.iconconfigpack, California_Transit_Icons-235@3x.icondatapack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack, Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack,<…>
+2026-11-15 12:06:46.280 E  ShettaMaps2[7091:77f9] [com.apple.VectorKit.GeoResourceLib:IconManager] No config pack found for key North America Northwest Southwest Shields
+2026-11-15 12:06:46.520 E  ShettaMaps2[7091:6c5e] [com.apple.VectorKit:SharedResources] We may not be tracking resources correctly: Assertion with expression - wasEmpty : Failed in file - /Library/Caches/com.apple.xbs/7CC23961-AF50-4FC7-9C41-98C30A514BB8/TemporaryDirectory.bgCikX/Sources/VectorKit_Sim/src/SharedResourcesManager.mm line - 117
+2026-11-15 12:07:11.462 Df ShettaMaps2[7091:6c5e] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10a914000> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:08:23.038 Df ShettaMaps2[10479:9274] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x101d09d60 com.apple.frontboard.systemappservices> attempting immediate handshake from activate
+2026-11-15 12:08:23.039 Df ShettaMaps2[10479:9274] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x101d09d60 com.apple.frontboard.systemappservices> sent handshake
+2026-11-15 12:08:23.045 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UIApplicationSceneKeyboardSettings on FBSSceneSettings
+2026-11-15 12:08:23.054 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneOcclusionSettings> on FBSSceneSettings
+2026-11-15 12:08:23.055 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneInterfaceProtectionSettings> on FBSSceneSettings
+2026-11-15 12:08:23.055 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferencesHostSettingsExtension on FBSSceneSettings
+2026-11-15 12:08:23.056 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneSafeAreaSettingsExtension on FBSSceneSettings
+2026-11-15 12:08:23.057 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferenceClientSettingsExtension on FBSSceneClientSettings
+2026-11-15 12:08:23.059 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UIHomeAffordanceHostSceneSettings> on FBSSceneSettings
+2026-11-15 12:08:23.059 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISystemShellSceneHostingEnvironmentSettings on FBSSceneSettings
+2026-11-15 12:08:23.059 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneRenderingEnvironmentSettings on FBSSceneSettings
+2026-11-15 12:08:23.060 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneRenderingEnvironmentClientSettings> on FBSSceneClientSettings
+2026-11-15 12:08:23.061 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneTransitioningHostSettings> on FBSSceneSettings
+2026-11-15 12:08:23.061 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneFocusSystemSettings> on FBSSceneSettings
+2026-11-15 12:08:23.066 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneOrientationSettingsExtension on FBSSceneSettings
+2026-11-15 12:08:23.068 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneOrientationClientSettingsExtension on FBSSceneClientSettings
+2026-11-15 12:08:23.068 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneWindowingControlClientSettings on FBSSceneClientSettings
+2026-11-15 12:08:23.068 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingContentSizePreferenceClientSettings> on FBSSceneClientSettings
+2026-11-15 12:08:23.069 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneHostingTraitCollectionPropagationSettings on FBSSceneSettings
+2026-11-15 12:08:23.070 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationSettings> on FBSSceneSettings
+2026-11-15 12:08:23.071 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationClientSettings> on FBSSceneClientSettings
+2026-11-15 12:08:23.072 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingEventDeferringSettings> on FBSSceneSettings
+2026-11-15 12:08:23.079 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneSettings
+2026-11-15 12:08:23.079 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneClientSettings
+2026-11-15 12:08:23.080 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingViewControllerPreferencePropagationClientSettings> on FBSSceneClientSettings
+2026-11-15 12:08:23.080 Df ShettaMaps2[10479:927b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneZoomTransitionSettings> on FBSSceneSettings
+2026-11-15 12:08:23.081 Df ShettaMaps2[10479:9291] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneSettingsCore on FBSSceneSettings
+2026-11-15 12:08:23.082 Df ShettaMaps2[10479:9291] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneClientSettingsCore on FBSSceneClientSettings
+2026-11-15 12:08:23.089 Df ShettaMaps2[10479:9291] [com.apple.FrontBoard:SceneExtension] UIMutableApplicationSceneSettings setting counterpart class: UIApplicationSceneSettings
+2026-11-15 12:08:23.090 Df ShettaMaps2[10479:9291] [com.apple.FrontBoard:SceneExtension] UIMutableApplicationSceneClientSettings setting counterpart class: UIApplicationSceneClientSettings
+2026-11-15 12:08:23.090 Df ShettaMaps2[10479:9291] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneTransitionContextCore on FBSSceneTransitionContext
+2026-11-15 12:08:23.269 Df ShettaMaps2[10479:9274] [com.apple.UIKit:InterfaceStyle] Should send trait collection or coordinate space update, interface style 1 -> 1, <UIWindowScene: 0x1068e8200> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:08:23.271 Df ShettaMaps2[10479:9274] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1068e8200> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:08:23.272 Df ShettaMaps2[10479:9274] [com.apple.UIKit:HomeAffordanceObservation] Initializing: <_UIHomeAffordanceSceneNotifier: 0x101fbd500>; with scene: <UIWindowScene: 0x1068e8200>
+2026-11-15 12:08:23.272 Df ShettaMaps2[10479:9274] [com.apple.BacklightServices:scenes] 0x1068dd110 setDelegate:<0x1068dcf90 _UIBacklightEnvironment> hasDelegate:YES for environment:sceneID:com.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:08:23.274 Df ShettaMaps2[10479:9274] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1068e8200> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:08:23.274 Df ShettaMaps2[10479:9274] [com.apple.UIKit:EventDeferring] [0x101fbd880] Initialized with scene: <UIWindowScene: 0x1068e8200>; behavior: <_UIEventDeferringBehavior_iOS: 0x101f935e0>; availableForProcess: 1, systemShellManagesKeyboardFocus: 1
+2026-11-15 12:08:23.282 Df ShettaMaps2[10479:9274] [com.apple.UIKit:KeyWindow] Scene target of keyboard event deferring environment did change: 1; scene: UIWindowScene: 0x1068e8200; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:08:23.282 Df ShettaMaps2[10479:9274] [com.apple.UIKit:EventDeferring] [0x101fbd880] Scene target of event deferring environments did update: scene: 0x1068e8200; current systemShellManagesKeyboardFocus: 1; systemShellManagesKeyboardFocusForScene: 1; eligibleForRecordRemoval: 1;
+2026-11-15 12:08:23.282 Df ShettaMaps2[10479:9274] [com.apple.UIKit:KeyWindow] Scene became target of keyboard event deferring environment: UIWindowScene: 0x1068e8200; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:08:23.282 Df ShettaMaps2[10479:9274] [com.apple.UIKit:KeyWindow] Stack[KeyWindow] 0x1068dd650: Taking no further action for migration from LastOneWins -> SystemShellManaged as there are no scenes
+2026-11-15 12:08:23.282 Df ShettaMaps2[10479:9274] [com.apple.UIKit:KeyWindow] Key window needs update: 0; currentKeyWindowScene: 0x0; evaluatedKeyWindowScene: 0x1068e8200; currentApplicationKeyWindow: 0x0; evaluatedApplicationKeyWindow: 0x0; reason: UIWindowScene: 0x1068e8200: Window scene became target of keyboard environment
+2026-11-15 12:08:23.283 Df ShettaMaps2[10479:9274] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1068e8200> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:08:23.284 Df ShettaMaps2[10479:9274] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1068e8200> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:08:23.286 Df ShettaMaps2[10479:9274] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1068e8200> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:08:23.437 Df ShettaMaps2[10479:9274] [com.apple.UIKit:Orientation] <UIWindowScene: 0x1068e8200> (106BF590-9CF6-4F5D-983D-1288442D2C8B) Scene updated orientation preferences: none -> ( Pu Ll Lr )
+2026-11-15 12:08:23.452 Df ShettaMaps2[10479:9274] [com.apple.UIKit:KeyWindow] Key window API is scene-level: YES
+2026-11-15 12:08:23.453 Df ShettaMaps2[10479:9274] [com.apple.UIKit:KeyWindow] UIWindowScene: 0x1068e8200: Window became key in scene: UIWindow: 0x101da0400; contextId: 0x3EC5964E: reason: UIWindowScene: 0x1068e8200: Window requested to become key in scene: 0x101da0400
+2026-11-15 12:08:23.453 Df ShettaMaps2[10479:9274] [com.apple.UIKit:KeyWindow] Key window needs update: 1; currentKeyWindowScene: 0x0; evaluatedKeyWindowScene: 0x1068e8200; currentApplicationKeyWindow: 0x0; evaluatedApplicationKeyWindow: 0x101da0400; reason: UIWindowScene: 0x1068e8200: Window requested to become key in scene: 0x101da0400
+2026-11-15 12:08:23.453 Df ShettaMaps2[10479:9274] [com.apple.UIKit:KeyWindow] Window did become application key: UIWindow: 0x101da0400; contextId: 0x3EC5964E; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:08:23.453 Df ShettaMaps2[10479:9274] [com.apple.UIKit:EventDeferring] [0x101fbd880] Begin local event deferring requested for token: 0x101f4d4a0; environments: 1; reason: UIWindowScene: 0x1068e8200: Begin event deferring in keyboardFocus for window: 0x101da0400
+2026-11-15 12:08:23.457 Df ShettaMaps2[10479:9274] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1068e8200> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:08:23.457 Df ShettaMaps2[10479:927b] [com.apple.BackBoard:EventDelivery] policyStatus:<BKSHIDEventDeliveryPolicyObserver: 0x101f4ea00; token: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B; status: ancestor> was:target
+2026-11-15 12:08:23.460 Df ShettaMaps2[10479:9274] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B  persistentID: 106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:08:23.461 Df ShettaMaps2[10479:9274] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneIntelligenceSupportSettings> on FBSSceneSettings
+2026-11-15 12:08:23.462 Df ShettaMaps2[10479:9274] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1068e8200> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:08:24.174 Df ShettaMaps2[10479:9274] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1068e8200> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:08:25.111 Df ShettaMaps2[10479:928e] [com.apple.BoardServices:XPCErrors] [C:3] Alloc 10178:FBWorkspace-com.apple.CarPlayTemplateUIHost
+2026-11-15 12:08:25.111 Df ShettaMaps2[10479:928e] [com.apple.FrontBoard:Common] FBSWorkspace registering source: 10178:FBWorkspace-com.apple.CarPlayTemplateUIHost
+2026-11-15 12:08:25.111 Df ShettaMaps2[10479:928e] [com.apple.FrontBoard:Common] FBSWorkspace connected to endpoint : <BSServiceConnectionEndpoint: 0x10859f760; target: 10178:FBWorkspace-com.apple.CarPlayTemplateUIHost; service: com.apple.frontboard.workspace-service>
+2026-11-15 12:08:25.111 Df ShettaMaps2[10479:928e] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x11c8606e0 10178:FBWorkspace-com.apple.CarPlayTemplateUIHost> attempting immediate handshake from activate
+2026-11-15 12:08:25.111 Df ShettaMaps2[10479:928e] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x11c8606e0 10178:FBWorkspace-com.apple.CarPlayTemplateUIHost> sent handshake
+2026-11-15 12:08:25.115 E  ShettaMaps2[10479:0] [com.apple.os_debug_log:] assertion failed: 25G332 23F77: libxpc.dylib + 56208 [FF603B08-461E-35C4-82E6-3AD8E5D12848]: 0x87
+2026-11-15 12:08:25.174 Df ShettaMaps2[10479:9291] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneCarPlaySessionSettings on FBSSceneSettings
+2026-11-15 12:08:25.176 Df ShettaMaps2[10479:9291] [com.apple.FrontBoard:SceneExtension] CRSUIMutableTemplateDashboardWidgetSceneSettings setting counterpart class: CRSUITemplateDashboardWidgetSceneSettings
+2026-11-15 12:08:25.195 Df ShettaMaps2[10479:9291] [com.apple.FrontBoard:SceneExtension] CPUIMutableTemplateApplicationSceneSettings setting counterpart class: CPUITemplateApplicationSceneSettings
+2026-11-15 12:08:25.429 E  ShettaMaps2[10479:9274] [com.apple.GeoServices:ResourceManifest] Failed to locate resource named "default.csv"
+2026-11-15 12:08:25.627 E  ShettaMaps2[10479:9274] [com.apple.coreanimation:API] CAMetalLayer ignoring invalid setDrawableSize width=0.000000 height=0.000000
+2026-11-15 12:08:25.989 Df ShettaMaps2[10479:9274] [com.apple.FrontBoard:SceneClient] [(FBSceneManager):sceneID:com.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B] Sending action(s): BLSInvalidateFrameSpecifiersAction
+2026-11-15 12:08:26.120 E  ShettaMaps2[10479:9291] [com.apple.app_launch_measurement:General] Failed to send CA Event for app launch measurements for ca_event_type: 0 event_name: com.apple.app_launch_measurement.FirstFramePresentationMetric
+2026-11-15 12:08:26.122 Df ShettaMaps2[10479:9274] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B  persistentID: 106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:08:26.123 Df ShettaMaps2[10479:9274] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1068e8200> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:08:26.145 Df ShettaMaps2[10479:9274] [com.apple.UIKit:EventDeferring] [0x101fbd880] Scene target of event deferring environments did update: scene: 0x1068e8200; current systemShellManagesKeyboardFocus: 1; systemShellManagesKeyboardFocusForScene: 1; eligibleForRecordRemoval: 1;
+2026-11-15 12:08:26.146 Df ShettaMaps2[10479:9274] [com.apple.UIKit:KeyWindow] Scene became target of keyboard event deferring environment: UIWindowScene: 0x1068e8200; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:08:26.263 Df ShettaMaps2[10479:9274] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1068e8200> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:08:26.264 Df ShettaMaps2[10479:9274] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B  persistentID: 106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:08:26.432 E  ShettaMaps2[10479:927b] [com.apple.carkit:General] Provided status bar edge is invalid, assigning default
+2026-11-15 12:08:26.487 E  ShettaMaps2[10479:9274] [com.apple.carkit:General] Provided status bar edge is invalid, assigning default
+2026-11-15 12:08:26.504 Df ShettaMaps2[10479:9274] [com.apple.carplayframework:General] Template dashboard scene updated to unrestricted frame rate
+2026-11-15 12:08:26.507 Df ShettaMaps2[10479:9274] [com.apple.UIKit:HomeAffordanceObservation] Initializing: <_UIHomeAffordanceSceneNotifier: 0x101fa5030>; with scene: <CPTemplateApplicationDashboardScene: 0x11db29200>
+2026-11-15 12:08:26.509 Df ShettaMaps2[10479:9274] [com.apple.UIKit:EventDeferring] [0x101fa4cb0] Initialized with scene: <CPTemplateApplicationDashboardScene: 0x11db29200>; behavior: <_UIEventDeferringBehavior_CarPlay: 0x11318b060>; availableForProcess: 1, systemShellManagesKeyboardFocus: 0
+2026-11-15 12:08:26.514 Df ShettaMaps2[10479:9274] [com.apple.carplayframework:General] Connecting to dashboard listener endpoint for scene identifier: Car[2-3]:com.almuqbel.ShettaMaps2:dashboard endpoint <xpc object>
+2026-11-15 12:08:26.515 Df ShettaMaps2[10479:9274] [com.apple.carplayframework:General] Scene will connect observer fired
+2026-11-15 12:08:26.515 Df ShettaMaps2[10479:9274] [com.apple.carplayframework:General] App supports CPTemplateApplicationDashboardScene method
+2026-11-15 12:08:26.620 E  ShettaMaps2[10479:9274] [com.apple.coreanimation:API] CAMetalLayer ignoring invalid setDrawableSize width=0.000000 height=0.000000
+2026-11-15 12:08:26.749 E  ShettaMaps2[10479:9274] [com.apple.coreui:framework] CoreUI: CUIThemeStore: No theme registered with id=0
+2026-11-15 12:08:26.749 F  ShettaMaps2[10479:9274] [com.apple.coreui:framework] CoreUI: CUIThemeStore: No theme registered with id=0
+2026-11-15 12:08:26.763 Df ShettaMaps2[10479:9274] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B  persistentID: 106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:08:26.764 Df ShettaMaps2[10479:9274] [com.apple.FrontBoard:SceneExtension] Ingesting properties from CRSUITemplateDashboardWidgetSceneSettings...
+2026-11-15 12:08:26.766 Df ShettaMaps2[10479:9274] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <CRSUITemplateDashboardWidgetSceneSettings[derived]> on FBSSceneSettings
+2026-11-15 12:08:26.766 Df ShettaMaps2[10479:9274] [com.apple.FrontBoard:SceneExtension] Ingesting properties from CRSUIDashboardWidgetSceneSettings...
+2026-11-15 12:08:26.767 Df ShettaMaps2[10479:9274] [com.apple.FrontBoard:SceneExtension] CRSUIDashboardWidgetSceneSettings setting counterpart class: CRSUIMutableDashboardWidgetSceneSettings
+2026-11-15 12:08:26.768 Df ShettaMaps2[10479:9274] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <CRSUIDashboardWidgetSceneSettings[derived]> on FBSSceneSettings
+2026-11-15 12:08:26.768 Df ShettaMaps2[10479:9274] [com.apple.FrontBoard:SceneExtension] Ingesting properties from UICarPlayApplicationSceneSettings...
+2026-11-15 12:08:26.768 Df ShettaMaps2[10479:9274] [com.apple.FrontBoard:SceneExtension] UICarPlayApplicationSceneSettings setting counterpart class: UIMutableCarPlayApplicationSceneSettings
+2026-11-15 12:08:26.768 Df ShettaMaps2[10479:9274] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UICarPlayApplicationSceneSettings[derived]> on FBSSceneSettings
+2026-11-15 12:08:26.768 Df ShettaMaps2[10479:9274] [com.apple.FrontBoard:SceneExtension] Ingesting properties from UIApplicationSceneSettings...
+2026-11-15 12:08:26.769 Df ShettaMaps2[10479:9274] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIApplicationSceneSettings[derived]> on FBSSceneSettings
+2026-11-15 12:08:26.770 Df ShettaMaps2[10479:9274] [com.apple.UIKit:UIScreen] CarPlay session settings updated for scene: 10178:FBWorkspace-com.apple.CarPlayTemplateUIHost/FBSceneManager:Car%5B2-3%5D%3Acom.almuqbel.ShettaMaps2%3Adashboard, availableInteractionModels: touch|knob, primaryInteractionModel: knob, touchLevel: lowFidelity
+2026-11-15 12:08:26.770 Df ShettaMaps2[10479:9274] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1068e8200> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
+2026-11-15 12:08:27.527 Df ShettaMaps2[10479:9274] [com.apple.carplayframework:General] Template scene content style updated to dark
+2026-11-15 12:08:27.528 Df ShettaMaps2[10479:9274] [com.apple.carplayframework:General] Template app scene updated to unrestricted frame rate
+2026-11-15 12:08:27.529 Df ShettaMaps2[10479:9274] [com.apple.UIKit:HomeAffordanceObservation] Initializing: <_UIHomeAffordanceSceneNotifier: 0x101fa7410>; with scene: <CPTemplateApplicationScene: 0x11db2ab80>
+2026-11-15 12:08:27.531 Df ShettaMaps2[10479:9274] [com.apple.UIKit:EventDeferring] [0x101fa6680] Initialized with scene: <CPTemplateApplicationScene: 0x11db2ab80>; behavior: <_UIEventDeferringBehavior_CarPlay: 0x112fb28c0>; availableForProcess: 1, systemShellManagesKeyboardFocus: 0
+2026-11-15 12:08:27.534 Df ShettaMaps2[10479:9274] [com.apple.carplayframework:General] Connecting to listener endpoint for scene identifier: Car[2-3]:com.almuqbel.ShettaMaps2
+2026-11-15 12:08:27.537 Df ShettaMaps2[10479:9274] [com.apple.carplayframework:General] Scene will connect observer fired
+2026-11-15 12:08:27.537 Df ShettaMaps2[10479:9274] [com.apple.carplayframework:General] App supports CPTemplateApplicationScene method with window
+2026-11-15 12:08:27.610 E  ShettaMaps2[10479:9274] [com.apple.coreanimation:API] CAMetalLayer ignoring invalid setDrawableSize width=0.000000 height=0.000000
+2026-11-15 12:08:27.751 Df ShettaMaps2[10479:9274] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.almuqbel.ShettaMaps2-106BF590-9CF6-4F5D-983D-1288442D2C8B  persistentID: 106BF590-9CF6-4F5D-983D-1288442D2C8B
+2026-11-15 12:08:27.751 Df ShettaMaps2[10479:9274] [com.apple.FrontBoard:SceneExtension] Ingesting properties from CPUITemplateApplicationSceneSettings...
+2026-11-15 12:08:27.752 Df ShettaMaps2[10479:9274] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <CPUITemplateApplicationSceneSettings[derived]> on FBSSceneSettings
+2026-11-15 12:08:28.182 Df ShettaMaps2[10479:9274] [com.apple.UIKit:KeyboardSceneDelegate] Reloading input views for key-window scene responder: <(null): 0x0; > force:Y
+2026-11-15 12:08:28.190 Sd ShettaMaps2[10479:0] (6EC25614-313C-338C-AAD1-AEC830781487) <GEOResourceManifestManager 0x1068af3a0>
+{
+    "Auth Token State" =     {
+        "Has MAT" = 0;
+        "Has MRT" = 0;
+    };
+    "Configured Environment" = prod;
+    "Downloaded Regional Resources" =     (
+        "North_America_Southeast_Southwest_Shields-118@2x.iconconfigpack",
+        "Localized_Poi_RUS_Icons-199@3x.icondatapack",
+        "North_America_Northeast_Northwest_Southeast_Southwest_Shields-105@2x.icondatapack",
+        "Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-3@2x.iconconfigpack",
+        "Localized_Poi_INTL_PostOfficeHorn_Icons-398@3x.iconconfigpack",
+        "Localized_Poi_USA_Icons-390@3x.icondatapack",
+        "North_America_Transit_Icons-244@2x.icondatapack",
+        "North_America_Northwest_Southwest_Shields-133@3x.icondatapack",
+        "Localized_Poi_INTL_PostOfficeHorn_Icons-430@2x.iconconfigpack",
+        "North_America_Southwest_Shields-230@2x.icondatapack",
+        "Localized_Poi_INTL_Parking_E_Icons-210@3x.iconconfigpack",
+        "Africa_North_Europe_Central_Shields-128@3x.iconconfigpack",
+        "SPR_USA_Bay_Area_Landmarks-26@3x.icondatapack",
+        "Mexico_Traffic_Camera_Country_Code_Icons-4@3x.icondatapack",
+        "Africa_North_Europe_Central_Shields-129@3x.icondatapack",
+        "Localized_Poi_INTL_Crescent_Icons-2631@2x.iconconfigpack",
+        "Localized_Poi_INTL_Dollar_Icons-443@2x.iconconfigpack",
+        "Mexico_Transit_Icons-7@2x.iconconfigpack",
+        "Localized_Poi_INTL_Heart_Icons-185@3x.icondatapack",
+        "North_America_Southwest_Shields-232@3x.icondatapack",
+        "Asia_Southwest_Icons-224@3x.icondatapack",
+        "San_Francisco_Icons-280@2x.iconconfigpack",
+        "Localized_Poi_INTL_Rupee_Icons-182@3x.icondatapack",
+        "Localized_Poi_INTL_Rial_Icons-13@3x.icondatapack",
+        "San_Francisco_Transit_Icons-233@3x.iconconfigpack",
+        "California_Transit_Icons-234@3x.iconconfigpack",
+        "Africa_North_Asia_Southwest_Shields-128@3x.icondatapack",
+        "Localized_Poi_TUR_Icons-186@3x.iconconfigpack",
+        "Mexico_Traffic_Camera_Icons-4@2x.icondatapack",
+        "San_Francisco_Icons-281@3x.icondatapack",
+        "North_America_Southwest_Custom_Icons-227@3x.iconconfigpack",
+        "San_Francisco_Icons-280@3x.iconconfigpack",
+        "Mexico_Transit_Icons-7@3x.iconconfigpack",
+        "Mexico_Transit_Icons-5@2x.icondatapack",
+        "Localized_Poi_INTL_ContinentEast_icons-168@3x.icondatapack",
+        "Localized_Poi_INTL_Dollar_Icons-411@3x.iconconfigpack",
+        "india_icons_Landmarks-69@3x.icondatapack",
+        "US_Traffic_Camera_Icons-13@2x.icondatapack",
+        "Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-11@2x.icondatapack",
+        "US_Traffic_Camera_Sky_Plus_Country_Code_Icons-16@3x.icondatapack",
+        "San_Francisco_Transit_Icons-237@2x.iconconfigpack",
+        "Localized_Poi_Arab_Icons-197@3x.icondatapack",
+        "Localized_Poi_USA_Icons-422@2x.icondatapack",
+        "Utah_Transit_Icons-208@3x.iconconfigpack",
+        "india_icons_Landmarks-68@3x.iconconfigpack",
+        "North_America_Transit_Icons-240@3x.icondatapack",
+        "Localized_Poi_INTL_PostOfficeHorn_Icons-393@3x.icondatapack",
+        "Las_Vegas_Custom_Icons-229@2x.icondatapack",
+        "Localized_Poi_TUR_Icons-181@3x.icondatapack",
+        "North_America_Southwest_Custom_Icons-228@3x.icondatapack",
+        "Africa_Northeast_Icons-231@3x.iconconfigpack",
+        "Utah_Transit_Icons-212@2x.iconconfigpack",
+        "Localized_Poi_RUS_Icons-204@3x.iconconfigpack",
+        "Localized_Poi_INTL_Krone_Icons-177@3x.icondatapack",
+        "Localized_Poi_INTL_PostOfficeHorn_Icons-425@2x.icondatapack",
+        "North_America_Shields-255@2x.icondatapack",
+        "North_America_Southeast_Southwest_Shields-121@3x.icondatapack",
+        "US_Traffic_Camera_Icons-12@2x.iconconfigpack",
+        "Localized_Poi_INTL_Dollar_Icons-438@2x.icondatapack",
+        "US_Traffic_Camera_Sky_Plus_Country_Code_Icons-16@2x.icondatapack",
+        "North_America_Southeast_Southwest_Shields-120@3x.iconconfigpack",
+        "Asia_East_Northwest_Southwest_Shields-196@3x.icondatapack",
+        "North_America_Southwest_Shields-229@2x.iconconfigpack",
+        "Las_Vegas_Custom_Icons-230@3x.icondatapack",
+        "North_America_Transit_Icons-243@2x.iconconfigpack",
+        "North_America_Southwest_Custom_Icons-231@2x.icondatapack",
+        "Mexico_Traffic_Camera_Country_Code_Icons-1@2x.iconconfigpack",
+        "Localized_Poi_INTL_Krone_Icons-182@3x.iconconfigpack",
+        "SPR_USA_Bay_Area_Landmarks-25@3x.iconconfigpack",
+        "North_America_Southwest_Custom_Icons-230@2x.iconconfigpack",
+        "US_Traffic_Camera_Sky_Plus_Country_Code_Icons-15@2x.iconconfigpack",
+        "Localized_Poi_INTL_ContinentEast_icons-173@3x.iconconfigpack",
+        "Localized_Poi_INTL_Euro_Icons-406@3x.icondatapack",
+        "Localized_Poi_SAU_Icons-187@3x.iconconfigpack",
+        "North_America_Southeast_Southwest_Shields-119@2x.icondatapack",
+        "Localized_Poi_INTL_Parking_E_Icons-205@3x.icondatapack",
+        "Localized_Poi_INTL_Parking_E_Icons-232@2x.icondatapack",
+        "North_America_Shields-257@3x.icondatapack",
+        "Custom_Icons-223@2x.icondatapack",
+        "Utah_Transit_Icons-209@3x.icondatapack",
+        "Localized_Poi_INTL_Euro_Icons-411@3x.iconconfigpack",
+        "Localized_Poi_INTL_Heart_Icons-208@2x.icondatapack",
+        "San_Francisco_Icons-281@2x.icondatapack",
+        "Custom_Icons-226@3x.iconconfigpack",
+        "Africa_North_Shields-210@3x.iconconfigpack",
+        "North_America_Northeast_Northwest_Southeast_Southwest_Shields-104@2x.iconconfigpack",
+        "California_Transit_Icons-243@2x.icondatapack",
+        "Mexico_Traffic_Camera_Icons-4@3x.icondatapack",
+        "Mexico_Traffic_Camera_Icons-1@3x.iconconfigpack",
+        "Localized_Poi_USA_Icons-395@3x.iconconfigpack",
+        "North_America_Northeast_Northwest_Southeast_Southwest_Shields-103@3x.icondatapack",
+        "US_Traffic_Camera_Icons-13@3x.icondatapack",
+        "Las_Vegas_Custom_Icons-229@3x.iconconfigpack",
+        "California_Transit_Icons-242@2x.iconconfigpack",
+        "Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-9@3x.icondatapack",
+        "Mexico_Transit_Icons-5@3x.icondatapack",
+        "Localized_Poi_INTL_Heart_Icons-190@3x.iconconfigpack",
+        "North_America_Northeast_Northwest_Southeast_Southwest_Shields-102@3x.iconconfigpack",
+        "San_Francisco_Transit_Icons-234@3x.icondatapack",
+        "Localized_Poi_INTL_Crescent_Icons-2597@3x.iconconfigpack",
+        "Localized_Poi_Arab_Icons-202@3x.iconconfigpack",
+        "Mexico_Traffic_Camera_Country_Code_Icons-4@2x.icondatapack",
+        "SPR_USA_Bay_Area_Landmarks-26@2x.icondatapack",
+        "Mexico_Traffic_Camera_Icons-1@2x.iconconfigpack",
+        "North_America_Southwest_Shields-231@3x.iconconfigpack",
+        "Asia_Southwest_Shields-241@3x.iconconfigpack",
+        "Localized_Poi_INTL_Dollar_Icons-406@3x.icondatapack",
+        "Localized_Poi_USA_Icons-427@2x.iconconfigpack",
+        "North_America_Northwest_Southwest_Shields-136@2x.iconconfigpack",
+        "Asia_East_Northwest_Southwest_Shields-195@3x.iconconfigpack",
+        "North_America_Shields-256@3x.iconconfigpack",
+        "North_America_Northwest_Southwest_Shields-135@3x.iconconfigpack",
+        "Africa_Northeast_Icons-232@3x.icondatapack",
+        "Custom_Icons-227@3x.icondatapack",
+        "Asia_Southwest_Shields-242@3x.icondatapack",
+        "Mexico_Central_Traffic_Camera_Sky_Plus_Country_Code_Icons-8@3x.iconconfigpack",
+        "North_America_Northwest_Southwest_Shields-134@2x.icondatapack",
+        "Localized_Poi_SAU_Icons-182@3x.icondatapack",
+        "Asia_Southwest_Icons-217@3x.iconconfigpack",
+        "Africa_North_Asia_Southwest_Shields-127@3x.iconconfigpack",
+        "San_Francisco_Transit_Icons-238@2x.icondatapack",
+        "Localized_Poi_INTL_Crescent_Icons-2626@2x.icondatapack",
+        "Utah_Transit_Icons-213@2x.icondatapack",
+        "Localized_Poi_INTL_Rupee_Icons-187@3x.iconconfigpack",
+        "Localized_Poi_INTL_Heart_Icons-213@2x.iconconfigpack",
+        "Localized_Poi_INTL_Pound_Icons-201@3x.iconconfigpack",
+        "Africa_North_Northwest_Europe_Central_Shields-98@3x.icondatapack",
+        "Localized_Poi_INTL_Crescent_Icons-2592@3x.icondatapack",
+        "Africa_North_Shields-211@3x.icondatapack",
+        "Localized_Poi_INTL_Pound_Icons-196@3x.icondatapack",
+        "Localized_Poi_INTL_Rial_Icons-18@3x.iconconfigpack",
+        "US_Traffic_Camera_Icons-12@3x.iconconfigpack",
+        "Mexico_Traffic_Camera_Country_Code_Icons-1@3x.iconconfigpack",
+        "North_America_Shields-254@2x.iconconfigpack",
+        "Localized_Poi_INTL_Parking_E_Icons-237@2x.iconconfigpack",
+        "SPR_USA_Bay_Area_Landmarks-25@2x.iconconfigpack",
+        "California_Transit_Icons-235@3x.icondatapack",
+        "Las_Vegas_Custom_Icons-228@2x.iconconfigpack",
+        "North_America_Transit_Icons-239@3x.iconconfigpack",
+        "Africa_North_Northwest_Europe_Central_Shields-97@3x.iconconfigpack",
+        "US_Traffic_Camera_Sky_Plus_Country_Code_Icons-15@3x.iconconfigpack",
+        "Custom_Icons-222@2x.iconconfigpack"
+    );
+    "Downloaded Resources" =     (
+        "regions-3.tbz",
+        "Guides_Icons_Default-228@3x.iconconfigpack",
+        "streaks_hz-1@2x.png",
+        "default-snapshotter-16389@2x.styl",
+        "sky20Grey1-6@2x.png",
+        "Expert_Partners_Icons-32@3x.icondatapack",
+        "lane_change_chevron-1@3x.png",
+        "default-search-1153@3x.styl",
+        "sky20Grey3-5@2x.png",
+        "sky20Grey2-5@2x.png",
+        "water-16@2x.png",
+        "sand-1@3x.png",
+        "Expert_Partners_Icons-31@3x.iconconfigpack",
+        "sand-1@2x.png",
+        "LocalizationStyleAttributes-8.plist",
+        "scene-1158@2x.styl",
+        "Default_Shields-365@3x.iconconfigpack",
+        "regional_vehicle_info-7.pb",
+        "sky20Grey3-5@3x.png",
+        "sky20Grey2-5@3x.png",
+        "LandCoverGradient9-1@2x.png",
+        "LandCoverGradient8-1@2x.png",
+        "lane_change_chevron-1@2x.png",
+        "RealisticRoadLocalRoad-1@2x.png",
+        "Railroad_Crossing-1@3x.iconconfigpack",
+        "globe-default-18599@3x.styl",
+        "concrete-17@2x.png",
+        "publisher_attribution_manifest_index-82.pb",
+        "sky20Grey1-6@3x.png",
+        "southpole-1.c3h",
+        "cemetery-15@2x.png",
+        "streaks_hz-1@3x.png",
+        "DetailedLandCoverPavedArea-1@2x.png",
+        "default-search-car-1101@3x.styl",
+        "park-16@2x.png",
+        "Guides_Icons_Default-855@2x.icondatapack",
+        "road-noise-light-1@2x.png",
+        "land-carplay-1@2x.png",
+        "white-1@2x.png",
+        "SFShieldsSemicondensed-Bold-1.otf",
+        "Default_Icons-19213@2x.iconconfigpack",
+        "default-42763@3x.styl",
+        "night-RealisticRoadLocalRoad-1@2x.png",
+        "supportedCountriesDirections-29.plist",
+        "Guides_Icons_Default-854@2x.iconconfigpack",
+        "supportedCountriesCommute-1.plist",
+        "timezones-4.tbz",
+        "Railroad_Crossing-1@2x.iconconfigpack",
+        "Default_Icons-27998@3x.icondatapack",
+        "globe-default-23107@2x.styl",
+        "LandCoverGradient16-1@2x.png",
+        "SFDisplayShields-CompressedBold-1.otf",
+        "golf_course-15@2x.png",
+        "no_data-2@2x.png",
+        "Railroad_Crossing-5@3x.icondatapack",
+        "default-65091@2x.styl",
+        "Guides_Icons_Default-229@3x.icondatapack",
+        "SFDisplayShields-Bold-1.otf",
+        "Default-29809@3x.iconmappack",
+        "land-carplay-1@3x.png",
+        "road-noise-light-1@3x.png",
+        "Default_Shields-844@2x.icondatapack",
+        "northpole-1.c3h",
+        "Expert_Partners_Icons-31@2x.iconconfigpack",
+        "road-noise-1@2x.png",
+        "territories-3.tbz",
+        "Expert_Partners_Icons-33@2x.icondatapack",
+        "checker-1@3x.png",
+        "southpole_0_0_0-1.c3b",
+        "Railroad_Crossing-5@2x.icondatapack",
+        "RealisticRoadHighway-1@2x.png",
+        "Default_Shields-363@3x.icondatapack",
+        "scene-1061@3x.styl",
+        "supportedEVInfo-30.json",
+        "night-land-carplay-1@3x.png",
+        "Default_Shields-847@2x.iconconfigpack",
+        "LandCoverGradient1-1@2x.png",
+        "hybrid-23369@2x.styl",
+        "streaks_lz-1@3x.png",
+        "sky20Grey0-5@3x.png",
+        "northpole_0_0_0-1.c3b",
+        "sky20Grey0-5@2x.png",
+        "altitude-1427.xml",
+        "night-land-2@2x.png",
+        "default-search-car-1412@2x.styl",
+        "streaks_lz-1@2x.png",
+        "SFShieldsCondensed-Bold-1.otf",
+        "night-land-carplay-1@2x.png",
+        "night-park-2@2x.png",
+        "Default-43042@2x.iconmappack",
+        "default-car-14338@3x.styl",
+        "default-snapshotter-13312@3x.styl",
+        "supportedCountriesTraffic-14.plist",
+        "checker-1@2x.png",
+        "Default_Icons-19122@2x.icondatapack",
+        "road-noise-1@3x.png",
+        "lane_change_chevron_gradient-1@2x.png",
+        "night-water-2@2x.png",
+        "tunnel_shine-1@3x.png",
+        "Default_Icons-28058@3x.iconconfigpack",
+        "concrete-1@3x.png",
+        "localizationRegions-4.plist",
+        "night-RealisticRoadHighway-1@2x.png",
+        "solid-fill-1@3x.png",
+        "publisher_attribution_dot_coms-99.pb",
+        "supportedCountriesCustomRouteCreation-3.plist",
+        "supportedCountriesAvoidStairs-3.plist",
+        "POITypeMapping-9.json",
+        "venues-ceiling-1@3x.png",
+        "sky20Grey5-6@2x.png",
+        "sky20Grey4-6@2x.png",
+        "hybrid-18964@3x.styl",
+        "night-golf_course-2@2x.png",
+        "night-concrete-1@2x.png",
+        "default-car-18788@2x.styl",
+        "night-concrete-1@3x.png",
+        "transparent-1@2x.png",
+        "night-DetailedLandCoverPavedArea-2@2x.png",
+        "venues-ceiling-1@2x.png",
+        "sky20Grey5-6@3x.png",
+        "scene-car-539@3x.styl",
+        "sky20Grey4-6@3x.png",
+        "land-19@2x.png",
+        "routing_features-1433.pb",
+        "night-DetailedLandCoverSand-1@2x.png",
+        "solid-fill-1@2x.png",
+        "scene-car-541@2x.styl",
+        "supportedCountriesEVDirections-23.plist",
+        "default-search-4923@2x.styl",
+        "night-cemetery-2@2x.png",
+        "tunnel_shine-1@2x.png",
+        "lane_change_chevron_gradient-1@3x.png"
+    );
+    "Has Resource Manifest" = YES;
+    "Tile Group Environment" = prod;
+    "Tile Group ID" = "https://gspe35-ssl.ls.apple.com/geo_manifest/dynamic/config?application=geod&application_version=1&country_code=US&hardware=iPhone18,1&os=ios&os_build=23F77&os_version=26.5:2611142:13:scl=2,3&scn=1,2&dsid=0&gsd=1791786265";
+}
+2026-11-15 12:08:30.647 E  ShettaMaps2[10479:9295] [com.apple.app_launch_measurement:General] Failed to send CA Event for app launch measurements for ca_event_type: 1 event_name: com.apple.app_launch_measurement.ExtendedLaunchMetrics
+2026-11-15 12:08:32.801 E  ShettaMaps2[10479:927b] [com.apple.MapKit:MKCoreLocationProvider] CLLocationManager(<CLLocationManager: 0x106a7ea60>) for <MKCoreLocationProvider: 0x1068d79c0> did fail with error: Error Domain=kCLErrorDomain Code=0 "(null)"
+2026-11-15 12:09:23.570 Df ShettaMaps2[10479:9274] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1068e8200> (106BF590-9CF6-4F5D-983D-1288442D2C8B)
