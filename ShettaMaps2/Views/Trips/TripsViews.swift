@@ -9,6 +9,7 @@ struct TripsListView: View {
     @EnvironmentObject private var router: AppRouter
     @Query(sort: \Trip.createdAt, order: .reverse) private var allTrips: [Trip]
     @State private var showNew = false
+    @State private var pendingDelete: [Trip] = []
 
     var body: some View {
         List {
@@ -39,7 +40,7 @@ struct TripsListView: View {
                 }
                 .onDelete { idx in
                     let past = allTrips.filter { !$0.isActive }
-                    idx.map { past[$0] }.forEach { trips.delete($0) }
+                    pendingDelete = idx.map { past[$0] }
                 }
             }
         }
@@ -53,6 +54,15 @@ struct TripsListView: View {
             }
         }
         .sheet(isPresented: $showNew) { NavigationStack { NewTripView() } }
+        .confirmationDialog(pendingDelete.count == 1 ? "حذف الرحلة «\(pendingDelete.first?.name ?? "")»؟" : "حذف \(pendingDelete.count) رحلات؟",
+                            isPresented: Binding(get: { !pendingDelete.isEmpty }, set: { if !$0 { pendingDelete = [] } }),
+                            titleVisibility: .visible) {
+            Button("حذف", role: .destructive) {
+                pendingDelete.forEach { trips.delete($0) }
+                pendingDelete = []
+            }
+            Button("إلغاء", role: .cancel) { pendingDelete = [] }
+        } message: { Text("لا يمكن التراجع عن الحذف.") }
     }
 }
 
@@ -187,7 +197,7 @@ struct TripDetailView: View {
                             .accessibilityLabel("حذف نقطة التوقف")
                     }
                 }
-                .onDelete { trips.removeStops(at: $0, from: trip) }
+                .onDelete { stopToDelete = $0.first }
                 .onMove { trips.moveStops(from: $0, to: $1, in: trip) }
                 if trip.isActive, let here = location.location?.coordinate {
                     Button { trips.addStop(Waypoint(name: "توقف \(trip.stops.count + 1)", coordinate: here), to: trip) } label: {

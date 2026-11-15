@@ -17,6 +17,7 @@ struct TracksListView: View {
     private var tracks: [RecordedTrack]
 
     @State private var importing = false
+    @State private var pendingDelete: [RecordedTrack] = []
     @State private var message: String?
 
     var body: some View {
@@ -41,11 +42,18 @@ struct TracksListView: View {
             ForEach(tracks) { t in
                 NavigationLink { TrackDetailView(track: t) } label: { TrackRow(track: t) }
             }
-            .onDelete { idx in
-                idx.map { tracks[$0] }.forEach { context.delete($0) }
-                try? context.save()
-            }
+            .onDelete { idx in pendingDelete = idx.map { tracks[$0] } }
         }
+        .confirmationDialog(pendingDelete.count == 1 ? "حذف المسار «\(pendingDelete.first?.name ?? "")»؟" : "حذف \(pendingDelete.count) مسارات؟",
+                            isPresented: Binding(get: { !pendingDelete.isEmpty }, set: { if !$0 { pendingDelete = [] } }),
+                            titleVisibility: .visible) {
+            Button("حذف", role: .destructive) {
+                pendingDelete.forEach { context.delete($0) }
+                try? context.save()
+                pendingDelete = []
+            }
+            Button("إلغاء", role: .cancel) { pendingDelete = [] }
+        } message: { Text("لا يمكن التراجع عن الحذف.") }
         .navigationTitle("المسارات")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -137,6 +145,7 @@ struct TrackDetailView: View {
     @State private var newName = ""
     @State private var sharing = false
     @State private var shareError: String?
+    @State private var confirmDelete = false
     @EnvironmentObject private var communityTracks: CommunityTrackStore
 
     private var segments: [[CLLocationCoordinate2D]] { TrackAccumulator.segments(of: points) }
@@ -198,13 +207,15 @@ struct TrackDetailView: View {
                         Label("قص المسار أو حذف جزء منه", systemImage: "scissors")
                     }
                 }
-                Button("حذف المسار", role: .destructive) {
-                    context.delete(track); try? context.save(); dismiss()
-                }
+                Button("حذف المسار", role: .destructive) { confirmDelete = true }
             }
         }
         .navigationTitle(track.name)
         .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog("حذف المسار «\(track.name)»؟", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("حذف", role: .destructive) { context.delete(track); try? context.save(); dismiss() }
+            Button("إلغاء", role: .cancel) {}
+        } message: { Text("لا يمكن التراجع عن الحذف.") }
         .onAppear { points = track.points }
         .onChange(of: track.pointCount) { _, _ in points = track.points }
         .sheet(isPresented: $sharing) { NavigationStack { ShareTrackView(track: track, points: points) } }

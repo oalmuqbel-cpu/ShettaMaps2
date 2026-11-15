@@ -15,6 +15,7 @@ struct PlacesListView: View {
     @State private var categoryFilter: UUID?
     @State private var exportURL: URL?
     @State private var showCategories = false
+    @State private var placeToDelete: SavedPlace?
 
     private var filtered: [SavedPlace] {
         let key = SearchService.searchKey(query)
@@ -49,7 +50,7 @@ struct PlacesListView: View {
                     PlaceRow(place: place, current: location.location?.coordinate)
                 }
                 .swipeActions(edge: .trailing) {
-                    Button(role: .destructive) { delete(place) } label: { Label("حذف", systemImage: "trash") }
+                    Button(role: .destructive) { placeToDelete = place } label: { Label("حذف", systemImage: "trash") }
                 }
                 .swipeActions(edge: .leading) {
                     Button {
@@ -76,6 +77,12 @@ struct PlacesListView: View {
             }
         }
         .sheet(isPresented: $showCategories) { NavigationStack { CategoriesView() } }
+        .confirmationDialog("حذف «\(placeToDelete?.name ?? "")»؟",
+                            isPresented: Binding(get: { placeToDelete != nil }, set: { if !$0 { placeToDelete = nil } }),
+                            titleVisibility: .visible) {
+            Button("حذف", role: .destructive) { if let p = placeToDelete { delete(p) }; placeToDelete = nil }
+            Button("إلغاء", role: .cancel) { placeToDelete = nil }
+        } message: { Text("لا يمكن التراجع عن الحذف.") }
         .sheet(item: Binding(get: { exportURL.map(ShareItem.init) }, set: { exportURL = $0?.url })) { item in
             ShareSheet(items: [item.url])
         }
