@@ -14,6 +14,10 @@ jobs:
           X=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1); sudo xcode-select -s "$X"
           SDK=$(xcrun --sdk iphoneos --show-sdk-path); echo $SDK
           H=$SDK/System/Library/Frameworks/CarPlay.framework/Headers
-          grep -nE "${{ inputs.pattern }}" $H/*.h | grep -v "^\s*$" | cut -c1-260
+          sed -n 315,400p $H/CPMapTemplate.h
+          echo ---- IC
+          sed -n 20,80p $H/CPInstrumentClusterController.h
+          echo ---- ENUM
+          grep -n "CPInstrumentClusterSetting" -A8 $H/*.h | head -30
           echo ---- AV
           grep -nE "promptStyle|AVAudioSessionPromptStyle|VoicePrompt|InterruptSpokenAudio" $SDK/System/Library/Frameworks/AVFAudio.framework/Headers/AVAudioSession*.h | cut -c1-220
