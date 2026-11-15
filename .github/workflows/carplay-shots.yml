@@ -62,7 +62,9 @@ jobs:
             else t 40 xcrun simctl launch "$UDID" $BID -CarPlayScreen "$S"; fi
             sleep 4
             t 20 xcrun simctl location "$UDID" set "$LOC"
-            t 30 python3 ci/carplay_tap.py shots/windows.txt 205 280
+            t 30 python3 ci/carplay_tap.py shots/windows.txt 205 280 cliclick
+            sleep 4
+            t 30 python3 ci/carplay_tap.py shots/windows.txt 205 280 osa
             sleep 7
             t 30 xcrun simctl io "$UDID" screenshot --display=external "shots/cp-$S-a.png"
             sleep 18
@@ -72,7 +74,7 @@ jobs:
           mkdir -p shots/crash
           find ~/Library/Logs/DiagnosticReports -name "ShettaMaps2*" -mmin -60 -exec cp {} shots/crash/ \; 2>/dev/null || true
           ls -la shots/crash
-          for f in shots/crash/*; do [ -f "$f" ] && head -c 6000 "$f"; done
+          for f in shots/crash/*; do [ -f "$f" ] && head -c 6000 "$f"; done; true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
