@@ -320,7 +320,8 @@ final class CarPlayTemplateManager: NSObject {
             .withTintColor(.systemRed, renderingMode: .alwaysOriginal)
         let alert = CPNavigationAlert(titleVariants: ["تجاوزت حد السرعة \(limit)", "الحد \(limit)"],
                                       subtitleVariants: ["الحد النظامي لهذا الطريق \(limit) كم/س"],
-                                      image: img, primaryAction: nil, secondaryAction: nil, duration: 5)
+                                      image: img, primaryAction: CPAlertAction(title: "حسنًا", style: .cancel) { _ in },
+                                      secondaryAction: nil, duration: 5)
         mapTemplate.present(navigationAlert: alert, animated: true)
     }
 
