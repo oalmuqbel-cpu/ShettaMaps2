@@ -1,0 +1,101 @@
+name: CarPlay screenshots
+
+on:
+  workflow_dispatch:
+    inputs:
+      screens:
+        description: "قوائم CarPlay المطلوبة"
+        default: "map layers"
+      location:
+        default: "25.3800,47.2500"
+
+permissions:
+  contents: write
+
+jobs:
+  shots:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select latest Xcode 26
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
+      - name: Build
+        run: |
+          set -o pipefail
+          brew install xcodegen cliclick >/dev/null
+          xcodegen generate
+          UDID=$(python3 ci/pick_simulator.py)
+          echo "UDID=$UDID" >> $GITHUB_ENV
+          xcodebuild build -project ShettaMaps2.xcodeproj -scheme ShettaMaps2 -destination "id=$UDID" -derivedDataPath build | tail -3
+      - name: Capture
+        timeout-minutes: 45
+        run: |
+          set -x
+          t() { local n=$1; shift; perl -e 'alarm shift; exec @ARGV' "$n" "$@" || echo "timeout/fail: $*"; }
+          mkdir -p shots
+          APP=$(find build/Build/Products -name "ShettaMaps2.app" -maxdepth 3 | head -1)
+          BID=com.almuqbel.ShettaMaps2
+          LOC="${{ inputs.location }}"
+          t 120 xcrun simctl boot "$UDID"
+          t 600 xcrun simctl bootstatus "$UDID" -b
+          t 400 xcrun simctl install "$UDID" "$APP"
+          t 30 xcrun simctl privacy "$UDID" grant location-always $BID
+          t 30 xcrun simctl location "$UDID" set "$LOC"
+          t 30 open -a Simulator --args -CurrentDeviceUDID "$UDID"
+          sleep 10
+          t 120 xcrun simctl launch "$UDID" $BID
+          sleep 15
+          t 60 osascript -e 'tell application "Simulator" to activate' -e 'delay 2' \
+            -e 'tell application "System Events" to tell process "Simulator" to click menu item "CarPlay" of menu 1 of menu item "External Displays" of menu 1 of menu bar item "I/O" of menu bar 1'
+          sleep 40
+          t 30 osascript -e 'tell application "System Events" to tell process "Simulator" to get {name, position, size} of every window' > shots/windows.txt
+          cat shots/windows.txt
+          t 30 xcrun simctl io "$UDID" screenshot --display=external shots/cp-00-home.png
+          # فحص: هل النقر يعمل؟ (فتح الإعدادات ثم الرجوع)
+          t 30 python3 ci/carplay_tap.py shots/windows.txt 695 100 cliclick
+          sleep 6
+          t 30 xcrun simctl io "$UDID" screenshot --display=external shots/cp-00-probe.png
+          for S in ${{ inputs.screens }}; do
+            echo "=== $S"
+            t 30 xcrun simctl terminate "$UDID" $BID
+            sleep 3
+            if [ "$S" = map ]; then t 40 xcrun simctl launch "$UDID" $BID
+            else t 40 xcrun simctl launch "$UDID" $BID -CarPlayScreen "$S"; fi
+            sleep 4
+            t 20 xcrun simctl location "$UDID" set "$LOC"
+            t 30 python3 ci/carplay_tap.py shots/windows.txt 205 280 cliclick
+            sleep 4
+            t 30 python3 ci/carplay_tap.py shots/windows.txt 205 280 osa
+            sleep 7
+            t 30 xcrun simctl io "$UDID" screenshot --display=external "shots/cp-$S-a.png"
+            sleep 18
+            t 30 xcrun simctl io "$UDID" screenshot --display=external "shots/cp-$S.png"
+          done
+          t 120 xcrun simctl spawn "$UDID" log show --last 20m --style compact \
+            --predicate 'process == "ShettaMaps2" AND (eventMessage CONTAINS[c] "scene" OR eventMessage CONTAINS[c] "carplay" OR messageType == error OR messageType == fault)' > shots/applog.txt 2>&1
+          tail -150 shots/applog.txt | cut -c1-300
+          # تقارير الانهيار إن وجدت
+          mkdir -p shots/crash
+          find ~/Library/Logs/DiagnosticReports -name "ShettaMaps2*" -mmin -60 -exec cp {} shots/crash/ \; 2>/dev/null || true
+          ls -la shots/crash
+          for f in shots/crash/*; do [ -f "$f" ] && head -c 6000 "$f"; done; true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: carplay-shots
+          path: shots
+      - name: Commit
+        if: always()
+        run: |
+          OUT=ci-shots/carplay
+          mkdir -p "$OUT"; rm -f "$OUT"/*
+          mkdir -p "$OUT/crash"; cp shots/crash/* "$OUT/crash/" 2>/dev/null || true
+          cp shots/applog.txt "$OUT/" 2>/dev/null || true
+          for f in shots/*.png; do sips -s format jpeg -s formatOptions 80 "$f" --out "$OUT/$(basename "${f%.png}").jpg" >/dev/null; done
+          ls "$OUT"
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git add "$OUT"; git commit -m "CarPlay screenshots" || true
+          git pull --rebase -q && git push

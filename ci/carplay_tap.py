@@ -20,4 +20,8 @@ cx, cy = (float(sys.argv[2]), float(sys.argv[3])) if len(sys.argv) > 3 else (205
 tx, ty = int(x + cx * scale), int(top + cy * scale)
 print("window", names[idx], x, y, w, h, "tap", tx, ty)
 subprocess.run(["osascript", "-e", 'tell application "Simulator" to activate'])
-subprocess.run(["cliclick", f"c:{tx},{ty}"])
+mode = sys.argv[4] if len(sys.argv) > 4 else "cliclick"
+if mode == "osa":
+    subprocess.run(["osascript", "-e", f'tell application "System Events" to tell process "Simulator" to click at {{{tx}, {ty}}}'])
+else:
+    subprocess.run(["cliclick", f"m:{tx},{ty}", "w:300", f"dd:{tx},{ty}", "w:150", f"du:{tx},{ty}"])
