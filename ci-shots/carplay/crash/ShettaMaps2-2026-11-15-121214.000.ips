@@ -1,0 +1,238 @@
+{"app_name":"ShettaMaps2","timestamp":"2026-11-15 12:12:14.00 +0000","app_version":"1.0.0","slice_uuid":"852f218f-e1cc-3782-86cd-de49f34d0119","build_version":"1","platform":7,"bundleID":"com.almuqbel.ShettaMaps2","share_with_app_devs":0,"is_first_party":0,"bug_type":"309","os_version":"macOS 26.7.2 (25G332)","roots_installed":0,"name":"ShettaMaps2","incident_id":"28B17CF6-6B0D-4838-9FC7-EA279E3564C0"}
+{
+  "uptime" : 640,
+  "procRole" : "Non UI",
+  "version" : 2,
+  "userID" : 501,
+  "deployVersion" : 210,
+  "modelCode" : "VirtualMac2,1",
+  "coalitionID" : 1192,
+  "osVersion" : {
+    "train" : "macOS 26.7.2",
+    "build" : "25G332",
+    "releaseType" : "User"
+  },
+  "captureTime" : "2026-11-15 12:09:23.9960 +0000",
+  "codeSigningMonitor" : 0,
+  "incident" : "28B17CF6-6B0D-4838-9FC7-EA279E3564C0",
+  "pid" : 9715,
+  "translated" : false,
+  "cpuType" : "ARM-64",
+  "procLaunch" : "2026-11-15 12:08:52.8209 +0000",
+  "procStartAbsTime" : 14777994310,
+  "procExitAbsTime" : 15526151275,
+  "procName" : "ShettaMaps2",
+  "procPath" : "\/Users\/USER\/Library\/Developer\/CoreSimulator\/Devices\/FCC5F673-7BEC-4A7D-8F2A-4DC35E2668EC\/data\/Containers\/Bundle\/Application\/A73594B5-0565-46EE-91B6-FD3754307A24\/ShettaMaps2.app\/ShettaMaps2",
+  "bundleInfo" : {"CFBundleShortVersionString":"1.0.0","CFBundleVersion":"1","CFBundleIdentifier":"com.almuqbel.ShettaMaps2"},
+  "storeInfo" : {"deviceIdentifierForVendor":"C8ED0402-6E90-5BBB-988B-F4B6D775D12D","thirdParty":true},
+  "parentProc" : "launchd_sim",
+  "parentPid" : 3873,
+  "coalitionName" : "com.apple.CoreSimulator.SimDevice.FCC5F673-7BEC-4A7D-8F2A-4DC35E2668EC",
+  "crashReporterKey" : "98D356F5-19FA-418C-A0DB-B66F1267DCEC",
+  "appleIntelligenceStatus" : {"state":"unavailable","reasons":["countryBillingIneligible","selectedSiriLanguageIneligibleInfo(und)","selectedSiriLanguageIneligible","deviceNotCapable","countryLocationIneligible"]},
+  "developerMode" : 1,
+  "responsiblePid" : 1988,
+  "responsibleProc" : "SimulatorTrampoline",
+  "codeSigningID" : "com.almuqbel.ShettaMaps2",
+  "codeSigningTeamID" : "",
+  "codeSigningFlags" : 570425857,
+  "codeSigningValidationCategory" : 10,
+  "codeSigningTrustLevel" : 4294967295,
+  "codeSigningAuxiliaryInfo" : 0,
+  "instructionByteStream" : {"beforePC":"ARAA1MADX9aQBYCSARAA1MADX9awBYCSARAA1MADX9bQBYCSARAA1A==","atPC":"wANf1vAFgJIBEADUwANf1hAGgJIBEADUwANf1jAGgJIBEADUwANf1g=="},
+  "bootSessionUUID" : "0ACBC993-8B2A-4CFB-ADF9-58F6CC28B026",
+  "sip" : "disabled",
+  "exception" : {"codes":"0x0000000000000000, 0x0000000000000000","rawCodes":[0,0],"type":"EXC_CRASH","signal":"SIGKILL"},
+  "termination" : {"code":2343432205,"flags":6,"namespace":"FRONTBOARD","reasons":["<RBSTerminateContext| domain:10 code:0x8BADF00D explanation:process-launch watchdog transgression: app<com.almuqbel.ShettaMaps2((null))>:9715 exhausted real (wall clock) time allowance of 30.00 seconds","ProcessVisibility: Background","ProcessState: Running","WatchdogEvent: process-launch","WatchdogVisibility: Background reportType:CrashLog maxTerminationResistance:Interactive>"]},
+  "extMods" : {"caller":{"thread_create":0,"thread_set_state":0,"task_for_pid":0},"system":{"thread_create":0,"thread_set_state":0,"task_for_pid":0},"targeted":{"thread_create":0,"thread_set_state":0,"task_for_pid":0},"warnings":0},
+  "faultingThread" : 0,
+  "threads" : [{"triggered":true,"id":35018,"threadState":{"x":[{"value":268451845},{"value":17297326606},{"value":0},{"value":8963},{"value":0},{"value":11008001179648},{"value":16384},{"value":0},{"value":0},{"value":17179869184},{"value":16384},{"value":0},{"value":0},{"value":0},{"value":2563},{"value":16384},{"value":18446744073709551569},{"value":4379821240},{"value":0},{"value":0},{"value":16384},{"value":11008001179648},{"value":0},{"value":8963},{"value":17297326606},{"value":6137201904},{"value":0},{"value":18446744073709550527},{"value":4330029056,"symbolLocation":0,"symbol":"_libkernel_string_functions"}],"flavor":"ARM_THREAD_STATE64","lr":{"value":4329823876},"cpsr":{"value":4096},"fp":{"value":6137201568},"sp":{"value":6137201488},"esr":{"value":1442840704,"description":"(Syscall)"},"pc":{"value":4329753456,"matchesCrashFrame":1},"far":{"value":0}},"queue":"com.apple.main-thread","frames":[{"imageOffset":2928,"symbol":"mach_msg2_trap","symbolLocation":8,"imageIndex":6},{"imageOffset":73348,"symbol":"mach_msg2_internal","symbolLocation":72,"imageIndex":6},{"imageOffset":35908,"symbol":"mach_msg_overwrite","symbolLocation":484,"imageIndex":6},{"imageOffset":3824,"symbol":"mach_msg","symbolLocation":20,"imageIndex":6},{"imageOffset":120640,"symbol":"_dispatch_mach_send_and_wait_for_reply","symbolLocation":564,"imageIndex":9},{"imageOffset":121564,"symbol":"dispatch_mach_send_with_result_and_wait_for_reply","symbolLocation":56,"imageIndex":9},{"imageOffset":63768,"symbol":"xpc_connection_send_message_with_reply_sync","symbolLocation":252,"imageIndex":10},{"imageOffset":10303452,"symbol":"__NSXPCCONNECTION_IS_WAITING_FOR_A_SYNCHRONOUS_REPLY__","symbolLocation":12,"imageIndex":11},{"imageOffset":10300948,"symbol":"-[NSXPCConnection _sendInvocation:orArguments:count:methodSignature:selector:withProxy:]","symbolLocation":1960,"imageIndex":11},{"imageOffset":10298724,"symbol":"-[NSXPCConnection _sendSelector:withProxy:arg1:arg2:arg3:]","symbolLocation":132,"imageIndex":11},{"imageOffset":10379664,"symbol":"_NSXPCDistantObjectSimpleMessageSend3","symbolLocation":72,"imageIndex":11},{"imageOffset":1240988,"imageIndex":12},{"imageOffset":1276164,"imageIndex":12},{"imageOffset":184660,"imageIndex":12},{"imageOffset":1555556,"sourceLine":87,"sourceFile":"LocationManager.swift","symbol":"LocationManager.().init()","imageIndex":2,"symbolLocation":1524},{"imageOffset":1558688,"sourceFile":"\/<compiler-generated>","symbol":"@objc LocationManager.().init()","symbolLocation":20,"imageIndex":2},{"imageOffset":1539584,"sourceFile":"LocationManager.swift","symbol":"LocationManager.__allocating_init()","symbolLocation":28,"imageIndex":2},{"imageOffset":1539440,"sourceLine":58,"sourceFile":"LocationManager.swift","symbol":"one-time initialization function for shared","imageIndex":2,"symbolLocation":28},{"imageOffset":114328,"symbol":"_dispatch_client_callout","symbolLocation":12,"imageIndex":9},{"imageOffset":16292,"symbol":"_dispatch_once_callout","symbolLocation":28,"imageIndex":9},{"imageOffset":1539672,"sourceLine":58,"sourceFile":"LocationManager.swift","symbol":"LocationManager.shared.unsafeMutableAddressor","imageIndex":2,"symbolLocation":76},{"imageOffset":17436,"sourceLine":51,"sourceFile":"AppEnvironment.swift","symbol":"AppEnvironment.().init()","imageIndex":2,"symbolLocation":880},{"imageOffset":15404,"sourceFile":"AppEnvironment.swift","symbol":"AppEnvironment.__allocating_init()","symbolLocation":44,"imageIndex":2},{"imageOffset":15304,"sourceLine":44,"sourceFile":"AppEnvironment.swift","symbol":"one-time initialization function for shared","imageIndex":2,"symbolLocation":28},{"imageOffset":114328,"symbol":"_dispatch_client_callout","symbolLocation":12,"imageIndex":9},{"imageOffset":16292,"symbol":"_dispatch_once_callout","symbolLocation":28,"imageIndex":9},{"imageOffset":15492,"sourceLine":44,"sourceFile":"AppEnvironment.swift","symbol":"AppEnvironment.shared.unsafeMutableAddressor","imageIndex":2,"symbolLocation":76},{"imageOffset":4157500,"sourceLine":7,"sourceFile":"ShettaMapsApp.swift","symbol":"ShettaMapsApp.init()","imageIndex":2,"symbolLocation":136},{"imageOffset":4157824,"sourceFile":"\/<compiler-generated>","symbol":"protocol witness for App.init() in conformance ShettaMapsApp","symbolLocation":12,"imageIndex":2},{"imageOffset":5558404,"symbol":"static App.main()","symbolLocation":132,"imageIndex":13},{"imageOffset":4157352,"sourceFile":"\/<compiler-generated>","symbol":"static ShettaMapsApp.$main()","symbolLocation":40,"imageIndex":2},{"imageOffset":4164672,"sourceFile":"ShettaMapsApp.swift","symbol":"__debug_main_executable_dylib_entry_point","symbolLocation":12,"imageIndex":2},{"imageOffset":45284,"symbol":"start_sim","symbolLocation":20,"imageIndex":1},{"imageOffset":132324,"symbol":"start","symbolLocation":6992,"imageIndex":8}]},{"id":36628,"frames":[],"threadState":{"x":[{"value":6138359808},{"value":0},{"value":6137823232},{"value":0},{"value":278532},{"value":18446744073709551615},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0},{"value":0}],"flavor":"ARM_THREAD_STATE64","lr":{"value":0},"cpsr":{"value":4096},"fp":{"value":0},"sp":{"value":6138359808},"esr":{"value":0},"pc":{"value":4332345888},"far":{"value":0}}}],
+  "usedImages" : [
+  {
+    "source" : "P",
+    "arch" : "arm64",
+    "base" : 4329652224,
+    "CFBundleShortVersionString" : "1.0.0",
+    "CFBundleIdentifier" : "com.almuqbel.ShettaMaps2",
+    "size" : 16384,
+    "uuid" : "852f218f-e1cc-3782-86cd-de49f34d0119",
+    "path" : "\/Users\/USER\/Library\/Developer\/CoreSimulator\/Devices\/FCC5F673-7BEC-4A7D-8F2A-4DC35E2668EC\/data\/Containers\/Bundle\/Application\/A73594B5-0565-46EE-91B6-FD3754307A24\/ShettaMaps2.app\/ShettaMaps2",
+    "name" : "ShettaMaps2",
+    "CFBundleVersion" : "1"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64",
+    "base" : 4331061248,
+    "size" : 327680,
+    "uuid" : "ba544d9a-46ab-3c59-a00f-aba1479d2079",
+    "path" : "\/Volumes\/VOLUME\/*\/dyld_sim",
+    "name" : "dyld_sim"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64",
+    "base" : 4352409600,
+    "size" : 5586944,
+    "uuid" : "b3165761-1b9e-3a75-9482-21a3e6a7e320",
+    "path" : "\/Users\/USER\/Library\/Developer\/CoreSimulator\/Devices\/FCC5F673-7BEC-4A7D-8F2A-4DC35E2668EC\/data\/Containers\/Bundle\/Application\/A73594B5-0565-46EE-91B6-FD3754307A24\/ShettaMaps2.app\/ShettaMaps2.debug.dylib",
+    "name" : "ShettaMaps2.debug.dylib"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64",
+    "base" : 4369973248,
+    "CFBundleShortVersionString" : "6.31.0",
+    "CFBundleIdentifier" : "com.maplibre.mapbox",
+    "size" : 7094272,
+    "uuid" : "ee7d6f67-23b2-3a10-8d29-9b59df964c7b",
+    "path" : "\/Users\/USER\/Library\/Developer\/CoreSimulator\/Devices\/FCC5F673-7BEC-4A7D-8F2A-4DC35E2668EC\/data\/Containers\/Bundle\/Application\/A73594B5-0565-46EE-91B6-FD3754307A24\/ShettaMaps2.app\/Frameworks\/MapLibre.framework\/MapLibre",
+    "name" : "MapLibre",
+    "CFBundleVersion" : "6.31.0"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64",
+    "base" : 4330307584,
+    "CFBundleShortVersionString" : "1.0",
+    "CFBundleIdentifier" : "com.apple.swiftdata.swiftui",
+    "size" : 131072,
+    "uuid" : "d38c54b9-7e0a-372b-84c7-2199f8b45417",
+    "path" : "\/Volumes\/VOLUME\/*\/_SwiftData_SwiftUI.framework\/_SwiftData_SwiftUI",
+    "name" : "_SwiftData_SwiftUI",
+    "CFBundleVersion" : "6"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64",
+    "base" : 4330602496,
+    "size" : 49152,
+    "uuid" : "bf77ee79-a9d5-3ea9-ae07-7442b40f0ee9",
+    "path" : "\/usr\/lib\/system\/libsystem_platform.dylib",
+    "name" : "libsystem_platform.dylib"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64",
+    "base" : 4329750528,
+    "size" : 245760,
+    "uuid" : "8fea541a-c0cb-3e96-a6d0-19942c9b5c5d",
+    "path" : "\/usr\/lib\/system\/libsystem_kernel.dylib",
+    "name" : "libsystem_kernel.dylib"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64",
+    "base" : 4332339200,
+    "size" : 65536,
+    "uuid" : "83ab28f7-c547-3bac-841d-62f58d543a57",
+    "path" : "\/usr\/lib\/system\/libsystem_pthread.dylib",
+    "name" : "libsystem_pthread.dylib"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64e",
+    "base" : 4333535232,
+    "size" : 737280,
+    "uuid" : "57f4e7e7-a497-38bb-a3d2-a459c622460b",
+    "path" : "\/usr\/lib\/dyld",
+    "name" : "dyld"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64",
+    "base" : 6444044288,
+    "size" : 283584,
+    "uuid" : "42b50931-38d5-3a5d-90ef-0fd7239c408d",
+    "path" : "\/Volumes\/VOLUME\/*\/libdispatch.dylib",
+    "name" : "libdispatch.dylib"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64",
+    "base" : 6443237376,
+    "size" : 280608,
+    "uuid" : "ff603b08-461e-35c4-82e6-3ad8e5d12848",
+    "path" : "\/Volumes\/VOLUME\/*\/libxpc.dylib",
+    "name" : "libxpc.dylib"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64",
+    "base" : 6451101696,
+    "CFBundleShortVersionString" : "6.9",
+    "CFBundleIdentifier" : "com.apple.Foundation",
+    "size" : 14388704,
+    "uuid" : "2cc9fce0-08f9-3a0d-8a2f-6db229462de5",
+    "path" : "\/Volumes\/VOLUME\/*\/Foundation.framework\/Foundation",
+    "name" : "Foundation",
+    "CFBundleVersion" : "5026.5.4"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64",
+    "base" : 6520459264,
+    "CFBundleShortVersionString" : "3075.0.8",
+    "CFBundleIdentifier" : "com.apple.corelocation",
+    "size" : 2809728,
+    "uuid" : "438b9ca3-9602-3367-90e2-8a0d745cc6c7",
+    "path" : "\/Volumes\/VOLUME\/*\/CoreLocation.framework\/CoreLocation",
+    "name" : "CoreLocation",
+    "CFBundleVersion" : "3075.0.8"
+  },
+  {
+    "source" : "P",
+    "arch" : "arm64",
+    "base" : 7825596416,
+    "CFBundleShortVersionString" : "7.5.3",
+    "CFBundleIdentifier" : "com.apple.SwiftUI",
+    "size" : 18512544,
+    "uuid" : "2332ef71-3e29-3e60-9849-acdd69b6b8ef",
+    "path" : "\/Volumes\/VOLUME\/*\/SwiftUI.framework\/SwiftUI",
+    "name" : "SwiftUI",
+    "CFBundleVersion" : "7.5.3"
+  },
+  {
+    "size" : 0,
+    "source" : "A",
+    "base" : 0,
+    "uuid" : "00000000-0000-0000-0000-000000000000"
+  }
+],
+  "sharedCache" : {
+  "base" : 6442450944,
+  "size" : 3385917440,
+  "uuid" : "3a8f7915-b255-3f78-82f2-a157ea9591a3"
+},
+  "vmSummary" : "ReadOnly portion of Libraries: Total=1.7G resident=0K(0%) swapped_out_or_unallocated=1.7G(100%)\nWritable regions: Total=23.2M written=1381K(6%) resident=1381K(6%) swapped_out=0K(0%) unallocated=21.8M(94%)\n\n                                VIRTUAL   REGION \nREGION TYPE                        SIZE    COUNT (non-coalesced) \n===========                     =======  ======= \nActivity Tracing                   256K        1 \nKernel Alloc Once                   32K        1 \nMALLOC                            12.7M        7 \nMALLOC guard page                 3728K        4 \nSTACK GUARD                       56.0M        2 \nStack                             8720K        2 \n__AUTH_CONST                        32K        1 \n__DATA                            45.1M      761 \n__DATA_CONST                     101.7M      786 \n__DATA_DIRTY                       155K       14 \n__FONT_DATA                        2352        1 \n__LINKEDIT                       718.8M       10 \n__LLVM_COV                         160K        1 \n__OBJC_RO                         55.6M        1 \n__OBJC_RW                         2332K        1 \n__TEXT                             1.0G      798 \n__TPRO_CONST                       164K        3 \ndyld private memory                3.0G       14 \nmapped file                       33.9M        3 \npage table in kernel              1381K        1 \nshared memory                       16K        1 \n===========                     =======  ======= \nTOTAL                              5.0G     2413 \n",
+  "legacyInfo" : {
+  "threadTriggered" : {
+    "queue" : "com.apple.main-thread"
+  }
+},
+  "logWritingSignature" : "a88e0ff49cef0403227652c80e022974604a0477",
+  "roots_installed" : 0,
+  "bug_type" : "309",
+  "trmStatus" : 2105344,
+  "trialInfo" : {
+  "rollouts" : [
+    {
+      "rolloutId" : "60f8ddccefea4203d95cbeef",
+      "factorPackIds" : [
+
+      ],
+      "deploymentId" : 240000025
+    },
+    {
+      "rolloutId" : "682ef9612c2ae30e2f38d3a4",
+      "factorPackIds" : [
+
+      ],
+      "deploymentId" : 240000006
+    }
+  ],
+  "experiments" : [
+
+  ]
+}
+}
