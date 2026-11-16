@@ -262,6 +262,8 @@ final class WaterSubTests: XCTestCase {
         XCTAssertEqual(WaterSub.of(e("نقطة تعبئة ماء", .water)), .filling)
         XCTAssertEqual(WaterSub.of(e("ماء شرب", .water)), .filling)
         XCTAssertEqual(WaterSub.of(e("الخفس", .water)), .other)
+        XCTAssertEqual(WaterSub.of(e("قلبان الشيحية", .water)), .well)
+        XCTAssertEqual(WaterSub.of(e("عد الحسو", .water)), .well)
         XCTAssertNil(WaterSub.of(e("جبل طويق", .mountain)))
         XCTAssertEqual(PlaceKind.expand([.water]), [.water, .coldWater])
         XCTAssertEqual(WaterSub.decode(WaterSub.encode([.cold, .well])), [.cold, .well])

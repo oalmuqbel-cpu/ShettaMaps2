@@ -100,9 +100,12 @@ enum WaterSub: String, CaseIterable, Identifiable {
         guard e.kind == .water else { return nil }
         let n = SearchService.normalizeArabic(e.name)
         func starts(_ ws: [String]) -> Bool { ws.contains { n == $0 || n.hasPrefix($0 + " ") } }
-        if starts(["بير", "بئر", "البئر", "البير", "ابار", "الابار", "قليب", "القليب", "جبه"]) { return .well }
-        if starts(["عين", "العين", "عيون", "العيون", "عين ماء"]) { return .spring }
-        if n.contains("تعبئه") || n.contains("سبيل") || n.contains("ماء شرب") || n.contains("محطه") || n.contains("مياه")
+        // المصطلحات المحلية للآبار في البادية: قلبان، قلمة، مشاش، عد، ثمايل، عقلة، حفاير...
+        if starts(["بير", "البير", "بيرماء", "ابار", "الابار", "ابيار", "قليب", "القليب", "قلبان", "القلبان", "قلمه", "القلمه",
+                   "جبه", "جبيه", "مشاش", "المشاش", "عد", "ثمايل", "الثمايل", "عقله", "العقله", "عقيله", "حفاير", "الحفاير",
+                   "شيب", "ارتواز", "ارتوازي"]) { return .well }
+        if starts(["عين", "العين", "عيون", "العيون", "نبع", "قلته", "القلته"]) { return .spring }
+        if n.contains("تعبيه") || n.contains("سبيل") || n.contains("ماء شرب") || n.contains("محطه") || n.contains("مياه")
             || n.contains("خزان") || n.contains("برج") { return .filling }
         return .other
     }
