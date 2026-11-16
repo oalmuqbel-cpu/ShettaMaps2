@@ -132,6 +132,15 @@ final class CommunityService: ObservableObject {
     var base: String { "https://firestore.googleapis.com/v1/projects/\(CommunityConfig.projectID)/databases/(default)/documents" }
 
     /// ينشر مكانًا علنًا ويعيد معرّفه.
+    /// أقرب نوع يقبله الخادم القديم.
+    nonisolated static func legacyKind(_ k: PlaceKind) -> PlaceKind {
+        switch k {
+        case .coldWater: return .water
+        case .nafud: return .landmark
+        default: return k
+        }
+    }
+
     func publish(name: String, kind: PlaceKind, coordinate c: CLLocationCoordinate2D, notes: String) async throws -> String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard (2...60).contains(trimmed.count) else { throw CommunityError.invalidName }
@@ -152,8 +161,18 @@ final class CommunityService: ObservableObject {
             "createdAt": ["timestampValue": ISO8601DateFormatter().string(from: Date())],
             "reportCount": ["integerValue": "0"]
         ]
-        _ = try await post(URL(string: "\(base)/places?documentId=\(id)")!, body: ["fields": fields], auth: t)
-        let place = CommunityPlace(id: id, name: trimmed, kind: safeKind, lat: c.latitude, lon: c.longitude,
+        var finalKind = safeKind
+        do {
+            _ = try await post(URL(string: "\(base)/places?documentId=\(id)")!, body: ["fields": fields], auth: t)
+        } catch CommunityError.server(let m) where m.contains("403") && Self.legacyKind(safeKind) != safeKind {
+            // الأنواع الجديدة (نفود، ماء بارد) قد لا تكون مفعّلة بعد في الخادم: نشاركها بأقرب نوع قديم
+            finalKind = Self.legacyKind(safeKind)
+            var f = fields
+            f["kind"] = ["stringValue": finalKind.rawValue]
+            if safeKind == .coldWater { f["notes"] = ["stringValue": String(("ماء بارد. " + notes).prefix(300))] }
+            _ = try await post(URL(string: "\(base)/places?documentId=\(id)")!, body: ["fields": f], auth: t)
+        }
+        let place = CommunityPlace(id: id, name: trimmed, kind: finalKind, lat: c.latitude, lon: c.longitude,
                                    notes: String(notes.prefix(300)), authorUid: uid, createdAt: Date(), reportCount: 0)
         places.removeAll { $0.id == id }
         places.append(place)

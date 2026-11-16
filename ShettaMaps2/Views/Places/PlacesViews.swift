@@ -379,7 +379,8 @@ struct PlaceEditorView: View {
         } catch {
             place.isPublic = false
             try? context.save()
-            self.error = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            let reason = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            self.error = "حُفظ المكان في جهازك، لكن تعذّرت مشاركته للعامة. \(reason)"
         }
     }
 }

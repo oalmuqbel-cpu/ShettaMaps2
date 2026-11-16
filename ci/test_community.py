@@ -20,6 +20,11 @@ check("anonymous sign-in", s == 200); tok, uid = a["idToken"], a["localId"]
 doc = str(uuid.uuid4())
 s, r = req("POST", f"{BASE}/places?documentId={doc}", fields(uid=uid), tok); check("create valid place", s == 200)
 s, r = req("POST", f"{BASE}/places?documentId={uuid.uuid4()}", fields(uid=uid, lat=40.0), tok); check("reject outside Gulf", s == 403)
+for k in ("coldWater", "nafud"):
+    d2 = str(uuid.uuid4())
+    s, r = req("POST", f"{BASE}/places?documentId={d2}", fields(uid=uid, kind=k), tok); check(f"create {k} place", s == 200)
+    req("DELETE", f"{BASE}/places/{d2}", None, tok)
+s, r = req("POST", f"{BASE}/places?documentId={uuid.uuid4()}", fields(uid=uid, kind="bogus"), tok); check("reject unknown kind", s == 403)
 s, r = req("POST", f"{BASE}/places?documentId={uuid.uuid4()}", fields(uid="someone-else"), tok); check("reject spoofed author", s == 403)
 s, r = req("POST", f"{BASE}/places?documentId={uuid.uuid4()}", fields(uid=uid)); check("reject unauthenticated create", s in (401, 403))
 q = {"structuredQuery": {"from": [{"collectionId": "places"}], "where": {"compositeFilter": {"op": "AND", "filters": [
