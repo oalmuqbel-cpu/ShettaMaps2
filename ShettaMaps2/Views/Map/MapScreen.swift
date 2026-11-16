@@ -18,6 +18,7 @@ struct MapScreen: View {
     @AppStorage(SettingsKeys.showLandmarks) private var showLandmarks = true
     @AppStorage(SettingsKeys.showCommunity) private var showCommunity = true
     @AppStorage(SettingsKeys.landmarkKinds) private var landmarkKindsRaw = ""
+    @AppStorage("waterSubs") private var waterSubsRaw = ""
     @State private var nameFilter = ""
     @State private var showFilterField = false
     @FocusState private var filterFocused: Bool
@@ -93,7 +94,8 @@ struct MapScreen: View {
 
     /// أسماء الأماكن المعروفة (OpenStreetMap) ضمن المنطقة الظاهرة، عند تكبير كافٍ.
     private var landmarkPins: [MapOverlaySet.Pin] {
-        let kinds = PlaceKind.decodeSet(landmarkKindsRaw)
+        let kinds = PlaceKind.expand(PlaceKind.decodeSet(landmarkKindsRaw))
+        let subs = kinds.contains(.water) ? WaterSub.decode(waterSubsRaw) : []
         let filtered = !kinds.isEmpty || !nameFilter.isEmpty
         // عند الفلترة تقل الأسماء، فيُسمح بعرضها على مساحة أوسع
         guard showLandmarks, let b = mapManager.visibleBounds, let r = mapManager.visibleRegion else { return [] }
@@ -106,7 +108,7 @@ struct MapScreen: View {
             }
         }
         return search.entries(sw: b.sw, ne: b.ne, limit: r.span.latitudeDelta < 0.5 ? 150 : 70,
-                              kinds: kinds, nameFilter: nameFilter).map {
+                              kinds: kinds, nameFilter: nameFilter, waterSubs: subs).map {
             .init(id: "g-\($0.id)", title: $0.name, subtitle: [$0.kind.title, $0.region].compactMap { $0 }.joined(separator: " · "), coordinate: .init(latitude: $0.lat, longitude: $0.lon),
                   kind: .landmark, symbol: $0.kind.icon)
         }
@@ -546,6 +548,25 @@ struct MapScreen: View {
                     }
                 }
                 .padding(.horizontal, 2)
+            }
+            // تفصيل المياه: يظهر عند اختيار «مياه وآبار» فقط
+            if selectedKinds.contains(.water) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        let subs = WaterSub.decode(waterSubsRaw)
+                        let counts = search.waterCounts
+                        FilterChip(title: "كل المياه", icon: "drop.circle", selected: subs.isEmpty) { waterSubsRaw = "" }
+                        ForEach(WaterSub.allCases) { s in
+                            FilterChip(title: "\(s.title) \(counts[s] ?? 0)", icon: s.icon, selected: subs.contains(s)) {
+                                var n = subs
+                                if n.contains(s) { n.remove(s) } else { n.insert(s) }
+                                waterSubsRaw = n.count == WaterSub.allCases.count ? "" : WaterSub.encode(n)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 2)
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
             if showFilterField {
                 HStack(spacing: 8) {

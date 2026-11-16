@@ -42,7 +42,12 @@ enum PlaceKind: String, CaseIterable, Identifiable, Codable {
     }
 
     /// أنواع الأماكن المعروفة التي تظهر أسماؤها على الخريطة (للفلترة).
-    static let mapKinds: [PlaceKind] = [.rawdah, .nafud, .mountain, .valley, .shaib, .coldWater, .water, .cave, .fuel, .camp, .landmark]
+    static let mapKinds: [PlaceKind] = [.rawdah, .nafud, .mountain, .valley, .shaib, .water, .cave, .fuel, .camp, .landmark]
+
+    /// «مياه» في الفلتر تشمل الماء البارد أيضًا (التفصيل في الشريط الفرعي).
+    static func expand(_ set: Set<PlaceKind>) -> Set<PlaceKind> {
+        set.contains(.water) ? set.union([.coldWater]) : set
+    }
 
     /// يحوّل قيمة الفلتر المحفوظة ("rawdah,valley") إلى مجموعة؛ الفارغة تعني الكل.
     static func decodeSet(_ raw: String) -> Set<PlaceKind> {
@@ -64,6 +69,46 @@ struct SearchResult: Identifiable, Hashable {
     var source: Source
     var coordinate: CLLocationCoordinate2D { .init(latitude: latitude, longitude: longitude) }
     var waypoint: Waypoint { Waypoint(name: name, coordinate: coordinate) }
+}
+
+/// تصنيف فرعي لموارد المياه لتقليل التشتت على الخريطة.
+enum WaterSub: String, CaseIterable, Identifiable {
+    case cold, well, spring, filling, other
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .cold: return "ماء بارد"
+        case .well: return "آبار"
+        case .spring: return "عيون"
+        case .filling: return "تعبئة وشرب"
+        case .other: return "أخرى"
+        }
+    }
+    var icon: String {
+        switch self {
+        case .cold: return "waterbottle"
+        case .well: return "circle.circle"
+        case .spring: return "drop.fill"
+        case .filling: return "spigot"
+        case .other: return "drop"
+        }
+    }
+
+    /// التصنيف الفرعي لمدخل ماء (nil لغير المياه). يُستنتج من النوع والاسم المسجل في المصدر.
+    static func of(_ e: GazetteerEntry) -> WaterSub? {
+        if e.kind == .coldWater { return .cold }
+        guard e.kind == .water else { return nil }
+        let n = SearchService.normalizeArabic(e.name)
+        func starts(_ ws: [String]) -> Bool { ws.contains { n == $0 || n.hasPrefix($0 + " ") } }
+        if starts(["بير", "بئر", "البئر", "البير", "ابار", "الابار", "قليب", "القليب", "جبه"]) { return .well }
+        if starts(["عين", "العين", "عيون", "العيون", "عين ماء"]) { return .spring }
+        if n.contains("تعبئه") || n.contains("سبيل") || n.contains("ماء شرب") || n.contains("محطه") || n.contains("مياه")
+            || n.contains("خزان") || n.contains("برج") { return .filling }
+        return .other
+    }
+
+    static func decode(_ raw: String) -> Set<WaterSub> { Set(raw.split(separator: ",").compactMap { WaterSub(rawValue: String($0)) }) }
+    static func encode(_ s: Set<WaterSub>) -> String { allCases.filter { s.contains($0) }.map(\.rawValue).joined(separator: ",") }
 }
 
 /// مدخل في قاعدة البيانات الجغرافية المحلية (GeoJSON). لا تُضمَّن أسماء أو إحداثيات مخترعة؛
@@ -252,7 +297,7 @@ final class SearchService: ObservableObject {
     /// أشهر الأماكن داخل منطقة ظاهرة لعرض أسمائها على الخريطة (عدد محدود لوضوح العرض).
     /// kinds الفارغة تعني كل الأنواع، و nameFilter يطابق الاسم أو الأسماء البديلة بعد التطبيع.
     func entries(sw: CLLocationCoordinate2D, ne: CLLocationCoordinate2D, limit: Int = 120,
-                 kinds: Set<PlaceKind> = [], nameFilter: String = "") -> [GazetteerEntry] {
+                 kinds: Set<PlaceKind> = [], nameFilter: String = "", waterSubs: Set<WaterSub> = []) -> [GazetteerEntry] {
         let priority: [PlaceKind: Int] = [.nafud: 0, .rawdah: 0, .valley: 1, .mountain: 2, .cave: 3, .camp: 4, .coldWater: 5, .water: 5, .fuel: 6, .shaib: 7, .landmark: 8]
         let key = Self.searchKey(nameFilter)
         var found: [GazetteerEntry] = []
@@ -260,6 +305,7 @@ final class SearchService: ObservableObject {
             let e = item.entry
             guard (sw.latitude...ne.latitude).contains(e.lat), (sw.longitude...ne.longitude).contains(e.lon),
                   kinds.isEmpty || kinds.contains(e.kind),
+                  waterSubs.isEmpty || WaterSub.of(e).map({ waterSubs.contains($0) }) ?? true,
                   key.isEmpty || item.keys.contains(where: { $0.contains(key) }) else { continue }
             found.append(e)
             if found.count > limit * 6, kinds != [.nafud] { break }
@@ -279,6 +325,16 @@ final class SearchService: ObservableObject {
         return ["نفود", "النفود", "عروق", "العروق", "الدهناء", "الربع الخالي", "الجافوره", "رمله", "رمال", "الرمال"]
             .contains { n == $0 || n.hasPrefix($0 + " ") }
     }
+
+    /// عدد موارد المياه في كل تصنيف فرعي (للعرض في الفلتر).
+    var waterCounts: [WaterSub: Int] {
+        if let c = cachedWaterCounts, c.0 == gazetteer.count { return c.1 }
+        var out: [WaterSub: Int] = [:]
+        for e in gazetteer { if let s = WaterSub.of(e) { out[s, default: 0] += 1 } }
+        cachedWaterCounts = (gazetteer.count, out)
+        return out
+    }
+    private var cachedWaterCounts: (Int, [WaterSub: Int])?
 
     /// مدخل القاعدة لمعرّف علامة على الخريطة («g-…»).
     func entry(forPinID id: String) -> GazetteerEntry? {

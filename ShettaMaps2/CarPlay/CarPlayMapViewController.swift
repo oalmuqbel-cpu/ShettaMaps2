@@ -48,7 +48,10 @@ enum CarPlaySettings {
     static var showRainMap: Bool { bool(SettingsKeys.showRainMap, false) }
     static var northUp: Bool { bool(northUpKey, false) }
     static var landmarkKinds: Set<PlaceKind> {
-        PlaceKind.decodeSet(UserDefaults.standard.string(forKey: SettingsKeys.landmarkKinds) ?? "")
+        PlaceKind.expand(PlaceKind.decodeSet(UserDefaults.standard.string(forKey: SettingsKeys.landmarkKinds) ?? ""))
+    }
+    static var waterSubs: Set<WaterSub> {
+        landmarkKinds.contains(.water) ? WaterSub.decode(UserDefaults.standard.string(forKey: "waterSubs") ?? "") : []
     }
 
     /// بصمة لكل ما يؤثر على الرسم، لاكتشاف تغيّر الإعدادات من الهاتف.
@@ -57,6 +60,7 @@ enum CarPlaySettings {
          showRainMap, northUp].map { $0 ? "1" : "0" }.joined()
             + (UserDefaults.standard.string(forKey: SettingsKeys.landmarkKinds) ?? "")
             + (UserDefaults.standard.string(forKey: SettingsKeys.coverageCarrier) ?? "")
+            + (UserDefaults.standard.string(forKey: "waterSubs") ?? "")
     }
 }
 
@@ -397,7 +401,8 @@ final class CarPlayMapViewController: UIViewController {
             }
         }
         if CarPlaySettings.showLandmarks, span < 2.5 {
-            pins += SearchService.shared.entries(sw: sw, ne: ne, limit: span < 0.4 ? 60 : 30, kinds: CarPlaySettings.landmarkKinds).map {
+            pins += SearchService.shared.entries(sw: sw, ne: ne, limit: span < 0.4 ? 60 : 30, kinds: CarPlaySettings.landmarkKinds,
+                                                 waterSubs: CarPlaySettings.waterSubs).map {
                 .init(id: "g-\($0.id)", title: $0.name, subtitle: [$0.kind.title, $0.region].compactMap { $0 }.joined(separator: " · "),
                       coordinate: .init(latitude: $0.lat, longitude: $0.lon), kind: .landmark, symbol: $0.kind.icon)
             }

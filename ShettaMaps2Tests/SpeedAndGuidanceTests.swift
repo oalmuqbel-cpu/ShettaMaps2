@@ -249,3 +249,21 @@ final class ColdWaterTests: XCTestCase {
         XCTAssertTrue(PlaceKind.mapKinds.contains(.coldWater))
     }
 }
+
+final class WaterSubTests: XCTestCase {
+    private func e(_ name: String, _ kind: PlaceKind) -> GazetteerEntry {
+        GazetteerEntry(id: name, name: name, altNames: [], kind: kind, lat: 24, lon: 46, region: nil, source: "t")
+    }
+    func testWaterSubClassification() {
+        XCTAssertEqual(WaterSub.of(e("ماء بارد", .coldWater)), .cold)
+        XCTAssertEqual(WaterSub.of(e("بئر الحماد", .water)), .well)
+        XCTAssertEqual(WaterSub.of(e("قليب العشار", .water)), .well)
+        XCTAssertEqual(WaterSub.of(e("عين ماء", .water)), .spring)
+        XCTAssertEqual(WaterSub.of(e("نقطة تعبئة ماء", .water)), .filling)
+        XCTAssertEqual(WaterSub.of(e("ماء شرب", .water)), .filling)
+        XCTAssertEqual(WaterSub.of(e("الخفس", .water)), .other)
+        XCTAssertNil(WaterSub.of(e("جبل طويق", .mountain)))
+        XCTAssertEqual(PlaceKind.expand([.water]), [.water, .coldWater])
+        XCTAssertEqual(WaterSub.decode(WaterSub.encode([.cold, .well])), [.cold, .well])
+    }
+}
