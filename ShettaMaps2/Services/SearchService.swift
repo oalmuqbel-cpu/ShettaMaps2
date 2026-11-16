@@ -339,6 +339,11 @@ final class SearchService: ObservableObject {
     }
     private var cachedWaterCounts: (Int, [WaterSub: Int])?
 
+    /// رابط قائمة الماء البارد الأصلية (من بيانات الطبقة نفسها، فيمكن تغييره دون نسخة جديدة).
+    var coldWaterSourceURL: URL? {
+        gazetteer.first { $0.kind == .coldWater && $0.url != nil }?.url.flatMap(URL.init(string:))
+    }
+
     /// مدخل القاعدة لمعرّف علامة على الخريطة («g-…»).
     func entry(forPinID id: String) -> GazetteerEntry? {
         guard id.hasPrefix("g-") else { return nil }
