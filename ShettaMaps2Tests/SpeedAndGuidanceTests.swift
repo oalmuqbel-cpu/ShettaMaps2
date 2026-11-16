@@ -246,7 +246,9 @@ final class ColdWaterTests: XCTestCase {
         XCTAssertEqual(e.first?.kind, .coldWater)
         XCTAssertEqual(e.first?.url, "https://maps.app.goo.gl/PSo5R6xbqBdGNV5j9")
         XCTAssertEqual(PlaceKind.coldWater.title, "ماء بارد")
-        XCTAssertTrue(PlaceKind.mapKinds.contains(.coldWater))
+        // الماء البارد داخل «مياه وآبار» في الفلتر (لا زر مستقل)
+        XCTAssertFalse(PlaceKind.mapKinds.contains(.coldWater))
+        XCTAssertTrue(PlaceKind.expand([.water]).contains(.coldWater))
     }
 }
 
