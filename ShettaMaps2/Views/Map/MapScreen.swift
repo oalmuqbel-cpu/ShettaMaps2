@@ -191,12 +191,13 @@ struct MapScreen: View {
             StatusHUD()
             if showLandmarks && !navigation.snapshot.isNavigating && !mapManager.isPickingPoint { placeFilterBar }
             banners
+            // مفتاح ألوان التغطية أعلى الشاشة تحت الشريط، لا في وسط الخريطة
+            if showCoverage && !navigation.snapshot.isNavigating {
+                CoverageLegend(note: coverageNote)
+            }
             if navigation.snapshot.isNavigating { NavigationPanel() }
             if recorder.isActive { RecordingPanel(onStop: { showStopRecordingConfirm = true }) }
             Spacer()
-            if showCoverage {
-                CoverageLegend(note: coverageNote)
-            }
             HStack(alignment: .bottom) {
                 secondaryControls
                 Spacer()
@@ -206,11 +207,15 @@ struct MapScreen: View {
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 8)
+        // ظهور لوحة المفاتيح أو إغلاق شاشة فوق الخريطة لا يحرك الأزرار من أماكنها
+        .ignoresSafeArea(.keyboard, edges: .bottom)
     }
 
     private func withSheets<V: View>(_ v: V) -> some View {
         v
         .sheet(item: $router.mapSheet) { sheet in sheetContent(sheet) }
+        .onChange(of: router.mapSheet == nil) { _, closed in if !closed { filterFocused = false } }
+        .onChange(of: showLayers) { _, open in if open { filterFocused = false } }
         .sheet(isPresented: $showLayers) {
             LayersSheet(mapManager: mapManager, communityEnabled: community.isEnabled, safeTripActive: safeTrip.isActive,
                         followingCount: follow.activeTrips.count) { action in

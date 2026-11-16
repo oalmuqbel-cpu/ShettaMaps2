@@ -335,8 +335,8 @@ struct SpeedBubble: View {
             if let limit {
                 SpeedLimitSign(limit: limit)
                     .offset(x: -16, y: -16)
-            } else if limitNote != nil {
-                // حد غير معروف: إشارة رمادية بلا رقم بدل تخمين حد
+            } else if limitNote != nil, let v = speedMS, v > 1.5 {
+                // حد غير معروف أثناء السير فقط: إشارة رمادية بلا رقم بدل تخمين حد
                 UnknownLimitSign()
                     .offset(x: -16, y: -16)
             }
