@@ -216,6 +216,7 @@ final class SearchService: ObservableObject {
         gazetteer = all
         normalizedIndex = all.map { e in (e, ([e.name] + e.altNames).map(Self.searchKey)) }
         extraSources = Dictionary(grouping: extraEntries, by: \.source).mapValues(\.count)
+        cachedWaterCounts = nil   // تتغير الأعداد حتى لو بقي العدد الكلي نفسه (مثل إعادة تصنيف القائمة)
     }
 
     /// تحديث الطبقات الإضافية (مرة كل ٦ ساعات كحد أقصى).

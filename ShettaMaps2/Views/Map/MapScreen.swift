@@ -573,7 +573,7 @@ struct MapScreen: View {
                     Link(destination: url) {
                         HStack(spacing: 6) {
                             Image(systemName: "waterbottle").foregroundStyle(Theme.desertOrange)
-                            Text("الماء البارد من قائمة «مارد ماء» لعبدالعزيز المفدى").lineLimit(1).minimumScaleFactor(0.8)
+                            Text("الماء البارد من قائمة «موارد الماء» لعبدالعزيز المفدى").lineLimit(1).minimumScaleFactor(0.8)
                             Spacer(minLength: 4)
                             Text("فتح القائمة").fontWeight(.semibold).foregroundStyle(Theme.desertOrange)
                             Image(systemName: "arrow.up.left.square").foregroundStyle(Theme.desertOrange)
