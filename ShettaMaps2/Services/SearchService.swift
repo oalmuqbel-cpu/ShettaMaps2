@@ -222,6 +222,9 @@ final class SearchService: ObservableObject {
     /// تحديث الطبقات الإضافية (مرة كل ٦ ساعات كحد أقصى).
     func refreshExtra(force: Bool = false) async {
         let key = "extraPlacesFetchedAt"
+        // بعد تحديث التطبيق نجلب البيانات فورًا (قد تحتاج النسخة الجديدة تصنيفات جديدة)
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
+        let force = force || UserDefaults.standard.string(forKey: "extraPlacesBuild") != build
         if !force, let last = UserDefaults.standard.object(forKey: key) as? Date, Date().timeIntervalSince(last) < 6 * 3600 { return }
         guard NetworkMonitor.shared.isOnline else { return }
         var req = URLRequest(url: Self.extraRemote, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
@@ -232,6 +235,7 @@ final class SearchService: ObservableObject {
         try? FileManager.default.createDirectory(at: Self.extraURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? data.write(to: Self.extraURL, options: .atomic)
         UserDefaults.standard.set(Date(), forKey: key)
+        UserDefaults.standard.set(build, forKey: "extraPlacesBuild")
         extraEntries = entries
         rebuildIndex()
     }
