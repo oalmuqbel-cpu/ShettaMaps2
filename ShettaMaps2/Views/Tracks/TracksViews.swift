@@ -147,21 +147,58 @@ struct TrackDetailView: View {
     @State private var shareError: String?
     @State private var confirmDelete = false
     @EnvironmentObject private var communityTracks: CommunityTrackStore
+    // أجزاء المسار حسب الوقفات
+    @State private var selectedPart: TrackPart?
+    @State private var partToDelete: TrackPart?
+    @State private var partToRename: TrackPart?
+    @State private var partName = ""
+    @State private var mapPosition: MapCameraPosition = .automatic
+
+    private var parts: [TrackPart] { TrackParts.parts(points).filter { $0.coordinates.count > 1 } }
+
+    private func partTitle(_ p: TrackPart) -> String {
+        track.partNames[p.keyString].flatMap { $0.isEmpty ? nil : $0 } ?? "الجزء \(p.index)"
+    }
 
     private var segments: [[CLLocationCoordinate2D]] { TrackAccumulator.segments(of: points) }
 
     var body: some View {
         List {
             Section {
-                Map(initialPosition: initialPosition) {
+                Map(position: $mapPosition) {
                     ForEach(Array(segments.enumerated()), id: \.offset) { _, seg in
-                        MapPolyline(coordinates: seg).stroke(Theme.track, lineWidth: 4)
+                        MapPolyline(coordinates: seg)
+                            .stroke(selectedPart == nil ? Theme.track : Theme.track.opacity(0.3), lineWidth: 4)
+                    }
+                    if let sp = selectedPart, let a = sp.coordinates.first, let b = sp.coordinates.last {
+                        MapPolyline(coordinates: sp.coordinates).stroke(Theme.desertOrange, lineWidth: 6)
+                        Marker("بداية \(partTitle(sp))", systemImage: "play.fill", coordinate: a).tint(.green)
+                        Marker("نهاية \(partTitle(sp))", systemImage: "pause.fill", coordinate: b).tint(.orange)
                     }
                     if let f = points.first { Marker("البداية", systemImage: "flag", coordinate: f.coordinate).tint(.green) }
                     if let l = points.last { Marker("النهاية", systemImage: "flag.checkered", coordinate: l.coordinate).tint(.red) }
                 }
                 .frame(height: 260)
                 .listRowInsets(EdgeInsets())
+            }
+            if parts.count > 1 {
+                Section {
+                    ForEach(parts) { part in
+                        Button { select(part) } label: { partRow(part) }
+                            .buttonStyle(.plain)
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) { partToDelete = part } label: { Label("حذف", systemImage: "trash") }
+                                Button { partName = track.partNames[part.keyString] ?? ""; partToRename = part } label: {
+                                    Label("تسمية", systemImage: "pencil")
+                                }.tint(Theme.brown)
+                            }
+                            .contextMenu { partMenu(part) }
+                    }
+                } header: {
+                    Text("أجزاء المسار (\(parts.count))")
+                } footer: {
+                    Text("يُقسم المسار عند كل وقفة تساوي مدة «الإيقاف التلقائي» في الإعدادات أو أطول. اضغط على جزء لعرضه، واسحب أو اضغط مطولًا للخيارات.")
+                }
             }
             Section("الإحصائيات") {
                 LabeledContent("المسافة", value: Fmt.distance(track.distanceMeters))
@@ -212,11 +249,41 @@ struct TrackDetailView: View {
         }
         .navigationTitle(track.name)
         .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog("حذف «\(partToDelete.map(partTitle) ?? "")» من المسار؟",
+                            isPresented: Binding(get: { partToDelete != nil }, set: { if !$0 { partToDelete = nil } }),
+                            titleVisibility: .visible) {
+            Button("حذف الجزء", role: .destructive) { if let p = partToDelete { deletePart(p) }; partToDelete = nil }
+            Button("إلغاء", role: .cancel) { partToDelete = nil }
+        } message: { Text("يُحذف هذا الجزء من الطريق فقط ويبقى مكانه فراغًا، وتبقى بقية الأجزاء كما هي. لا يمكن التراجع.") }
+        .alert("تسمية الجزء", isPresented: Binding(get: { partToRename != nil }, set: { if !$0 { partToRename = nil } })) {
+            TextField("مثال: طريق الروضة", text: $partName)
+            Button("حفظ") {
+                if let p = partToRename {
+                    var names = track.partNames
+                    let n = partName.trimmingCharacters(in: .whitespaces)
+                    names[p.keyString] = n.isEmpty ? nil : n
+                    track.partNames = names
+                    try? context.save()
+                }
+                partToRename = nil
+            }
+            Button("إلغاء", role: .cancel) { partToRename = nil }
+        }
         .confirmationDialog("حذف المسار «\(track.name)»؟", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("حذف", role: .destructive) { context.delete(track); try? context.save(); dismiss() }
             Button("إلغاء", role: .cancel) {}
         } message: { Text("لا يمكن التراجع عن الحذف.") }
-        .onAppear { points = track.points }
+        .onAppear {
+            // ترقيم الأجزاء حسب الوقفات (مرة واحدة، ويُحفظ)
+            let original = track.points
+            let normalized = TrackParts.normalized(original, stopThreshold: TrackParts.stopThreshold)
+            if normalized.map(\.segment) != original.map(\.segment) {
+                track.points = normalized
+                try? context.save()
+            }
+            points = normalized
+            mapPosition = initialPosition
+        }
         .onChange(of: track.pointCount) { _, _ in points = track.points }
         .sheet(isPresented: $sharing) { NavigationStack { ShareTrackView(track: track, points: points) } }
         .sheet(item: Binding(get: { shareURL.map(ShareItem.init) }, set: { shareURL = $0?.url })) { ShareSheet(items: [$0.url]) }
@@ -240,6 +307,97 @@ struct TrackDetailView: View {
         let alts = points.compactMap(\.alt)
         guard let mn = alts.min(), let mx = alts.max() else { return nil }
         return (mn, mx)
+    }
+
+    // MARK: - أجزاء المسار
+
+    private func partRow(_ part: TrackPart) -> some View {
+        HStack(spacing: 12) {
+            Text("\(part.index)")
+                .font(.caption.weight(.bold)).foregroundStyle(.white)
+                .frame(width: 26, height: 26)
+                .background(Circle().fill(selectedPart?.key == part.key ? Theme.desertOrange : Theme.brown))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(partTitle(part)).font(.body.weight(.semibold))
+                Text("\(Fmt.time.string(from: part.start))–\(Fmt.time.string(from: part.end)) · \(Fmt.distance(part.distance)) · \(Fmt.duration(part.duration))")
+                    .font(.caption).foregroundStyle(.secondary)
+                if let stop = part.stopAfter, stop >= 60 {
+                    Label("بعده وقفة \(Fmt.duration(stop))", systemImage: "pause.circle")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 0)
+            Menu { partMenu(part) } label: {
+                Image(systemName: "ellipsis.circle").font(.title3).foregroundStyle(Theme.desertOrange)
+            }
+            .accessibilityLabel("خيارات \(partTitle(part))")
+        }
+        .contentShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private func partMenu(_ part: TrackPart) -> some View {
+        Button { select(part) } label: { Label("عرض هذا الجزء", systemImage: "eye") }
+        Button {
+            router.shownTrack = ShownTrack(name: partTitle(part), segments: [part.coordinates], stops: [])
+            mapManager.send(.fit(part.coordinates)); router.showOnMap()
+        } label: { Label("عرضه على الخريطة الرئيسية", systemImage: "map") }
+        Button { partName = track.partNames[part.keyString] ?? ""; partToRename = part } label: {
+            Label("تسمية الجزء", systemImage: "pencil")
+        }
+        Button { exportPart(part) } label: { Label("تصدير الجزء GPX", systemImage: "square.and.arrow.up") }
+        if let a = part.coordinates.first {
+            Button {
+                navigation.navigate(to: Waypoint(name: "بداية \(partTitle(part))", coordinate: a)); router.showOnMap()
+            } label: { Label("الملاحة إلى بدايته", systemImage: "arrow.uturn.backward") }
+        }
+        if let b = part.coordinates.last {
+            Button {
+                navigation.navigate(to: Waypoint(name: "نهاية \(partTitle(part))", coordinate: b)); router.showOnMap()
+            } label: { Label("الملاحة إلى نهايته", systemImage: "flag.checkered") }
+        }
+        Button(role: .destructive) { partToDelete = part } label: { Label("حذف الجزء", systemImage: "trash") }
+    }
+
+    private func select(_ part: TrackPart) {
+        selectedPart = selectedPart?.key == part.key ? nil : part
+        let coords = selectedPart?.coordinates ?? points.map(\.coordinate)
+        guard let box = GeoMath.boundingBox(coords) else { return }
+        let center = CLLocationCoordinate2D(latitude: (box.sw.latitude + box.ne.latitude) / 2,
+                                            longitude: (box.sw.longitude + box.ne.longitude) / 2)
+        withAnimation {
+            mapPosition = .region(MKCoordinateRegion(center: center,
+                span: MKCoordinateSpan(latitudeDelta: max(0.004, (box.ne.latitude - box.sw.latitude) * 1.4),
+                                       longitudeDelta: max(0.004, (box.ne.longitude - box.sw.longitude) * 1.4))))
+        }
+    }
+
+    private func exportPart(_ part: TrackPart) {
+        let name = "\(track.name) - \(partTitle(part))"
+        let xml = GPXService.export(trackName: name, points: TrackParts.points(of: part, in: points))
+        shareURL = try? GPXService.writeTemporaryFile(xml, baseName: name)
+    }
+
+    /// حذف جزء كامل وإعادة حساب إحصائيات المسار.
+    private func deletePart(_ part: TrackPart) {
+        let pts = TrackParts.removing(part, from: points)
+        guard pts.count > 1 else { return }
+        let acc = TrackAccumulator(existing: pts)
+        track.points = pts
+        track.distanceMeters = acc.distance
+        track.movingSeconds = acc.movingSeconds
+        track.maxSpeed = acc.maxSpeed
+        if let f = pts.first, let l = pts.last {
+            track.startedAt = f.time
+            track.endedAt = l.time
+            track.elapsedSeconds = l.time.timeIntervalSince(f.time)
+        }
+        var names = track.partNames
+        names[part.keyString] = nil
+        track.partNames = names
+        try? context.save()
+        if selectedPart?.key == part.key { selectedPart = nil }
+        points = pts
     }
 
     private func exportGPX() {

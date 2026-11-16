@@ -88,6 +88,8 @@ final class RecordedTrack {
     var isImported: Bool = false
     /// معرّف المسار إن كان منشورًا في مسارات المجتمع.
     var publicID: String?
+    /// أسماء أجزاء المسار التي سمّاها المستخدم (المفتاح: وقت بداية الجزء).
+    var partNamesData: Data?
     @Attribute(.externalStorage) var pointsData: Data?
     var trip: Trip?
 
@@ -102,6 +104,11 @@ final class RecordedTrack {
             pointsData = TrackPointCodec.encode(newValue)
             pointCount = newValue.count
         }
+    }
+
+    var partNames: [String: String] {
+        get { partNamesData.flatMap { try? JSONDecoder().decode([String: String].self, from: $0) } ?? [:] }
+        set { partNamesData = newValue.isEmpty ? nil : try? JSONEncoder().encode(newValue) }
     }
 
     var averageMovingSpeed: Double {

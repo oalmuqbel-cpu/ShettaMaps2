@@ -271,3 +271,44 @@ final class WaterSubTests: XCTestCase {
         XCTAssertEqual(WaterSub.decode(WaterSub.encode([.cold, .well])), [.cold, .well])
     }
 }
+
+final class TrackPartsTests: XCTestCase {
+    private let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+    private func pt(_ i: Int, _ minutes: Double, seg: Int = 0) -> TrackPoint {
+        TrackPoint(lat: 25 + Double(i) * 0.001, lon: 46, time: t0.addingTimeInterval(minutes * 60), segment: seg)
+    }
+
+    /// مسار فيه وقفة تلقائية (مقطع جديد) ووقفة طويلة لم تُوقف التسجيل (فجوة زمنية).
+    private var sample: [TrackPoint] {
+        [pt(0, 0), pt(1, 1), pt(2, 2),                 // جزء ١
+         pt(3, 20, seg: 1), pt(4, 21, seg: 1),         // جزء ٢ بعد إيقاف تلقائي
+         pt(5, 40, seg: 1), pt(6, 41, seg: 1)]         // جزء ٣ بعد فجوة ١٩ دقيقة
+    }
+
+    func testSplitsAtAutoPauseAndLongGaps() {
+        let n = TrackParts.normalized(sample, stopThreshold: 15 * 60)
+        let parts = TrackParts.parts(n)
+        XCTAssertEqual(parts.count, 3)
+        XCTAssertEqual(parts.map(\.index), [1, 2, 3])
+        XCTAssertEqual(parts[0].stopAfter ?? 0, 18 * 60, accuracy: 1)
+        XCTAssertNil(parts[2].stopAfter)
+        XCTAssertGreaterThan(parts[0].distance, 200)
+    }
+
+    func testShortGapDoesNotSplit() {
+        let n = TrackParts.normalized(sample, stopThreshold: 30 * 60)
+        XCTAssertEqual(TrackParts.parts(n).count, 2)
+    }
+
+    func testDeletingOnePartLeavesOthersAndAGap() {
+        let n = TrackParts.normalized(sample, stopThreshold: 15 * 60)
+        let parts = TrackParts.parts(n)
+        let after = TrackParts.removing(parts[1], from: n)
+        let remaining = TrackParts.parts(after)
+        XCTAssertEqual(remaining.count, 2)
+        // المفاتيح ثابتة: الجزء الأول والثالث كما هما
+        XCTAssertEqual(remaining.map(\.key), [parts[0].key, parts[2].key])
+        // لا يُوصل الجزء الأول بالثالث: مقطعان منفصلان
+        XCTAssertEqual(TrackAccumulator.segments(of: after).count, 2)
+    }
+}
