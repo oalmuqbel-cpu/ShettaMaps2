@@ -625,6 +625,12 @@ struct MapScreen: View {
                 mapManager.selectedPin = nil
             }
         }
+        if let link = search.entry(forPinID: pin.id)?.url, let url = URL(string: link) {
+            Button("فتح المصدر الأصلي") {
+                UIApplication.shared.open(url)
+                mapManager.selectedPin = nil
+            }
+        }
         Button("نسخ الإحداثيات") {
             UIPasteboard.general.string = CoordinateUtilities.shareString(pin.coordinate)
             mapManager.selectedPin = nil

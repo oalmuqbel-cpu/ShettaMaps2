@@ -234,3 +234,18 @@ final class NafudTests: XCTestCase {
         XCTAssertTrue(nafud.contains { $0.name == "الدهناء" })
     }
 }
+
+final class ColdWaterTests: XCTestCase {
+    func testColdWaterKindAndSourceLinkParse() throws {
+        let json = """
+        {"type":"FeatureCollection","sourceURL":"https://maps.app.goo.gl/PSo5R6xbqBdGNV5j9","features":[
+          {"type":"Feature","geometry":{"type":"Point","coordinates":[46.1,24.2]},
+           "properties":{"id":"mared-1","name":"ماء بارد","kind":"coldWater","source":"مارد ماء"}}]}
+        """
+        let e = try SearchService.parseGeoJSON(Data(json.utf8))
+        XCTAssertEqual(e.first?.kind, .coldWater)
+        XCTAssertEqual(e.first?.url, "https://maps.app.goo.gl/PSo5R6xbqBdGNV5j9")
+        XCTAssertEqual(PlaceKind.coldWater.title, "ماء بارد")
+        XCTAssertTrue(PlaceKind.mapKinds.contains(.coldWater))
+    }
+}

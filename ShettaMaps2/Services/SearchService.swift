@@ -4,7 +4,7 @@ import SwiftData
 
 /// تصنيفات البحث الصحراوي.
 enum PlaceKind: String, CaseIterable, Identifiable, Codable {
-    case all, mountain, valley, rawdah, nafud, shaib, camp, water, cave, fuel, landmark, saved
+    case all, mountain, valley, rawdah, nafud, shaib, camp, water, coldWater, cave, fuel, landmark, saved
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -16,6 +16,7 @@ enum PlaceKind: String, CaseIterable, Identifiable, Codable {
         case .shaib: return "شعبان"
         case .camp: return "مخيمات ومواقع برية"
         case .water: return "مياه وآبار"
+        case .coldWater: return "ماء بارد"
         case .cave: return "غيران"
         case .fuel: return "محطات وقود"
         case .landmark: return "معالم"
@@ -32,6 +33,7 @@ enum PlaceKind: String, CaseIterable, Identifiable, Codable {
         case .shaib: return "point.topleft.down.to.point.bottomright.curvepath"
         case .camp: return "tent"
         case .water: return "drop"
+        case .coldWater: return "waterbottle"
         case .cave: return "flashlight.on.fill"
         case .fuel: return "fuelpump.fill"
         case .landmark: return "building.columns"
@@ -40,7 +42,7 @@ enum PlaceKind: String, CaseIterable, Identifiable, Codable {
     }
 
     /// أنواع الأماكن المعروفة التي تظهر أسماؤها على الخريطة (للفلترة).
-    static let mapKinds: [PlaceKind] = [.rawdah, .nafud, .mountain, .valley, .shaib, .water, .cave, .fuel, .camp, .landmark]
+    static let mapKinds: [PlaceKind] = [.rawdah, .nafud, .mountain, .valley, .shaib, .coldWater, .water, .cave, .fuel, .camp, .landmark]
 
     /// يحوّل قيمة الفلتر المحفوظة ("rawdah,valley") إلى مجموعة؛ الفارغة تعني الكل.
     static func decodeSet(_ raw: String) -> Set<PlaceKind> {
@@ -75,6 +77,8 @@ struct GazetteerEntry: Codable, Hashable {
     var lon: Double
     var region: String?
     var source: String
+    /// رابط المصدر الأصلي (مثل قائمة «مارد ماء» في خرائط Google).
+    var url: String? = nil
 }
 
 /// البحث المحلي (دون إنترنت) والبحث عبر الإنترنت.
@@ -212,7 +216,8 @@ final class SearchService: ObservableObject {
                                          altNames: props["alt_names"] as? [String] ?? [],
                                          kind: kind, lat: lat, lon: lon,
                                          region: props["region"] as? String,
-                                         source: props["source"] as? String ?? "OpenStreetMap"))
+                                         source: props["source"] as? String ?? "OpenStreetMap",
+                                         url: (props["url"] as? String) ?? (root["sourceURL"] as? String)))
         }
         return result
     }
@@ -248,7 +253,7 @@ final class SearchService: ObservableObject {
     /// kinds الفارغة تعني كل الأنواع، و nameFilter يطابق الاسم أو الأسماء البديلة بعد التطبيع.
     func entries(sw: CLLocationCoordinate2D, ne: CLLocationCoordinate2D, limit: Int = 120,
                  kinds: Set<PlaceKind> = [], nameFilter: String = "") -> [GazetteerEntry] {
-        let priority: [PlaceKind: Int] = [.nafud: 0, .rawdah: 0, .valley: 1, .mountain: 2, .cave: 3, .camp: 4, .water: 5, .fuel: 6, .shaib: 7, .landmark: 8]
+        let priority: [PlaceKind: Int] = [.nafud: 0, .rawdah: 0, .valley: 1, .mountain: 2, .cave: 3, .camp: 4, .coldWater: 5, .water: 5, .fuel: 6, .shaib: 7, .landmark: 8]
         let key = Self.searchKey(nameFilter)
         var found: [GazetteerEntry] = []
         for item in normalizedIndex {
@@ -273,6 +278,13 @@ final class SearchService: ObservableObject {
         let n = normalizeArabic(name)
         return ["نفود", "النفود", "عروق", "العروق", "الدهناء", "الربع الخالي", "الجافوره", "رمله", "رمال", "الرمال"]
             .contains { n == $0 || n.hasPrefix($0 + " ") }
+    }
+
+    /// مدخل القاعدة لمعرّف علامة على الخريطة («g-…»).
+    func entry(forPinID id: String) -> GazetteerEntry? {
+        guard id.hasPrefix("g-") else { return nil }
+        let gid = String(id.dropFirst(2))
+        return gazetteer.first { $0.id == gid }
     }
 
     /// أقرب أماكن من نوع معيّن (مثل محطات الوقود) لموقعك، دون إنترنت.

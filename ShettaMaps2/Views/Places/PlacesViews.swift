@@ -278,7 +278,7 @@ struct PlaceEditorView: View {
                 .disabled(!community.isEnabled)
                 if isPublic {
                     Picker("نوع المكان", selection: $publicKind) {
-                        ForEach([PlaceKind.rawdah, .nafud, .valley, .shaib, .mountain, .camp, .water, .cave, .fuel, .landmark]) { k in
+                        ForEach([PlaceKind.rawdah, .nafud, .coldWater, .valley, .shaib, .mountain, .camp, .water, .cave, .fuel, .landmark]) { k in
                             Label(k.title, systemImage: k.icon).tag(k)
                         }
                     }

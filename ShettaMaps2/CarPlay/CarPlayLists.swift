@@ -196,7 +196,8 @@ extension CarPlayTemplateManager {
         // أماكن قريبة
         var nearby: [CPListItem] = [
             folder("أماكن قريبة حسب النوع", icon: "binoculars") { [weak self] in self?.showNearbyKinds() },
-            folder("أقرب محطات الوقود", icon: "fuelpump.fill") { [weak self] in self?.showNearby(.fuel) }
+            folder("أقرب محطات الوقود", icon: "fuelpump.fill") { [weak self] in self?.showNearby(.fuel) },
+            folder("أقرب ماء بارد", icon: "waterbottle") { [weak self] in self?.showNearby(.coldWater) }
         ]
         if CommunityService.shared.isEnabled {
             nearby.append(folder("مشاركات المجتمع القريبة", icon: "person.2.fill") { [weak self] in self?.showCommunityNearby() })
@@ -227,7 +228,7 @@ extension CarPlayTemplateManager {
     }
 
     func showNearbyKinds() {
-        let kinds: [PlaceKind] = [.nafud, .rawdah, .mountain, .valley, .water, .cave, .camp, .shaib, .landmark, .fuel]
+        let kinds: [PlaceKind] = [.nafud, .rawdah, .coldWater, .mountain, .valley, .water, .cave, .camp, .shaib, .landmark, .fuel]
         let items = kinds.map { k in folder(k.title, icon: k.icon) { [weak self] in self?.showNearby(k) } }
         _ = push("أماكن قريبة", [CPListSection(items: items)])
     }
