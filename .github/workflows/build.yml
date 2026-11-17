@@ -11,12 +11,8 @@ concurrency:
 
 jobs:
   build-test:
-    # جهازان مختلفان بالتوازي لأن أجهزة GitHub قد لا تتوفر أحيانًا؛ يكفي نجاح أحدهما
-    strategy:
-      fail-fast: false
-      matrix:
-        runner: [macos-26, macos-15-intel, macos-15]
-    runs-on: ${{ matrix.runner }}
+    # جهاز واحد فقط: ننتظر حتى يتوفر بدل تشغيل عدة أجهزة بالتوازي (أقل استهلاكًا)
+    runs-on: macos-15-intel
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
