@@ -148,12 +148,12 @@ final class CarPlayMapViewController: UIViewController {
         addChild(host)
         view.addSubview(host.view)
         host.didMove(toParent: self)
-        // أعلى يمين الخريطة، بجانب عمود أزرار الخريطة لا فوقها
+        // أقصى يمين أعلى الخريطة، فوق عمود أزرار الخريطة
         NSLayoutConstraint.activate([
             host.view.widthAnchor.constraint(equalToConstant: 96),
             host.view.heightAnchor.constraint(equalToConstant: 96),
-            host.view.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 4),
-            host.view.rightAnchor.constraint(equalTo: view.safeAreaLayoutGuide.rightAnchor, constant: -56)
+            host.view.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 0),
+            host.view.rightAnchor.constraint(equalTo: view.safeAreaLayoutGuide.rightAnchor, constant: -4)
         ])
         speedHost = host
     }

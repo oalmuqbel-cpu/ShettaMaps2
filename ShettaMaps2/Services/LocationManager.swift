@@ -156,15 +156,21 @@ final class LocationManager: NSObject, ObservableObject {
         isUpdating = false
     }
 
+    private var automotive = false
+
     func applyBatteryMode() {
         let mode = batteryMode
-        manager.desiredAccuracy = mode.desiredAccuracy
-        manager.distanceFilter = mode.distanceFilter
+        // في السيارة (الجهاز يشحن): أعلى دقة وتحديث كل ثانية حتى لو كانت السيارة واقفة أو بطيئة،
+        // وإلا يتوقف وصول القراءات بسبب مسافة التحديث فتظهر السرعة «—» بدل الرقم
+        manager.desiredAccuracy = automotive ? kCLLocationAccuracyBestForNavigation : mode.desiredAccuracy
+        manager.distanceFilter = automotive ? kCLDistanceFilterNone : mode.distanceFilter
     }
 
-    /// يُستخدم عند الاتصال بـ CarPlay لتحسين تقدير اتجاه السيارة.
+    /// يُستخدم عند الاتصال بـ CarPlay لتحسين تقدير اتجاه السيارة وقراءة السرعة كل ثانية.
     func setAutomotive(_ automotive: Bool) {
+        self.automotive = automotive
         manager.activityType = automotive ? .automotiveNavigation : .otherNavigation
+        applyBatteryMode()
     }
 
     /// يفعّل الاستمرار في الخلفية لسبب محدد (تسجيل، ملاحة، CarPlay). يعود للوضع العادي بعد زوال كل الأسباب.
