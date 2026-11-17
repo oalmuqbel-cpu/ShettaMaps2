@@ -72,7 +72,7 @@ final class CarPlayTemplateManager: NSObject {
             }
         case "pan":
             mapViewController.beginPan()
-            mapViewController.updatePan(CGPoint(x: 220, y: 0))
+            mapViewController.updatePan(CGPoint(x: 220, y: 0), velocity: .zero)
         default: break
         }
     }
@@ -90,17 +90,31 @@ final class CarPlayTemplateManager: NSObject {
 
     // MARK: - الأزرار
 
+    private var isPanning = false
+
     private func configureButtons() {
+        updateMapButtons()
+        updateBarButtons()
+    }
+
+    /// أزرار الخريطة. في وضع التحريك تُخفي السيارة بعض الأزرار، فنبقي التكبير والتصغير وزر الخروج فقط
+    /// حتى لا يختفي زر التكبير بعد استخدام الأسهم.
+    func updateMapButtons() {
         let zoomIn = CPMapButton { [weak self] _ in self?.mapViewController.zoom(in: true) }
         zoomIn.image = UIImage(systemName: "plus.magnifyingglass")
         let zoomOut = CPMapButton { [weak self] _ in self?.mapViewController.zoom(in: false) }
         zoomOut.image = UIImage(systemName: "minus.magnifyingglass")
-        let recenter = CPMapButton { [weak self] _ in self?.mapViewController.recenter() }
-        recenter.image = UIImage(systemName: "location.fill")
-        let pan = CPMapButton { [weak self] _ in self?.mapTemplate.showPanningInterface(animated: true) }
-        pan.image = UIImage(systemName: "arrow.up.and.down.and.arrow.left.and.right")
-        mapTemplate.mapButtons = [recenter, zoomIn, zoomOut, pan]
-        updateBarButtons()
+        if isPanning {
+            let done = CPMapButton { [weak self] _ in self?.mapTemplate.dismissPanningInterface(animated: true) }
+            done.image = UIImage(systemName: "checkmark")
+            mapTemplate.mapButtons = [zoomIn, zoomOut, done]
+        } else {
+            let recenter = CPMapButton { [weak self] _ in self?.mapViewController.recenter() }
+            recenter.image = UIImage(systemName: "location.fill")
+            let pan = CPMapButton { [weak self] _ in self?.mapTemplate.showPanningInterface(animated: true) }
+            pan.image = UIImage(systemName: "arrow.up.and.down.and.arrow.left.and.right")
+            mapTemplate.mapButtons = [recenter, zoomIn, zoomOut, pan]
+        }
     }
 
     /// أزرار الشريط العلوي: بحد أقصى زران في كل جهة (قيد CarPlay).
@@ -377,7 +391,7 @@ extension CarPlayTemplateManager: CPMapTemplateDelegate {
     }
 
     nonisolated func mapTemplate(_ mapTemplate: CPMapTemplate, didUpdatePanGestureWithTranslation translation: CGPoint, velocity: CGPoint) {
-        MainActor.assumeIsolated { mapViewController.updatePan(translation) }
+        MainActor.assumeIsolated { mapViewController.updatePan(translation, velocity: velocity) }
     }
 
     nonisolated func mapTemplate(_ mapTemplate: CPMapTemplate, didEndPanGestureWithVelocity velocity: CGPoint) {
@@ -410,7 +424,13 @@ extension CarPlayTemplateManager: CPMapTemplateDelegate {
         MainActor.assumeIsolated { mapViewController.endZoom() }
     }
 
-    nonisolated func mapTemplateDidDismissPanningInterface(_ mapTemplate: CPMapTemplate) {}
+    nonisolated func mapTemplateDidShowPanningInterface(_ mapTemplate: CPMapTemplate) {
+        MainActor.assumeIsolated { isPanning = true; updateMapButtons() }
+    }
+
+    nonisolated func mapTemplateDidDismissPanningInterface(_ mapTemplate: CPMapTemplate) {
+        MainActor.assumeIsolated { isPanning = false; updateMapButtons() }
+    }
 
     nonisolated func mapTemplateDidCancelNavigation(_ mapTemplate: CPMapTemplate) {
         MainActor.assumeIsolated {

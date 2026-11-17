@@ -20,6 +20,8 @@ struct CarPlaySpeedOverlay: View {
                     .padding(.top, 16).padding(.leading, 16) // مساحة لإشارة الحد فوق الفقاعة
             }
         }
+        // حجم ثابت ملتصق بأعلى يمين المساحة، فلا تنزاح الفقاعة لوسط الشاشة
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
         .allowsHitTesting(false)
         .onReceive(timer) { tick = $0 }
     }

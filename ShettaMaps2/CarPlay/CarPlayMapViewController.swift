@@ -150,8 +150,10 @@ final class CarPlayMapViewController: UIViewController {
         host.didMove(toParent: self)
         // أعلى يمين الخريطة، بجانب عمود أزرار الخريطة لا فوقها
         NSLayoutConstraint.activate([
+            host.view.widthAnchor.constraint(equalToConstant: 96),
+            host.view.heightAnchor.constraint(equalToConstant: 96),
             host.view.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 4),
-            host.view.rightAnchor.constraint(equalTo: view.safeAreaLayoutGuide.rightAnchor, constant: -62)
+            host.view.rightAnchor.constraint(equalTo: view.safeAreaLayoutGuide.rightAnchor, constant: -56)
         ])
         speedHost = host
     }
@@ -575,20 +577,29 @@ final class CarPlayMapViewController: UIViewController {
     /// بداية سحب الخريطة باللمس على شاشة السيارة.
     func beginPan() {
         lastPan = .zero
+        lastPanTime = nil
+        panTracker.reset()
         gestureBegan()
     }
 
-    /// السحب باللمس: translation تراكمي منذ بداية السحب (نطبق الفرق فقط فتتبع الخريطة الإصبع).
-    func updatePan(_ translation: CGPoint) {
+    private var lastPanTime: Date?
+    private var panTracker = PanTranslationTracker()
+
+    /// السحب باللمس. Apple توثّق translation تراكميًا منذ بداية السحب، لكن بعض شاشات السيارات
+    /// ترسل فرق كل تحديث فقط، فلا تتحرك الخريطة إلا في البداية. نكتشف النوع من سرعة الإصبع ونطبقه.
+    func updatePan(_ translation: CGPoint, velocity: CGPoint) {
         if !gestureActive { beginPan() }
+        let now = Date()
+        let dt = lastPanTime.map { now.timeIntervalSince($0) }
+        lastPanTime = now
         // أثناء القرص بإصبعين لا نحرك الخريطة بالسحب حتى لا تتداخل الحركتان
         guard !zoomActive else { lastPan = translation; return }
-        var dx = translation.x - lastPan.x, dy = translation.y - lastPan.y
+        var d = panTracker.step(translation: translation, previous: lastPan, velocity: velocity, dt: dt)
         lastPan = translation
         // حماية من القفزات (قراءة شاذة أو بداية سحب جديدة دون إشعار)
         let maxStep = max(view.bounds.width, view.bounds.height) * 0.25
-        dx = max(-maxStep, min(maxStep, dx)); dy = max(-maxStep, min(maxStep, dy))
-        move(by: CGPoint(x: dx, y: dy), animated: false)
+        d.x = max(-maxStep, min(maxStep, d.x)); d.y = max(-maxStep, min(maxStep, d.y))
+        move(by: d, animated: false)
     }
 
     /// نهاية السحب: انزلاق قصير بحسب سرعة الإصبع ثم توقف.

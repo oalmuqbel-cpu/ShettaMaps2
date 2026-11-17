@@ -312,3 +312,42 @@ final class TrackPartsTests: XCTestCase {
         XCTAssertEqual(TrackAccumulator.segments(of: after).count, 2)
     }
 }
+
+final class PanTranslationTrackerTests: XCTestCase {
+    /// سحب ثابت لليسار ٣٠٠ نقطة/ث، تحديث كل ٠٫٠٥ ث (١٥ نقطة لكل تحديث).
+    private func run(cumulative: Bool, velocity: CGPoint = CGPoint(x: -300, y: 0)) -> CGFloat {
+        var tr = PanTranslationTracker()
+        var prev = CGPoint.zero, total: CGFloat = 0
+        for i in 1...20 {
+            let t = cumulative ? CGPoint(x: -15 * CGFloat(i), y: 0) : CGPoint(x: -15, y: 0)
+            total += tr.step(translation: t, previous: prev, velocity: velocity, dt: i == 1 ? nil : 0.05).x
+            prev = t
+        }
+        return total
+    }
+
+    func testCumulativeFollowsFinger() {
+        XCTAssertEqual(run(cumulative: true), -300, accuracy: 1)
+    }
+
+    func testDeltaUpdatesDetectedAndFollowFinger() {
+        // دون الاكتشاف كانت الخريطة تتحرك ١٥ نقطة فقط ثم تقف
+        XCTAssertLessThan(run(cumulative: false), -250)
+    }
+
+    func testRightAndDownWorkToo() {
+        var tr = PanTranslationTracker()
+        var prev = CGPoint.zero, sum = CGPoint.zero
+        for i in 1...10 {
+            let t = CGPoint(x: 10 * CGFloat(i), y: 20 * CGFloat(i))
+            let d = tr.step(translation: t, previous: prev, velocity: CGPoint(x: 200, y: 400), dt: 0.05)
+            sum.x += d.x; sum.y += d.y; prev = t
+        }
+        XCTAssertEqual(sum.x, 100, accuracy: 1)
+        XCTAssertEqual(sum.y, 200, accuracy: 1)
+    }
+
+    func testNoVelocityKeepsDocumentedCumulativeBehaviour() {
+        XCTAssertEqual(run(cumulative: true, velocity: .zero), -300, accuracy: 1)
+    }
+}

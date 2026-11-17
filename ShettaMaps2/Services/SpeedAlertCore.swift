@@ -1,5 +1,6 @@
 import Foundation
 import CoreLocation
+import CoreGraphics
 
 /// إعدادات تنبيه السرعة المشتركة بين الهاتف وCarPlay.
 enum SpeedAlertSettings {
@@ -162,5 +163,27 @@ enum LiveSpeed {
         guard let loc, now.timeIntervalSince(loc.timestamp) <= maxAge, loc.speed >= 0 else { return nil }
         if loc.speedAccuracy > 5 { return nil }   // دقة السرعة أسوأ من ±١٨ كم/س
         return loc.speed * 3.6
+    }
+}
+
+/// يحدد هل ترسل السيارة إزاحة السحب تراكمية (كما توثّق Apple) أم فرقًا لكل تحديث،
+/// بمقارنة كل احتمال مع ما تتوقعه سرعة الإصبع، ويعيد الإزاحة الواجب تطبيقها الآن.
+struct PanTranslationTracker {
+    /// موجب = تراكمي، سالب = فرق لكل تحديث.
+    private(set) var score: Double = 0
+    var isDelta: Bool { score < -1.5 }
+
+    mutating func reset() { score = 0 }
+
+    mutating func step(translation t: CGPoint, previous p: CGPoint, velocity v: CGPoint, dt: TimeInterval?) -> CGPoint {
+        let cumulativeStep = CGPoint(x: t.x - p.x, y: t.y - p.y)
+        if let dt, dt > 0.004, dt < 0.25, hypot(v.x, v.y) > 60 {
+            let expected = CGPoint(x: v.x * dt, y: v.y * dt)
+            let errCum = hypot(cumulativeStep.x - expected.x, cumulativeStep.y - expected.y)
+            let errDelta = hypot(t.x - expected.x, t.y - expected.y)
+            if errDelta * 1.5 < errCum { score = max(-5, score - 1) }
+            else if errCum * 1.5 < errDelta { score = min(5, score + 1) }
+        }
+        return isDelta ? t : cumulativeStep
     }
 }
