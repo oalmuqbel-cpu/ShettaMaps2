@@ -31,3 +31,32 @@ struct CarPlaySpeedOverlay: View {
         return kmh > 4.3 ? kmh / 3.6 : 0
     }
 }
+
+/// إحداثيات موقعي الحالي أسفل خريطة السيارة، مختصرة وجاهزة للقراءة أو الإرسال لشخص آخر.
+struct CarPlayCoordinateBar: View {
+    static let key = "carPlayShowCoordinates"
+    @ObservedObject private var location = LocationManager.shared
+    @AppStorage(CarPlayCoordinateBar.key) private var show = true
+
+    var body: some View {
+        Group {
+            if show, let c = location.location?.coordinate {
+                Text(Self.text(c))
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 10).padding(.vertical, 4)
+                    .background(Capsule().fill(.regularMaterial))
+                    .environment(\.layoutDirection, .leftToRight)
+                    .accessibilityLabel("موقعي \(Self.text(c))")
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .allowsHitTesting(false)
+    }
+
+    /// خط العرض ثم خط الطول بخمس منازل عشرية (دقة نحو متر واحد)، بأرقام لاتينية.
+    static func text(_ c: CLLocationCoordinate2D) -> String {
+        let f = { (v: Double) in String(format: "%.5f", locale: Locale(identifier: "en_US_POSIX"), v) }
+        return "\(f(c.latitude)), \(f(c.longitude))"
+    }
+}

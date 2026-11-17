@@ -502,6 +502,12 @@ extension CarPlayTemplateManager {
             UserDefaults.standard.set(!showOn, forKey: SettingsKeys.showSpeed)
             self?.reloadMore(); done()
         }
+        let coordsOn = UserDefaults.standard.object(forKey: CarPlayCoordinateBar.key) as? Bool ?? true
+        let coords = CPListItem(text: "عرض إحداثياتي", detailText: coordsOn ? "ظاهرة أسفل الخريطة" : "مخفية", image: checkImage(coordsOn))
+        coords.handler = { [weak self] _, done in
+            UserDefaults.standard.set(!coordsOn, forKey: CarPlayCoordinateBar.key)
+            self?.reloadMore(); done()
+        }
         let alertOn = SpeedAlertSettings.enabled
         let speed = CPListItem(text: "تنبيه تجاوز حد السرعة", detailText: alertOn ? "مفعّل" : "متوقف", image: checkImage(alertOn))
         speed.handler = { [weak self] _, done in
@@ -514,7 +520,7 @@ extension CarPlayTemplateManager {
             UserDefaults.standard.set(SpeedAlertSettings.nextMargin(), forKey: SpeedAlertSettings.marginKey)
             self?.reloadMore(); done()
         }
-        var driving = [show, voice, speed]
+        var driving = [show, coords, voice, speed]
         if alertOn { driving.append(margin) }
 
         return [

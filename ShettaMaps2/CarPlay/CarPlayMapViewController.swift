@@ -156,7 +156,25 @@ final class CarPlayMapViewController: UIViewController {
             host.view.rightAnchor.constraint(equalTo: view.safeAreaLayoutGuide.rightAnchor, constant: -4)
         ])
         speedHost = host
+
+        // إحداثياتي أسفل الخريطة في المنتصف
+        let coords = UIHostingController(rootView: CarPlayCoordinateBar())
+        coords.view.backgroundColor = .clear
+        coords.view.isUserInteractionEnabled = false
+        coords.view.translatesAutoresizingMaskIntoConstraints = false
+        addChild(coords)
+        view.addSubview(coords.view)
+        coords.didMove(toParent: self)
+        NSLayoutConstraint.activate([
+            coords.view.widthAnchor.constraint(equalToConstant: 220),
+            coords.view.heightAnchor.constraint(equalToConstant: 30),
+            coords.view.centerXAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerXAnchor),
+            coords.view.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -2)
+        ])
+        coordsHost = coords
     }
+
+    private var coordsHost: UIHostingController<CarPlayCoordinateBar>?
 
     // MARK: - شاشة العدادات: لوحة حد السرعة
 

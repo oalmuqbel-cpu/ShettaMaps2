@@ -351,3 +351,10 @@ final class PanTranslationTrackerTests: XCTestCase {
         XCTAssertEqual(run(cumulative: true, velocity: .zero), -300, accuracy: 1)
     }
 }
+
+final class CoordinateBarTests: XCTestCase {
+    func testFormatIsShortLatinAndOrdered() {
+        let t = CarPlayCoordinateBar.text(CLLocationCoordinate2D(latitude: 24.7136123, longitude: 46.6752957))
+        XCTAssertEqual(t, "24.71361, 46.67530")
+    }
+}
