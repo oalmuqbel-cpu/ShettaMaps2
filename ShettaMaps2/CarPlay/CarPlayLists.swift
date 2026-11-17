@@ -496,6 +496,12 @@ extension CarPlayTemplateManager {
             UserDefaults.standard.set(!VoicePrompter.enabled, forKey: VoicePrompter.enabledKey)
             self?.reloadMore(); done()
         }
+        let showOn = UserDefaults.standard.object(forKey: SettingsKeys.showSpeed) as? Bool ?? true
+        let show = CPListItem(text: "عرض سرعتي وحد السرعة", detailText: showOn ? "ظاهر على الخريطة" : "مخفي", image: checkImage(showOn))
+        show.handler = { [weak self] _, done in
+            UserDefaults.standard.set(!showOn, forKey: SettingsKeys.showSpeed)
+            self?.reloadMore(); done()
+        }
         let alertOn = SpeedAlertSettings.enabled
         let speed = CPListItem(text: "تنبيه تجاوز حد السرعة", detailText: alertOn ? "مفعّل" : "متوقف", image: checkImage(alertOn))
         speed.handler = { [weak self] _, done in
@@ -508,7 +514,7 @@ extension CarPlayTemplateManager {
             UserDefaults.standard.set(SpeedAlertSettings.nextMargin(), forKey: SpeedAlertSettings.marginKey)
             self?.reloadMore(); done()
         }
-        var driving = [voice, speed]
+        var driving = [show, voice, speed]
         if alertOn { driving.append(margin) }
 
         return [

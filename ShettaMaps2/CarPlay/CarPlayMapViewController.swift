@@ -4,6 +4,7 @@ import MapLibre
 import Combine
 import SwiftData
 import CarPlay
+import SwiftUI
 
 /// محرك الخريطة على شاشة السيارة.
 enum CarPlayMapEngine: String, CaseIterable {
@@ -132,6 +133,27 @@ final class CarPlayMapViewController: UIViewController {
         buildMap()
         bind()
         if role == .cluster { setupClusterSign() }
+        if role == .main { setupSpeedOverlay() }
+    }
+
+    // MARK: - السرعة على الخريطة
+
+    private var speedHost: UIHostingController<CarPlaySpeedOverlay>?
+
+    private func setupSpeedOverlay() {
+        let host = UIHostingController(rootView: CarPlaySpeedOverlay())
+        host.view.backgroundColor = .clear
+        host.view.isUserInteractionEnabled = false
+        host.view.translatesAutoresizingMaskIntoConstraints = false
+        addChild(host)
+        view.addSubview(host.view)
+        host.didMove(toParent: self)
+        // أعلى يمين الخريطة، بجانب عمود أزرار الخريطة لا فوقها
+        NSLayoutConstraint.activate([
+            host.view.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 4),
+            host.view.rightAnchor.constraint(equalTo: view.safeAreaLayoutGuide.rightAnchor, constant: -62)
+        ])
+        speedHost = host
     }
 
     // MARK: - شاشة العدادات: لوحة حد السرعة
@@ -213,7 +235,7 @@ final class CarPlayMapViewController: UIViewController {
             m.showsScale = role == .main
             m.pointOfInterestFilter = role == .cluster ? .excludingAll : .includingAll
             m.isPitchEnabled = false
-            view.addSubview(m)
+            view.insertSubview(m, at: 0) // تحت فقاعة السرعة
             mapKitView = m
             if let c = previewCoordinate ?? env.location.location?.coordinate {
                 m.setRegion(MKCoordinateRegion(center: c, latitudinalMeters: zoomMeters, longitudinalMeters: zoomMeters), animated: false)
@@ -227,7 +249,7 @@ final class CarPlayMapViewController: UIViewController {
             m.logoView.isHidden = role == .cluster
             m.attributionButton.isHidden = role == .cluster
             m.allowsTilting = false
-            view.addSubview(m)
+            view.insertSubview(m, at: 0)
             libreView = m
             if let c = env.location.location?.coordinate {
                 m.setCenter(c, zoomLevel: role == .cluster ? 14 : 13, animated: false)
