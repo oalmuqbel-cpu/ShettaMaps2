@@ -4,16 +4,27 @@ import SwiftUI
 struct RootView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @EnvironmentObject private var location: LocationManager
+    @State private var showSplash = true
 
     var body: some View {
-        Group {
-            if UIDevice.current.userInterfaceIdiom == .pad && sizeClass == .regular {
-                PadRootView()
-            } else {
-                PhoneRootView()
+        ZStack {
+            Group {
+                if UIDevice.current.userInterfaceIdiom == .pad && sizeClass == .regular {
+                    PadRootView()
+                } else {
+                    PhoneRootView()
+                }
+            }
+            if showSplash {
+                SplashView().transition(.opacity).zIndex(1)
             }
         }
         .onAppear { location.start() }
+        .task {
+            // وقت قصير تتجهز فيه الخريطة خلف الشاشة ثم تختفي بانسياب
+            try? await Task.sleep(for: .milliseconds(1100))
+            withAnimation(.easeInOut(duration: 0.4)) { showSplash = false }
+        }
     }
 }
 
@@ -44,7 +55,8 @@ struct PhoneRootView: View {
 /// الآيباد: الأقسام في الشريط الجانبي، القائمة والتفاصيل في العمود الأوسط، والخريطة دائمًا في العمود الأكبر.
 struct PadRootView: View {
     @EnvironmentObject private var router: AppRouter
-    @State private var columns: NavigationSplitViewVisibility = .all
+    /// تبدأ الخريطة بكامل الشاشة؛ القوائم تُفتح من زر الشريط الجانبي وتطفو فوق الخريطة.
+    @State private var columns: NavigationSplitViewVisibility = .detailOnly
 
     private var listSections: [AppSection] { AppSection.allCases.filter { $0 != .map } }
 
@@ -58,6 +70,7 @@ struct PadRootView: View {
                 }
             }
             .navigationTitle("سَمْت")
+            .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
         } content: {
             NavigationStack {
                 switch router.selectedSection {
@@ -68,9 +81,15 @@ struct PadRootView: View {
                 case .settings: SettingsView()
                 }
             }
+            .navigationSplitViewColumnWidth(min: 300, ideal: 340, max: 380)
         } detail: {
             MapScreen()
         }
-        .navigationSplitViewStyle(.balanced)
+        // الخريطة لا تنضغط عند فتح القوائم، بل تبقى كاملة والقوائم فوقها
+        .navigationSplitViewStyle(.prominentDetail)
+        // فتح قسم من داخل التطبيق (مثل استيراد مسار) يُظهر قائمته
+        .onChange(of: router.selectedSection) { _, s in
+            if s != .map, columns == .detailOnly { withAnimation { columns = .doubleColumn } }
+        }
     }
 }
