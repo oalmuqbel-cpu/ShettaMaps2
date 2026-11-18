@@ -4,6 +4,10 @@ name: Build and Test
 on:
   push:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: "macOS runner label"
+        default: macos-15-intel
 
 concurrency:
   group: build-${{ github.ref }}
@@ -12,7 +16,7 @@ concurrency:
 jobs:
   build-test:
     # جهاز واحد فقط: ننتظر حتى يتوفر بدل تشغيل عدة أجهزة بالتوازي (أقل استهلاكًا)
-    runs-on: macos-15-intel
+    runs-on: ${{ inputs.runner || 'macos-15-intel' }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
