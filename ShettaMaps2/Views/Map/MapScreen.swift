@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import CoreLocation
+import MapKit
 
 /// الشاشة الرئيسية: خريطة تفاعلية مع معلومات الموقع وأدوات الملاحة والتسجيل.
 struct MapScreen: View {
