@@ -253,7 +253,7 @@ struct MapScreen: View {
         v
         .onChange(of: showCoverage) { _, _ in refreshCoverage() }
         .onChange(of: coverageOnlyMine) { _, _ in refreshCoverage() }
-        .onChange(of: coverage.cells.count) { _, _ in refreshCoverage(fetch: false) }
+        .onChange(of: coverage.revision) { _, _ in refreshCoverage(fetch: false) }
         .onChange(of: location.location?.coordinate.latitude) { _, _ in refreshWeather() }
         .onChange(of: network.isOnline) { _, on in if on { refreshWeather(); refreshRain() } }
         .onChange(of: showRainMap) { _, on in rainHour = 0; if on { refreshRain() } }

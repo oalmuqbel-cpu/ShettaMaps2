@@ -110,6 +110,9 @@ final class CoverageService: ObservableObject {
     @Published private(set) var cells: [String: CoverageCell] = [:]
     @Published private(set) var lastMeasured: (CoverageLevel, String?, Date)?
     @Published private(set) var pendingCount = 0
+    /// يزيد مع كل إعادة دمج، حتى يُعاد رسم الخريطة إذا تغيّر لون مربع دون أن يتغير عدد المربعات
+    /// (مثل مربع برتقالي صار أخضر بعد قياس جديد).
+    @Published private(set) var revision = 0
 
     private var samples: [CoverageSample] = []   // بانتظار الرفع
     private var fetched: [CoverageSample] = []   // من الخادم ومن قياساتي
@@ -328,6 +331,7 @@ final class CoverageService: ObservableObject {
             }
         }
         cells = out
+        revision &+= 1
     }
 
     nonisolated static func parse(_ doc: [String: Any]) -> CoverageSample? {
