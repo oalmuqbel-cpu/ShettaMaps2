@@ -301,12 +301,13 @@ final class CarPlayMapViewController: UIViewController {
             .sink { [weak self] _ in self?.refreshOverlays(force: false) }
             .store(in: &cancellables)
 
-        // قياس تغطية جديد (مثل مربع صار أخضر): نعيد رسم الطبقات
-        CoverageService.shared.$revision
-            .dropFirst()
+        // قياس تغطية جديد (مثل مربع صار أخضر) أو اكتمال فهرس الأماكن: نعيد رسم الطبقات
+        CoverageService.shared.$revision.map { _ in () }
+            .merge(with: SearchService.shared.$indexRevision.map { _ in () })
+            .dropFirst(2)
             .throttle(for: .seconds(3), scheduler: RunLoop.main, latest: true)
             .sink { [weak self] _ in
-                guard let self, self.role == .main, CarPlaySettings.showCoverage, !self.gestureActive else { return }
+                guard let self, self.role == .main, !self.gestureActive else { return }
                 // من البيانات المحلية فقط، دون جلب جديد من الخادم
                 self.collectData()
                 self.applyAll()

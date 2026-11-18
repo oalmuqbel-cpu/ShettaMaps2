@@ -55,6 +55,15 @@ struct MapScreen: View {
     @AppStorage(SettingsKeys.userMarkerColor) private var markerColorRaw = UserMarkerColor.white.rawValue
     @Environment(\.colorScheme) private var colorScheme
     @Query(sort: \RecordedTrack.startedAt, order: .reverse) private var myTracks: [RecordedTrack]
+    /// نتائج الطبقات الثقيلة محفوظة حسب المنطقة والإعدادات، فلا يُعاد حسابها مع كل تحديث للموقع أو البوصلة.
+    @State private var memo = OverlayMemo()
+    @State private var regionWork: Task<Void, Never>?
+
+    /// مفتاح المنطقة الظاهرة (تتغير فقط عند نهاية تحريك الخريطة).
+    private var regionKey: String {
+        guard let r = mapManager.visibleRegion else { return "-" }
+        return String(format: "%.5f,%.5f,%.5f,%.5f", r.center.latitude, r.center.longitude, r.span.latitudeDelta, r.span.longitudeDelta)
+    }
 
     private var markerStyle: UserMarkerStyle { UserMarkerStyle(rawValue: markerStyleRaw) ?? .dot }
     private var markerColor: UserMarkerColor { UserMarkerColor(rawValue: markerColorRaw) ?? .white }
@@ -77,7 +86,8 @@ struct MapScreen: View {
     /// كل مساراتي السابقة (عند تفعيل زر المسارات) بلون مختلف.
     private var myTracksLines: [MapOverlaySet.Line] {
         guard showMyTracks, let b = mapManager.visibleBounds else { return [] }
-        return MyTracksOverlay.shared.lines(for: myTracks, sw: b.sw, ne: b.ne)
+        let key = "\(regionKey)|\(myTracks.count)|\(myTracks.first?.id.uuidString ?? "")|\(myTracks.reduce(0) { $0 + $1.pointCount })"
+        return memo.get("myTracks", key) { MyTracksOverlay.shared.lines(for: myTracks, sw: b.sw, ne: b.ne) }
     }
 
     private var overlays: MapOverlaySet {
@@ -99,6 +109,12 @@ struct MapScreen: View {
         let filtered = !kinds.isEmpty || !nameFilter.isEmpty
         // عند الفلترة تقل الأسماء، فيُسمح بعرضها على مساحة أوسع
         guard showLandmarks, let b = mapManager.visibleBounds, let r = mapManager.visibleRegion else { return [] }
+        let key = "\(regionKey)|\(landmarkKindsRaw)|\(waterSubsRaw)|\(nameFilter)|\(search.indexRevision)"
+        return memo.get("landmarks", key) { computeLandmarkPins(b: b, r: r, kinds: kinds, subs: subs, filtered: filtered) }
+    }
+
+    private func computeLandmarkPins(b: (sw: CLLocationCoordinate2D, ne: CLLocationCoordinate2D), r: MKCoordinateRegion,
+                                     kinds: Set<PlaceKind>, subs: Set<WaterSub>, filtered: Bool) -> [MapOverlaySet.Pin] {
         // النفود والعروق مناطق واسعة: أسماؤها تظهر من مسافة أبعد من بقية الأماكن
         if r.span.latitudeDelta >= (filtered ? 8 : 3) {
             guard r.span.latitudeDelta < 12, kinds.isEmpty || kinds.contains(.nafud) else { return [] }
@@ -124,14 +140,20 @@ struct MapScreen: View {
     /// مسارات المجتمع ضمن المنطقة الظاهرة (عند تكبير كافٍ لتبقى الخريطة واضحة).
     private var communityTrackLines: [MapOverlaySet.Line] {
         guard showCommunity, let b = mapManager.visibleBounds, let r = mapManager.visibleRegion, r.span.latitudeDelta < 4 else { return [] }
-        return communityTracks.tracks(in: b.sw, b.ne).prefix(40).map { .init(kind: .community, coordinates: communityTracks.coordinates(of: $0)) }
+        let key = "\(regionKey)|\(communityTracks.tracks.count)|\(communityTracks.tracks.last?.id ?? "")"
+        return memo.get("communityTracks", key) {
+            communityTracks.tracks(in: b.sw, b.ne).prefix(40).map { .init(kind: .community, coordinates: communityTracks.coordinates(of: $0)) }
+        }
     }
 
     private var communityPins: [MapOverlaySet.Pin] {
         guard showCommunity, let b = mapManager.visibleBounds else { return [] }
-        return community.places(in: b.sw, b.ne).prefix(150).map {
-            .init(id: "c-\($0.id)", title: $0.name, subtitle: "مشاركة مجتمعية · \($0.kind.title)", coordinate: $0.coordinate,
-                  kind: .community, symbol: nil)
+        let key = "\(regionKey)|\(community.places.count)|\(community.places.last?.id ?? "")|\(community.hiddenAuthors.count)|\(community.reportedIDs.count)"
+        return memo.get("community", key) {
+            community.places(in: b.sw, b.ne).prefix(150).map {
+                .init(id: "c-\($0.id)", title: $0.name, subtitle: "مشاركة مجتمعية · \($0.kind.title)", coordinate: $0.coordinate,
+                      kind: .community, symbol: nil)
+            }
         }
     }
 
@@ -287,11 +309,17 @@ struct MapScreen: View {
     }
 
     /// كل ما يتحدث عند تحريك الخريطة أو تكبيرها.
+    /// نهاية تحريك الخريطة تغيّر المركز والمقياس معًا (ثلاثة إشعارات)؛ نجمعها في تحديث واحد بعد توقف قصير.
     private func regionChanged(moved: Bool) {
-        if moved { refreshCommunity() }
-        refreshDirt()
-        refreshCoverage()
-        refreshRain()
+        regionWork?.cancel()
+        regionWork = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+            refreshCommunity()
+            refreshDirt()
+            refreshCoverage()
+            refreshRain()
+        }
     }
 
     private func withPinDialogs<V: View>(_ v: V) -> some View {
@@ -630,7 +658,8 @@ struct MapScreen: View {
     /// النصوص المكتوبة على الردميات: المسماة أولًا، ثم غير المسماة الطويلة عند التكبير.
     private var dirtLabels: [DirtRoad] {
         // الأسماء فقط؛ الطرق غير المسماة يكفي لونها (ومفتاح الألوان في قائمة الطبقات)
-        Array(dirtRoads.filter { !$0.name.isEmpty && $0.coordinates.count > 1 }.prefix(30))
+        let key = "\(dirtRoads.count)|\(dirtRoads.first?.id ?? "")|\(dirtRoads.last?.id ?? "")"
+        return memo.get("dirtLabels", key) { Array(dirtRoads.filter { !$0.name.isEmpty && $0.coordinates.count > 1 }.prefix(30)) }
     }
 
     private func refreshCommunity() {
@@ -822,4 +851,17 @@ struct Banner: View {
 struct ShareText: Identifiable {
     let text: String
     var id: String { text }
+}
+
+/// ذاكرة مؤقتة صغيرة لنتائج الطبقات الثقيلة: تُعاد النتيجة نفسها ما دام المفتاح (المنطقة والإعدادات والبيانات) لم يتغير.
+/// مرجع (class) حتى لا يؤدي تحديثها إلى إعادة رسم الشاشة.
+final class OverlayMemo {
+    private var store: [String: (key: String, value: Any)] = [:]
+
+    func get<T>(_ name: String, _ key: String, _ make: () -> T) -> T {
+        if let e = store[name], e.key == key, let v = e.value as? T { return v }
+        let v = make()
+        store[name] = (key, v)
+        return v
+    }
 }

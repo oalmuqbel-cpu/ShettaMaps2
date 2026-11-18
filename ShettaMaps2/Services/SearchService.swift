@@ -137,6 +137,9 @@ final class SearchService: ObservableObject {
     @Published private(set) var gazetteer: [GazetteerEntry] = []
     @Published private(set) var gazetteerSource: String = ""
     private var normalizedIndex: [(entry: GazetteerEntry, keys: [String])] = []
+    private var indexWork: Task<Void, Never>?
+    /// يزيد عند اكتمال فهرس البحث، لتُعاد نتائج البحث والأسماء الظاهرة.
+    @Published private(set) var indexRevision = 0
 
     private init() { loadGazetteer() }
 
@@ -214,7 +217,17 @@ final class SearchService: ObservableObject {
     private func rebuildIndex() {
         let all = baseEntries + extraEntries
         gazetteer = all
-        normalizedIndex = all.map { e in (e, ([e.name] + e.altNames).map(Self.searchKey)) }
+        // فهرس البحث (تطبيع الأسماء العربية لأكثر من ٢٦ ألف مكان) يُبنى خارج الواجهة حتى لا تعلق الخريطة عند التشغيل
+        indexWork?.cancel()
+        indexWork = Task { [all] in
+            let built = await Task.detached(priority: .userInitiated) {
+                all.map { e in (entry: e, keys: ([e.name] + e.altNames).map(Self.searchKey)) }
+            }.value
+            guard !Task.isCancelled else { return }
+            normalizedIndex = built
+            cachedWaterCounts = nil
+            indexRevision &+= 1
+        }
         extraSources = Dictionary(grouping: extraEntries, by: \.source).mapValues(\.count)
         cachedWaterCounts = nil   // تتغير الأعداد حتى لو بقي العدد الكلي نفسه (مثل إعادة تصنيف القائمة)
     }

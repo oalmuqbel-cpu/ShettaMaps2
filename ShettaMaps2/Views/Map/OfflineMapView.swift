@@ -67,7 +67,8 @@ struct OfflineMapView: UIViewRepresentable {
             c.pendingRain = (rainCells, rainHour)
             c.applyRain(rainCells, hour: rainHour, on: map)
         }
-        let covKey = coverageCells.map(\.id).joined(separator: ",")
+        // المفتاح يشمل الحالة: مربع تغيّر لونه (برتقالي إلى أخضر) يُعاد رسمه حتى لو بقيت المربعات نفسها
+        let covKey = coverageCells.map { "\($0.id):\($0.level.rawValue)" }.joined(separator: ",")
         if c.lastCoverageKey != covKey {
             c.lastCoverageKey = covKey
             c.pendingCoverage = coverageCells
