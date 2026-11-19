@@ -529,3 +529,115 @@ final class FuelRangeTests: XCTestCase {
         XCTAssertEqual(FuelRangeMonitor.level(remainingKm: 40, nearestKm: nil), .low)
     }
 }
+
+final class ElevationProfileTests: XCTestCase {
+    func testGainLossWithNoise() {
+        // صعود ١٠٠ م ثم نزول ٥٠ م مع ذبذبة ±١ م
+        var pts: [TrackPoint] = []
+        let t = Date()
+        for i in 0..<200 {
+            let base = i < 100 ? Double(i) : 100 - Double(i - 100) * 0.5
+            pts.append(TrackPoint(lat: 24 + Double(i) * 0.0005, lon: 46, alt: 500 + base + (i % 2 == 0 ? 1 : -1), time: t))
+        }
+        let p = ElevationProfile.make(from: pts)!
+        XCTAssertEqual(p.gain, 100, accuracy: 8)
+        XCTAssertEqual(p.loss, 50, accuracy: 8)
+        XCTAssertLessThanOrEqual(p.samples.count, 302)
+        XCTAssertGreaterThan(p.totalDistance, 10_000)
+    }
+
+    func testNoAltitudeReturnsNil() {
+        let pts = (0..<20).map { TrackPoint(lat: 24 + Double($0) * 0.001, lon: 46, time: Date()) }
+        XCTAssertNil(ElevationProfile.make(from: pts))
+    }
+}
+
+final class ProximityTests: XCTestCase {
+    func testNearestDueWithCooldown() {
+        let here = CLLocationCoordinate2D(latitude: 24, longitude: 46)
+        let a = ProximityAlerts.Candidate(id: "a", name: "أ", kind: "ماء", coordinate: GeoMath.destination(from: here, distance: 800, bearing: 0))
+        let b = ProximityAlerts.Candidate(id: "b", name: "ب", kind: "ماء", coordinate: GeoMath.destination(from: here, distance: 300, bearing: 90))
+        let far = ProximityAlerts.Candidate(id: "c", name: "ج", kind: "ماء", coordinate: GeoMath.destination(from: here, distance: 3000, bearing: 90))
+        let now = Date()
+        XCTAssertEqual(ProximityAlerts.due([a, b, far], at: here, radius: 1000, alerted: [:], now: now)?.0.id, "b")
+        XCTAssertEqual(ProximityAlerts.due([a, b, far], at: here, radius: 1000, alerted: ["b": now.addingTimeInterval(-60)], now: now)?.0.id, "a")
+        XCTAssertEqual(ProximityAlerts.due([a, b], at: here, radius: 1000, alerted: ["b": now.addingTimeInterval(-13 * 3600)], now: now)?.0.id, "b")
+        XCTAssertNil(ProximityAlerts.due([far], at: here, radius: 1000, alerted: [:], now: now))
+    }
+}
+
+final class NightSkyTests: XCTestCase {
+    private func utc(_ s: String) -> Date { ISO8601DateFormatter().date(from: s)! }
+
+    func testKnownPhases() {
+        // بدر ٢٣ أبريل ٢٠٢٤ ٢٣:٤٩ UTC، ومحاق ٨ أبريل ٢٠٢٤ ١٨:٢١ UTC
+        let full = MoonCalculator.phase(at: utc("2024-04-23T23:49:00Z"))
+        XCTAssertGreaterThan(full.illumination, 0.98)
+        XCTAssertEqual(MoonCalculator.phaseName(elongation: full.elongation), "بدر")
+        let new = MoonCalculator.phase(at: utc("2024-04-08T18:21:00Z"))
+        XCTAssertLessThan(new.illumination, 0.02)
+        XCTAssertEqual(MoonCalculator.phaseName(elongation: new.elongation), "محاق")
+        // تربيع أول ١٥ أبريل ٢٠٢٤ ١٩:١٣ UTC
+        let q = MoonCalculator.phase(at: utc("2024-04-15T19:13:00Z"))
+        XCTAssertEqual(q.illumination, 0.5, accuracy: 0.06)
+    }
+
+    func testDesertNightOrdering() {
+        let riyadh = CLLocationCoordinate2D(latitude: 24.7136, longitude: 46.6753)
+        let tz = TimeZone(identifier: "Asia/Riyadh")!
+        let n = DesertNight.make(at: riyadh, now: utc("2024-04-08T15:00:00Z"), timeZone: tz)!
+        XCTAssertLessThan(n.sunset, n.civilDusk!)
+        XCTAssertLessThan(n.civilDusk!, n.astroDusk!)
+        XCTAssertLessThan(n.astroDusk!, n.astroDawn!)
+        XCTAssertLessThan(n.astroDawn!, n.sunrise)
+        // ليلة محاق: الظلام الكامل كله بلا قمر (قرابة ٨ ساعات)
+        XCTAssertGreaterThan(n.darkHours, 7)
+        XCTAssertNotNil(n.bestDark)
+        // بعد منتصف الليل تبقى نفس الليلة
+        let late = DesertNight.make(at: riyadh, now: utc("2024-04-08T23:30:00Z"), timeZone: tz)!
+        XCTAssertEqual(late.sunset, n.sunset)
+    }
+
+    func testFullMoonNightHasLittleDarkness() {
+        let riyadh = CLLocationCoordinate2D(latitude: 24.7136, longitude: 46.6753)
+        let n = DesertNight.make(at: riyadh, now: utc("2024-04-23T14:00:00Z"), timeZone: TimeZone(identifier: "Asia/Riyadh")!)!
+        XCTAssertGreaterThan(n.illumination, 0.95)
+        XCTAssertLessThan(n.darkHours, 1.5)
+    }
+}
+
+final class KMLTests: XCTestCase {
+    static let kmz = Data(base64Encoded: "UEsDBBQAAAAIAEqBc10sm3kGLQEAAOIBAAAHAAAAZG9jLmttbG2QwU7CQBCG7z5F7Rl3oZbGkGEJkXjyQCKeCIfSbuqG7i5pV+nZ4IW38CJ4IIF4ML7J7NuYVhFQbzOZb+b/MtApZOo88CwXWrXdBqm7DleRjoVK2u7t4Orswu0wmMjUKWSq8rZ7Z8y0RelsNiN6ylUicqK4oROZUo947hfWSoojMtE6STmJtKxAXpgKZtDT0b3kyjBQoeQMt7i2c3wFWrUn0E/DiMswm+yAFb7g1sGlnePaLvDNLn5oiHkeZWJqhFYMToeXve6gO7RPuMRnB8YMP3CDK6BjNhoxoEd0X4tSItI6i4UKDc+ZH5CGd17zfOI3g1pQrwM9HAP93qF7x398S9F33NqFfdxpXgvFb0wmVPI3sIpz/IB4ZdUsq0oh+B1+eOTIgO5fWv6afQJQSwECFAMUAAAACABKgXNdLJt5Bi0BAADiAQAABwAAAAAAAAAAAAAAgAEAAAAAZG9jLmttbFBLBQYAAAAAAQABADUAAABSAQAAAAA=")!
+
+    func testKMZDeflate() throws {
+        let doc = try KMLService.parseKMZ(Self.kmz)
+        XCTAssertEqual(doc.waypoints.count, 1)
+        XCTAssertEqual(doc.waypoints[0].name, "بئر الحيسية")
+        XCTAssertEqual(doc.waypoints[0].lat, 24.456, accuracy: 1e-9)
+        XCTAssertEqual(doc.waypoints[0].lon, 46.123, accuracy: 1e-9)
+        XCTAssertEqual(doc.waypoints[0].elevation, 600)
+        XCTAssertEqual(doc.waypoints[0].notes, "ماء عذب")
+        XCTAssertEqual(doc.tracks.count, 1)
+        XCTAssertEqual(doc.tracks[0].points.count, 3)
+    }
+
+    func testGxTrackAndMultiGeometry() throws {
+        let kml = """
+        <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2"><Document>
+        <Placemark><name>تسجيل</name><gx:Track><when>2024-01-01T10:00:00Z</when><when>2024-01-01T10:01:00Z</when>
+        <gx:coord>46.0 24.0 700</gx:coord><gx:coord>46.01 24.01 710</gx:coord></gx:Track></Placemark>
+        <Placemark><name>متعدد</name><MultiGeometry><LineString><coordinates>46,24 46.1,24.1</coordinates></LineString>
+        <LineString><coordinates>47,25 47.1,25.1</coordinates></LineString></MultiGeometry></Placemark>
+        </Document></kml>
+        """
+        let doc = try KMLService.parse(data: Data(kml.utf8))
+        XCTAssertEqual(doc.tracks.count, 2)
+        XCTAssertEqual(doc.tracks[0].points.last?.alt, 710)
+        XCTAssertEqual(doc.tracks[0].points.last?.time, ISO8601DateFormatter().date(from: "2024-01-01T10:01:00Z"))
+        XCTAssertEqual(Set(doc.tracks[1].points.map(\.segment)), [0, 1])
+    }
+
+    func testEmptyThrows() {
+        XCTAssertThrowsError(try KMLService.parse(data: Data("<kml><Document/></kml>".utf8)))
+    }
+}
