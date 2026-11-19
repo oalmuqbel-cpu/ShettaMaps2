@@ -24,6 +24,7 @@ enum GuideScreens {
         d.set(AppearanceMode.light.rawValue, forKey: SettingsKeys.appearanceMode)
         d.set(false, forKey: SettingsKeys.showMyTracks)
         d.set(false, forKey: SettingsKeys.showCoverage)
+        d.set(false, forKey: SettingsKeys.showRainMap)
         mapManager.layer = .standard
         AppearanceController.shared.update()
         switch screen {
@@ -115,6 +116,14 @@ enum GuideScreens {
             mapManager.send(.focus(here, spanMeters: 20_000))
         case "emergency":
             router.mapSheet = .emergency
+        case "rain":
+            UserDefaults.standard.set(true, forKey: SettingsKeys.showRainMap)
+            UserDefaults.standard.set(false, forKey: RainNowService.modeKey)
+            mapManager.layer = .hybrid
+            mapManager.send(.focus(.init(latitude: 22.5, longitude: 44.0), spanMeters: 1_800_000))
+        case "weather":
+            await WeatherService.shared.refresh(at: here, force: true)
+            router.mapSheet = .weather
         case "night":
             UserDefaults.standard.set(AppearanceMode.dark.rawValue, forKey: SettingsKeys.appearanceMode)
             AppearanceController.shared.update()

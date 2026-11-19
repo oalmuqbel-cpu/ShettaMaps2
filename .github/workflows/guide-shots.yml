@@ -5,7 +5,10 @@ on:
   workflow_dispatch:
     inputs:
       runner:
-        default: macos-15-intel
+        default: xcode-27
+      device:
+        description: "iphone أو ipad"
+        default: iphone
       screens:
         description: "أسماء الشاشات مفصولة بمسافة"
         default: "map filter pick record search coords save places offline trips tracks settings"
@@ -20,20 +23,21 @@ permissions:
 
 jobs:
   shots:
-    runs-on: ${{ inputs.runner || 'macos-15-intel' }}
+    runs-on: ${{ inputs.runner || 'xcode-27' }}
     timeout-minutes: 80
     steps:
       - uses: actions/checkout@v4
-      - name: Select latest Xcode 26
+      - name: Select latest Xcode
         run: |
-          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          X=$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$X" ] || X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
           if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
       - name: Build for simulator
         run: |
           set -o pipefail
           brew install xcodegen >/dev/null
           xcodegen generate
-          UDID=$(python3 ci/pick_simulator.py)
+          UDID=$(python3 ci/pick_simulator.py ${{ inputs.device || 'iphone' }})
           echo "UDID=$UDID" >> $GITHUB_ENV
           xcodebuild build -project ShettaMaps2.xcodeproj -scheme ShettaMaps2 -configuration Debug \
             -destination "id=$UDID" -derivedDataPath build CODE_SIGNING_ALLOWED=NO | tail -3
