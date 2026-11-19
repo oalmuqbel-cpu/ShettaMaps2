@@ -26,14 +26,36 @@ PLACE_AR = {"city": "مدينة", "town": "بلدة", "village": "قرية", "ha
             "quarter": "حي", "farm": "مزرعة"}
 SERVICE_AR = {"hospital": "مستشفى", "clinic": "مركز صحي", "police": "شرطة", "fire_station": "دفاع مدني"}
 
+def osm_elements(path):
+    """عناصر OSM من ملف Overpass JSON أو GeoJSONSeq (osmium export) بصيغة موحدة: (tags, lat, lon)."""
+    if path.endswith(".geojsonseq"):
+        for line in open(path, encoding="utf-8"):
+            line = line.strip().lstrip("\x1e")
+            if not line:
+                continue
+            f = json.loads(line)
+            g = f.get("geometry") or {}
+            pts = []
+            def walk(c):
+                if isinstance(c, list) and c and isinstance(c[0], (int, float)):
+                    pts.append(c)
+                elif isinstance(c, list):
+                    for x in c: walk(x)
+            walk(g.get("coordinates"))
+            if not pts:
+                continue
+            lon = sum(p[0] for p in pts) / len(pts); lat = sum(p[1] for p in pts) / len(pts)
+            yield f.get("properties") or {}, lat, lon
+    else:
+        for el in json.load(open(path, encoding="utf-8")).get("elements", []):
+            lat = el.get("lat") or (el.get("center") or {}).get("lat")
+            lon = el.get("lon") or (el.get("center") or {}).get("lon")
+            if lat is not None and lon is not None:
+                yield el.get("tags", {}), lat, lon
+
 def from_osm(path):
     out = []
-    for el in json.load(open(path, encoding="utf-8")).get("elements", []):
-        t = el.get("tags", {})
-        lat = el.get("lat") or (el.get("center") or {}).get("lat")
-        lon = el.get("lon") or (el.get("center") or {}).get("lon")
-        if lat is None or lon is None:
-            continue
+    for t, lat, lon in osm_elements(path):
         if "place" in t:
             kind, label = "town", PLACE_AR.get(t["place"], "")
         else:
