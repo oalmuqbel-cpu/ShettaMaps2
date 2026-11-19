@@ -6,6 +6,8 @@ import UniformTypeIdentifiers
 extension UTType {
     static let gpx = UTType(importedAs: "com.topografix.gpx", conformingTo: .xml)
     static let mbtiles = UTType(importedAs: "com.almuqbel.shettamaps2.mbtiles", conformingTo: .data)
+    static let kml = UTType(importedAs: "com.google.earth.kml", conformingTo: .xml)
+    static let kmz = UTType(importedAs: "com.google.earth.kmz", conformingTo: .data)
 }
 
 /// استعراض المسارات السابقة واستيراد ملفات GPX.
@@ -57,13 +59,13 @@ struct TracksListView: View {
         .navigationTitle("المسارات")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button { importing = true } label: { Label("استيراد GPX", systemImage: "square.and.arrow.down") }
+                Button { importing = true } label: { Label("استيراد GPX أو KML", systemImage: "square.and.arrow.down") }
             }
             ToolbarItem(placement: .topBarLeading) {
                 NavigationLink { CommunityTracksListView() } label: { Label("مسارات المجتمع", systemImage: "person.2") }
             }
         }
-        .fileImporter(isPresented: $importing, allowedContentTypes: [.gpx, .xml], allowsMultipleSelection: true) { result in
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.gpx, .kml, .kmz, .xml], allowsMultipleSelection: true) { result in
             switch result {
             case .success(let urls): urls.forEach(importGPX)
             case .failure(let e): message = e.localizedDescription
@@ -82,7 +84,8 @@ struct TracksListView: View {
 
     private func importGPX(_ url: URL) {
         do {
-            let doc = try GPXService.parse(url: url)
+            let ext = url.pathExtension.lowercased()
+            let doc = ext == "kml" || ext == "kmz" ? try KMLService.parse(url: url) : try GPXService.parse(url: url)
             var trackCount = 0
             for t in doc.tracks where t.points.count >= 2 {
                 let acc = TrackAccumulator(existing: t.points)

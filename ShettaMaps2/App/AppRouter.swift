@@ -80,7 +80,7 @@ final class AppRouter: ObservableObject {
     }
 
     func handleIncomingFile(_ url: URL) {
-        if url.pathExtension.lowercased() == "gpx" {
+        if ["gpx", "kml", "kmz"].contains(url.pathExtension.lowercased()) {
             incomingGPX = url
             selectedSection = .tracks
         }
