@@ -7,7 +7,7 @@ on:
     inputs:
       runner:
         description: "macOS runner label"
-        default: macos-26
+        default: xcode-27
         required: false
 
 env:
@@ -16,14 +16,16 @@ env:
 
 jobs:
   testflight:
-    runs-on: ${{ inputs.runner || 'macos-26' }}
+    runs-on: ${{ inputs.runner || 'xcode-27' }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select latest Xcode 26
+      - name: Select latest Xcode (27 preferred)
         run: |
-          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          # أحدث Xcode متاح (27 أولًا: Apple تشترط SDK الإصدار 27 للرفع ابتداءً من أبريل 2027)
+          X=$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$X" ] || X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
           if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
           xcodebuild -version
 

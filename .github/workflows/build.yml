@@ -7,7 +7,7 @@ on:
     inputs:
       runner:
         description: "macOS runner label"
-        default: macos-15-intel
+        default: xcode-27
 
 concurrency:
   group: build-${{ github.ref }}-${{ inputs.runner || 'push' }}
@@ -16,7 +16,7 @@ concurrency:
 jobs:
   build-test:
     # جهاز واحد فقط: ننتظر حتى يتوفر بدل تشغيل عدة أجهزة بالتوازي (أقل استهلاكًا)
-    runs-on: ${{ inputs.runner || 'macos-15-intel' }}
+    runs-on: ${{ inputs.runner || 'xcode-27' }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -24,9 +24,11 @@ jobs:
       - name: Show Xcode
         run: xcodebuild -version
 
-      - name: Select latest Xcode 26
+      - name: Select latest Xcode (27 preferred)
         run: |
-          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          # أحدث Xcode متاح (27 أولًا: Apple تشترط SDK الإصدار 27 للرفع ابتداءً من أبريل 2027)
+          X=$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$X" ] || X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
           if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
           xcodebuild -version
 
