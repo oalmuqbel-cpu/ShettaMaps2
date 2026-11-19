@@ -1,0 +1,5 @@
+{"Legend": [{
+  "layerName": "h63",
+  "title": "Precipitation rate at ground by GEO/IR supported by LEO/MW - MSG - Indian Ocean",
+  "rules": [{"symbolizers": [{"Raster": {"opacity": "1.0"}}]}]
+}]}
