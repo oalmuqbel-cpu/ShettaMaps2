@@ -1,5 +1,6 @@
 import XCTest
 import CoreLocation
+import MapKit
 @testable import ShettaMaps2
 
 /// اختبارات منطق السرعة والإرشاد المستخدم في الهاتف وCarPlay.
@@ -449,5 +450,18 @@ final class QiblaTests: XCTestCase {
     func testQiblaFromMadinahPointsSouth() {
         let madinah = CLLocationCoordinate2D(latitude: 24.4672, longitude: 39.6111)
         XCTAssertEqual(Qibla.bearing(from: madinah), 176, accuracy: 3)
+    }
+}
+
+final class DeclutterTests: XCTestCase {
+    func testNearbyPinsCollapseFarOnesStay() {
+        let r = MKCoordinateRegion(center: .init(latitude: 24.7, longitude: 46.7),
+                                   span: MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.14))
+        func pin(_ id: String, _ la: Double, _ lo: Double) -> MapOverlaySet.Pin {
+            .init(id: id, title: id, subtitle: nil, coordinate: .init(latitude: la, longitude: lo), kind: .landmark, symbol: nil)
+        }
+        let pins = [pin("a", 24.700, 46.700), pin("b", 24.7001, 46.7001), pin("c", 24.75, 46.75)]
+        let out = MapScreen.declutter(pins, region: r)
+        XCTAssertEqual(out.map(\.id), ["a", "c"])   // الأول (الأهم) يبقى، والملاصق له يختفي
     }
 }

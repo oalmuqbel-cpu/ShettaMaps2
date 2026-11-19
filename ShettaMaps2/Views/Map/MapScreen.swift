@@ -126,7 +126,23 @@ struct MapScreen: View {
         // عند الفلترة تقل الأسماء، فيُسمح بعرضها على مساحة أوسع
         guard showLandmarks, let b = mapManager.visibleBounds, let r = mapManager.visibleRegion else { return [] }
         let key = "\(regionKey)|\(landmarkKindsRaw)|\(waterSubsRaw)|\(nameFilter)|\(search.indexRevision)"
-        return memo.get("landmarks", key) { computeLandmarkPins(b: b, r: r, kinds: kinds, subs: subs, filtered: filtered) }
+        return memo.get("landmarks", key) {
+            Self.declutter(computeLandmarkPins(b: b, r: r, kinds: kinds, subs: subs, filtered: filtered), region: r)
+        }
+    }
+
+    /// تخفيف الازدحام: لا يظهر مكانان متقاربان جدًا على الشاشة (الأهم أولًا لأن القائمة مرتبة بالأولوية).
+    /// الشبكة قرابة ١٤ خانة بعرض الشاشة، أي علامة واحدة لكل ٤٠–٦٠ نقطة تقريبًا.
+    static func declutter(_ pins: [MapOverlaySet.Pin], region r: MKCoordinateRegion, columns: Double = 14) -> [MapOverlaySet.Pin] {
+        let cellLat = max(r.span.latitudeDelta / (columns * 1.6), 1e-6)
+        let cellLon = max(r.span.longitudeDelta / columns, 1e-6)
+        var used = Set<Int64>()
+        var out: [MapOverlaySet.Pin] = []
+        for p in pins {
+            let key = Int64((p.coordinate.latitude / cellLat).rounded(.down)) << 32 ^ Int64((p.coordinate.longitude / cellLon).rounded(.down))
+            if used.insert(key).inserted { out.append(p) }
+        }
+        return out
     }
 
     private func computeLandmarkPins(b: (sw: CLLocationCoordinate2D, ne: CLLocationCoordinate2D), r: MKCoordinateRegion,
