@@ -325,6 +325,10 @@ struct MapScreen: View {
         .onChange(of: network.isOnline) { _, on in if on { refreshWeather(); refreshRain() } }
         .onChange(of: showRainMap) { _, on in rainHour = 0; if on { refreshRain() } }
         .onChange(of: rainObserved) { _, _ in refreshRain() }
+        // الخرائط دون إنترنت: المنطقة الجاهزة التي تغطي الموقع تُختار تلقائيًا
+        .onChange(of: mapManager.layer) { _, l in
+            if l == .offline, let c = location.location?.coordinate { offlineMaps.autoSelectRegion(at: c) }
+        }
         // المطر الفعلي يتجدد كل ١٥ دقيقة عند الخادم: نتحقق كل ٥ دقائق ما دامت الطبقة ظاهرة
         .task(id: showRainMap) {
             while showRainMap && !Task.isCancelled {

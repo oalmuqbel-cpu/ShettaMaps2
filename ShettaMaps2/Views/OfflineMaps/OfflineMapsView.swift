@@ -11,6 +11,8 @@ struct OfflineMapsView: View {
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var dirt: DirtRoadsStore
     @ObservedObject private var package = OfflinePackageService.shared
+    @ObservedObject private var regionPacks = RegionPackService.shared
+    @State private var confirmRegionDelete: RegionPack?
     @AppStorage("offlineInclude_dirt") private var includeDirt = true
     @AppStorage("offlineInclude_speed") private var includeSpeed = true
     @AppStorage("offlineInclude_community") private var includeCommunity = true
@@ -41,6 +43,8 @@ struct OfflineMapsView: View {
                 } icon: { Image(systemName: "info.circle") }
                 NavigationLink("إعدادات مصدر الخرائط") { MapSourceSettingsView() }
             }
+
+            readyRegionsSection
 
             Section {
                 TextField("اسم المنطقة (مثال: نفود الدهناء)", text: $regionName)
@@ -76,7 +80,7 @@ struct OfflineMapsView: View {
                         if isStarting { Spacer(); ProgressView() }
                     }
                 }
-                .disabled(mapManager.visibleBounds == nil || !network.isOnline || offline.selectedTilesetID != nil || isStarting)
+                .disabled(mapManager.visibleBounds == nil || !network.isOnline || offline.isUsingImportedFile || isStarting)
                 if let status = package.layersStatus {
                     HStack { ProgressView(); Text(status + "…").font(.footnote).foregroundStyle(.secondary) }
                 }
@@ -292,5 +296,84 @@ struct MapSourceSettingsView: View {
         }
         .navigationTitle("مصدر الخرائط")
         .onDisappear { offline.objectWillChange.send() }
+    }
+}
+
+
+// MARK: - المناطق الجاهزة
+
+extension OfflineMapsView {
+    @ViewBuilder
+    var readyRegionsSection: some View {
+        Section {
+            if let m = regionPacks.manifest {
+                ForEach(m.regions) { p in regionRow(p) }
+                LabeledContent("المساحة الفارغة في جهازك", value: ByteCountFormatter.string(fromByteCount: regionPacks.freeBytes, countStyle: .file))
+                    .font(.footnote)
+            } else if regionPacks.loadingManifest {
+                HStack { ProgressView(); Text("جارٍ تحميل قائمة المناطق").foregroundStyle(.secondary) }
+            } else if regionPacks.manifestFailed {
+                Button("إعادة المحاولة") { Task { await regionPacks.loadManifest() } }
+                Text("تعذّر تحميل قائمة المناطق، تحقق من الاتصال.").font(.footnote).foregroundStyle(.secondary)
+            }
+            if let e = regionPacks.lastError {
+                Text(e).font(.footnote).foregroundStyle(.red)
+            }
+        } header: {
+            Text("مناطق جاهزة للتنزيل")
+        } footer: {
+            Text("تنزّل المنطقة مرة واحدة وتعمل كاملة دون إنترنت: الطرق والأسماء والتضاريس، ومعها الطبقات المختارة بالأسفل (الردميات وحدود السرعة...). بيانات OpenStreetMap عبر OpenMapTiles.")
+        }
+        .task { if regionPacks.manifest == nil { await regionPacks.loadManifest() } }
+        .confirmationDialog("حذف المنطقة؟", isPresented: Binding(get: { confirmRegionDelete != nil }, set: { if !$0 { confirmRegionDelete = nil } }),
+                            titleVisibility: .visible, presenting: confirmRegionDelete) { p in
+            Button("حذف \(p.title)", role: .destructive) { regionPacks.delete(p) }
+            Button("إلغاء", role: .cancel) {}
+        } message: { p in
+            Text("يُحذف ملف الخريطة من جهازك ويمكن تنزيله مرة أخرى لاحقًا.")
+        }
+    }
+
+    private func regionRow(_ p: RegionPack) -> some View {
+        HStack(spacing: DS.m) {
+            Image(systemName: p.id == "saudi" ? "map.fill" : "map")
+                .font(DS.iconFont).foregroundStyle(Theme.desertOrange).frame(width: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(p.title).font(.body.weight(.semibold))
+                Text(ByteCountFormatter.string(fromByteCount: p.bytes, countStyle: .file)
+                     + (regionPacks.isInstalled(p) ? (regionPacks.hasUpdate(p) ? " · يتوفر تحديث" : " · منزّلة") : ""))
+                    .font(.caption).foregroundStyle(regionPacks.isInstalled(p) ? Color.green : .secondary)
+                if let f = regionPacks.progress[p.id] {
+                    ProgressView(value: f).tint(Theme.desertOrange)
+                    Text("\(Int(f * 100))٪").font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 4)
+            if regionPacks.progress[p.id] != nil {
+                Button("إيقاف") { regionPacks.cancel(p) }.buttonStyle(.bordered)
+            } else if regionPacks.isInstalled(p) {
+                Menu {
+                    if let t = offline.regionTileset(id: p.id) {
+                        Button { offline.selectedTilesetID = t.id; mapManager.layer = .offline } label: {
+                            Label("استخدامها الآن", systemImage: "checkmark.circle")
+                        }
+                    }
+                    if regionPacks.hasUpdate(p) {
+                        Button { regionPacks.download(p) } label: { Label("تحديث", systemImage: "arrow.clockwise") }
+                    }
+                    Button(role: .destructive) { confirmRegionDelete = p } label: { Label("حذف", systemImage: "trash") }
+                } label: {
+                    Image(systemName: "ellipsis.circle").font(.title3)
+                }
+            } else {
+                Button { regionPacks.download(p) } label: {
+                    Image(systemName: "arrow.down.circle.fill").font(.title2).foregroundStyle(Theme.desertOrange)
+                }
+                .buttonStyle(.plain)
+                .disabled(!network.isOnline)
+                .accessibilityLabel("تنزيل \(p.title)")
+            }
+        }
+        .padding(.vertical, 2)
     }
 }

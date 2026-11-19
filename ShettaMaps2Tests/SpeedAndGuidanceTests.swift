@@ -465,3 +465,29 @@ final class DeclutterTests: XCTestCase {
         XCTAssertEqual(out.map(\.id), ["a", "c"])   // الأول (الأهم) يبقى، والملاصق له يختفي
     }
 }
+
+final class StoredZipTests: XCTestCase {
+    /// ملف zip مخزّن بلا ضغط فيه ملف واحد داخل مجلد.
+    func testExtractStoredEntry() throws {
+        var z = Data()
+        func u16(_ v: Int) { z.append(UInt8(v & 0xff)); z.append(UInt8(v >> 8 & 0xff)) }
+        func u32(_ v: Int) { u16(v & 0xffff); u16(v >> 16 & 0xffff) }
+        let name = Array("fonts/a.pbf".utf8), body = Array("hello".utf8)
+        u32(0x04034b50); u16(10); u16(0); u16(0); u16(0); u16(0); u32(0); u32(body.count); u32(body.count)
+        u16(name.count); u16(0); z.append(contentsOf: name); z.append(contentsOf: body)
+        u32(0x02014b50)   // بداية الفهرس المركزي (يتوقف عنده الاستخراج)
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try StoredZip.extract(z, to: dir)
+        XCTAssertEqual(try String(contentsOf: dir.appendingPathComponent("fonts/a.pbf"), encoding: .utf8), "hello")
+    }
+
+    func testRejectsPathTraversal() {
+        var z = Data()
+        func u16(_ v: Int) { z.append(UInt8(v & 0xff)); z.append(UInt8(v >> 8 & 0xff)) }
+        func u32(_ v: Int) { u16(v & 0xffff); u16(v >> 16 & 0xffff) }
+        let name = Array("../x".utf8)
+        u32(0x04034b50); u16(10); u16(0); u16(0); u16(0); u16(0); u32(0); u32(1); u32(1)
+        u16(name.count); u16(0); z.append(contentsOf: name); z.append(0x41)
+        XCTAssertThrowsError(try StoredZip.extract(z, to: FileManager.default.temporaryDirectory))
+    }
+}

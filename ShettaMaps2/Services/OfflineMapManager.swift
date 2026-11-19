@@ -410,6 +410,75 @@ final class OfflineMapManager: ObservableObject {
         }
     }
 
+    // MARK: - مناطق جاهزة (متجهية)
+
+    /// معرّف ملف المنطقة الجاهزة كما يُحفظ في اسم الملف.
+    private func regionFileName(_ id: String) -> String { "region-\(id).mbtiles" }
+
+    func regionTileset(id: String) -> LocalTileset? { tilesets.first { $0.fileName == regionFileName(id) } }
+
+    /// يثبّت ملف منطقة متجهية مع نمط يشير إليه وإلى الخطوط والرموز المحلية.
+    func installRegionTileset(id: String, title: String, from file: URL, bbox: [Double], minZoom: Int, maxZoom: Int,
+                              styleDir: URL) throws {
+        let name = regionFileName(id)
+        let dest = tilesDirectory.appendingPathComponent(name)
+        // تحديث: يحل محل القديم
+        if let old = regionTileset(id: id) { tilesets.removeAll { $0.id == old.id } }
+        try? FileManager.default.removeItem(at: dest)
+        try FileManager.default.moveItem(at: file, to: dest)
+        let previousSelection = selectedTilesetID
+        let t = LocalTileset(name: title, fileName: name, format: "pbf", minZoom: minZoom, maxZoom: maxZoom,
+                             swLat: bbox[1], swLon: bbox[0], neLat: bbox[3], neLon: bbox[2],
+                             attribution: "© OpenMapTiles © OpenStreetMap contributors")
+        try writeVectorStyle(for: t, styleDir: styleDir)
+        tilesets.append(t)
+        saveTilesets()
+        if previousSelection == nil { selectedTilesetID = t.id }
+    }
+
+    /// ملف مستورد من المستخدم (لا منطقة جاهزة) هو المعروض حاليًا.
+    var isUsingImportedFile: Bool {
+        guard let id = selectedTilesetID, let t = tilesets.first(where: { $0.id == id }) else { return false }
+        return !t.fileName.hasPrefix("region-")
+    }
+
+    /// يختار المنطقة الجاهزة المناسبة للموقع تلقائيًا، أو يعود لحزم «المنطقة الظاهرة» إن لم تغطه منطقة.
+    func autoSelectRegion(at c: CLLocationCoordinate2D) {
+        guard !isUsingImportedFile else { return }
+        let regions = tilesets.filter { $0.fileName.hasPrefix("region-") && $0.contains(c) }
+        let best = regions.min { ($0.neLat - $0.swLat) * ($0.neLon - $0.swLon) < ($1.neLat - $1.swLat) * ($1.neLon - $1.swLon) }
+        if selectedTilesetID != best?.id { selectedTilesetID = best?.id }
+    }
+
+    func removeRegionTileset(id: String) {
+        if let t = regionTileset(id: id) { deleteTileset(t) }
+    }
+
+    /// نمط liberty نفسه، مع مصدر المربعات من الملف المحلي، والخطوط والرموز من مجلد النمط على الجهاز.
+    private func writeVectorStyle(for t: LocalTileset, styleDir: URL) throws {
+        let data = try Data(contentsOf: styleDir.appendingPathComponent("style.json"))
+        guard var style = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw OfflineMapError.incompatibleStyle }
+        let path = tilesDirectory.appendingPathComponent(t.fileName).path
+        var sources = style["sources"] as? [String: Any] ?? [:]
+        for (k, v) in sources {
+            guard var src = v as? [String: Any], src["type"] as? String == "vector" else { continue }
+            src["url"] = "mbtiles://\(path)"
+            src.removeValue(forKey: "tiles")
+            sources[k] = src
+        }
+        style["sources"] = sources
+        style["glyphs"] = styleDir.appendingPathComponent("fonts").absoluteString + "/{fontstack}/{range}.pbf"
+        style["sprite"] = styleDir.appendingPathComponent("sprites/sprite").absoluteString
+        let out = try JSONSerialization.data(withJSONObject: style)
+        guard let url = styleFileURL(for: t) else { return }
+        try out.write(to: url, options: .atomic)
+    }
+
+    /// أنسب ملف محلي للموقع: المنطقة الأصغر التي تغطيه (أدق من «السعودية كاملة» إن وُجدت الاثنتان بنفس التفاصيل).
+    func bestTileset(at c: CLLocationCoordinate2D) -> LocalTileset? {
+        tilesets.filter { $0.contains(c) }.min { ($0.neLat - $0.swLat) * ($0.neLon - $0.swLon) < ($1.neLat - $1.swLat) * ($1.neLon - $1.swLon) }
+    }
+
     func fileSize(of t: LocalTileset) -> Int64 {
         let url = tilesDirectory.appendingPathComponent(t.fileName)
         return Int64((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)

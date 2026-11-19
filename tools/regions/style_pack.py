@@ -34,7 +34,7 @@ def main(out):
             for ext in (".json", ".png"):
                 z.writestr(f"sprites/sprite{sfx}{ext}", get(sprite + sfx + ext))
         # MapLibre يطلب كل خط في المجموعة على حدة عند الحاجة؛ ننزّل النطاقات المستخدمة للعربية واللاتينية
-        ranges = list(range(0, 1024, 256)) + list(range(1536, 2048, 256)) + [8192, 64256, 65024, 65280]
+        ranges = list(range(0, 1024, 256)) + list(range(1536, 2048, 256)) + [2048, 8192, 64256, 64512, 64768, 65024, 65280]
         for f in single:
             for start in ranges:
                 rng = f"{start}-{start + 255}"

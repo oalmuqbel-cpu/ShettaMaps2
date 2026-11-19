@@ -7,6 +7,9 @@ on:
       version:
         description: "رقم نسخة البيانات"
         default: "1"
+      style_only:
+        description: "إعادة بناء حزمة النمط فقط (yes/no)"
+        default: "no"
 permissions:
   contents: write
 jobs:
@@ -16,25 +19,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
+        if: ${{ inputs.style_only != 'yes' }}
         with: { distribution: temurin, java-version: "21" }
       - name: Free disk space
+        if: ${{ inputs.style_only != 'yes' }}
         run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL; df -h /
       - name: Download data
+        if: ${{ inputs.style_only != 'yes' }}
         run: |
           mkdir -p data && cd data
           curl -sSL --fail -o gcc.osm.pbf https://download.geofabrik.de/asia/gcc-states-latest.osm.pbf
           ls -la
           curl -sSL --fail -o planetiler.jar https://github.com/onthegomap/planetiler/releases/latest/download/planetiler.jar
       - name: Build tiles (Planetiler)
+        if: ${{ inputs.style_only != 'yes' }}
         run: |
           cd data
           java -Xmx5g -jar planetiler.jar --osm-path=gcc.osm.pbf --output=gcc.mbtiles --download --force \
             --maxzoom=14 --nodemap-type=array --storage=mmap 2>&1 | tail -25
           ls -la gcc.mbtiles
       - name: Split regions
+        if: ${{ inputs.style_only != 'yes' }}
         run: python3 tools/regions/split.py data/gcc.mbtiles tools/regions/regions.json out ${{ inputs.version || '1' }}
       - name: Style pack
-        run: python3 tools/regions/style_pack.py out/samt-style.zip
+        run: mkdir -p out && python3 tools/regions/style_pack.py out/samt-style.zip
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
