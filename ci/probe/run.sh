@@ -19,3 +19,12 @@ for f in ['ci/probe/out/saudi.png','ci/probe/out/mtg.png']:
         print(f, im.size, 'colored px', sum(c.values()), c.most_common(15))
     except Exception as e: print(f, e)
 PY
+curl -s -m 60 -o $O/legend.png "$B/msg_iodc/h63/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image%2Fpng&width=640&height=80&layer=h63"
+curl -s -m 60 -o $O/legend_mtg.png "$B/mtg_fd/h40b/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image%2Fpng&width=640&height=80&layer=h40b"
+curl -s -m 60 -o $O/nn.png -w "nn %{http_code} %{size_download}\n" "$B/wms?service=WMS&version=1.3.0&request=GetMap&layers=msg_iodc:h63&styles=&crs=EPSG:4326&bbox=12,34,33,60&width=520&height=420&format=image/png&transparent=true&interpolations=nearest%20neighbor" >> $O/getmap.txt
+python3 - <<'PY'
+from PIL import Image
+import collections
+im=Image.open('ci/probe/out/nn.png').convert('RGBA'); c=collections.Counter(p for p in im.getdata() if p[3]>0)
+print('NN colored', sum(c.values()), c.most_common(20))
+PY
