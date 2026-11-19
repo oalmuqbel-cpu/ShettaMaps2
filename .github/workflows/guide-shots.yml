@@ -42,7 +42,7 @@ jobs:
           xcodebuild build -project ShettaMaps2.xcodeproj -scheme ShettaMaps2 -configuration Debug \
             -destination "id=$UDID" -derivedDataPath build CODE_SIGNING_ALLOWED=NO | tail -3
       - name: Capture
-        timeout-minutes: 45
+        timeout-minutes: 60
         run: |
           # مهلة لكل أمر حتى لا يتعلق التصوير
           t() { local s=$1; shift; perl -e 'alarm shift; exec @ARGV' "$s" "$@"; }
@@ -65,6 +65,8 @@ jobs:
             t 60 xcrun simctl launch "$UDID" $BID -GuideScreen $s || echo "launch failed: $s"
             sleep 2; t 30 xcrun simctl location "$UDID" set 24.7136,46.6753 || true
             sleep 14
+            # تنزيل منطقة كاملة يحتاج وقتًا أطول قبل التصوير
+            if [ "$s" = "regioninstall" ]; then sleep 170; fi
             t 60 xcrun simctl io "$UDID" screenshot "shots/$(printf %02d $i)-$s.png" || echo "shot failed: $s"
             t 30 xcrun simctl terminate "$UDID" $BID || true
             i=$((i+1)); sleep 2

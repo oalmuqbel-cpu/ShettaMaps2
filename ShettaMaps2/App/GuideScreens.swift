@@ -118,6 +118,17 @@ enum GuideScreens {
             router.mapSheet = .emergency
         case "regions":
             router.mapSheet = .offlineMaps
+        case "regioninstall":
+            // تحقق شامل: تنزيل منطقة جاهزة (الوسطى) وتثبيتها ثم عرضها بالخطوط والرموز المحلية
+            let rp = RegionPackService.shared
+            await rp.loadManifest()
+            if let p = rp.manifest?.regions.first(where: { $0.id == "central" }) {
+                if !rp.isInstalled(p) { rp.download(p) }
+                for _ in 0..<160 where !rp.isInstalled(p) { try? await Task.sleep(nanoseconds: 1_000_000_000) }
+                if let t = OfflineMapManager.shared.regionTileset(id: p.id) { OfflineMapManager.shared.selectedTilesetID = t.id }
+            }
+            mapManager.layer = .offline
+            mapManager.send(.focus(here, spanMeters: 12_000))
         case "towns":
             UserDefaults.standard.set("town,service", forKey: SettingsKeys.landmarkKinds)
             mapManager.send(.focus(.init(latitude: 25.45, longitude: 45.9), spanMeters: 60_000))
