@@ -1,0 +1,44 @@
+# خرائط المناطق الجاهزة للتنزيل: Planetiler يبني مربعات OpenMapTiles للجزيرة العربية من بيانات OpenStreetMap،
+# ثم تُقسم إلى السعودية كاملة وخمس مناطق، وتُنشر مع حزمة النمط (الخطوط والرموز) في إصدار region-maps.
+name: Region maps
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "رقم نسخة البيانات"
+        default: "1"
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "21" }
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL; df -h /
+      - name: Download data
+        run: |
+          mkdir -p data && cd data
+          curl -sSL --fail -o gcc.osm.pbf https://download.geofabrik.de/asia/gcc-states-latest.osm.pbf
+          ls -la
+          curl -sSL --fail -o planetiler.jar https://github.com/onthegomap/planetiler/releases/latest/download/planetiler.jar
+      - name: Build tiles (Planetiler)
+        run: |
+          cd data
+          java -Xmx5g -jar planetiler.jar --osm-path=gcc.osm.pbf --output=gcc.mbtiles --download --force \
+            --maxzoom=14 --nodemap-type=array --storage=mmap 2>&1 | tail -25
+          ls -la gcc.mbtiles
+      - name: Split regions
+        run: python3 tools/regions/split.py data/gcc.mbtiles tools/regions/regions.json out ${{ inputs.version || '1' }}
+      - name: Style pack
+        run: python3 tools/regions/style_pack.py out/samt-style.zip
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -la out
+          gh release view region-maps >/dev/null 2>&1 || gh release create region-maps --title "Region maps" --notes "خرائط المناطق للتنزيل دون إنترنت في سَمْت. © OpenMapTiles © OpenStreetMap contributors" --latest=false
+          gh release upload region-maps out/* --clobber
