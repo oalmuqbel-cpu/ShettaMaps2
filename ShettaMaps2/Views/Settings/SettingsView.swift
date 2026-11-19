@@ -85,6 +85,8 @@ struct SettingsView: View {
                 Text("الهامش يحدد متى يصدر التنبيه فقط، ولا يغيّر الحد النظامي المعروض. الحدود من بيانات OpenStreetMap، ولا يُعرض حد لطريق ليس له حد مسجل. تُطبَّق هذه الإعدادات على الهاتف وشاشة السيارة معًا، والتزم دائمًا باللوحات على الطريق.")
             }
 
+            FuelRangeSection()
+
             Section {
                 NavigationLink("مصدر الخرائط دون إنترنت") { MapSourceSettingsView() }
                 NavigationLink("الخرائط المحفوظة") { OfflineMapsView() }
@@ -262,5 +264,41 @@ struct StorageUsageView: View {
     private func clearCaches() {
         Self.cacheFiles.forEach { try? FileManager.default.removeItem(at: $0) }
         cacheBytes = 0
+    }
+}
+
+
+/// مدى الوقود: مدى الخزان الكامل والمتبقي الآن، وزر «عبّأت».
+struct FuelRangeSection: View {
+    @ObservedObject private var fuel = FuelRangeMonitor.shared
+    @State private var rangeText = ""
+
+    var body: some View {
+        Section {
+            HStack {
+                Text("مدى الخزان الكامل")
+                Spacer()
+                TextField("مثال 600", text: $rangeText)
+                    .keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 90)
+                    .onChange(of: rangeText) { _, v in
+                        fuel.tankRangeKm = Double(v) ?? 0
+                        // أول مرة: نفترض أن الخزان ممتلئ حتى يعدّله المستخدم
+                        if fuel.remainingKm == nil, fuel.tankRangeKm > 0 { fuel.filledUp() }
+                    }
+                Text("كم").foregroundStyle(.secondary)
+            }
+            if fuel.tankRangeKm > 0 {
+                if let r = fuel.remainingKm {
+                    LabeledContent("المتبقي تقريبًا", value: "\(Int(r)) كم")
+                    Stepper("تعديل المتبقي", onIncrement: { fuel.setRemaining(r + 10) }, onDecrement: { fuel.setRemaining(r - 10) })
+                }
+                Button { fuel.filledUp() } label: { Label("عبّأت الخزان الآن", systemImage: "fuelpump.fill") }
+            }
+        } header: {
+            Text("مدى الوقود")
+        } footer: {
+            Text("يطرح التطبيق المسافة المقطوعة من المتبقي، وينبهك إذا صارت أقرب محطة معروفة أبعد من الوقود المتبقي (مع هامش للطرق الترابية واحتياط ٢٠ كم). تقديري؛ راقب عداد السيارة دائمًا.")
+        }
+        .onAppear { if fuel.tankRangeKm > 0 { rangeText = String(Int(fuel.tankRangeKm)) } }
     }
 }

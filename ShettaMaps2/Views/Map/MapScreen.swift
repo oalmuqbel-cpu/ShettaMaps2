@@ -42,6 +42,7 @@ struct MapScreen: View {
     @AppStorage(SettingsKeys.showRainMap) private var showRainMap = false
     @State private var rainHour = 0
     @StateObject private var rainNow = RainNowService.shared
+    @StateObject private var fuelRange = FuelRangeMonitor.shared
     @StateObject private var rainForecast = RainForecastService.shared
     @AppStorage(RainNowService.modeKey) private var rainObserved = false
 
@@ -601,6 +602,13 @@ struct MapScreen: View {
         }
         if let n = recorder.recoveredNotice {
             Banner(icon: "arrow.uturn.backward.circle", text: n, actionTitle: "حسنًا", tint: Theme.brown) { recorder.clearRecoveredNotice() }
+        }
+        if fuelRange.level == .low || fuelRange.level == .critical, let r = fuelRange.remainingKm {
+            Banner(icon: "fuelpump.exclamationmark",
+                   text: fuelRange.nearestFuel.map {
+                       "الوقود المتبقي قرابة \(Int(r)) كم، وأقرب محطة معروفة (\($0.name)) على بعد \(Int($0.km.rounded())) كم."
+                   } ?? "الوقود المتبقي قرابة \(Int(r)) كم ولا توجد محطة معروفة قريبة.",
+                   actionTitle: "أقرب محطة", tint: fuelRange.level == .critical ? .red : .orange) { showFuel = true }
         }
         if let msg = location.lastError, location.isAuthorized {
             Banner(icon: "exclamationmark.circle", text: msg, tint: .orange)

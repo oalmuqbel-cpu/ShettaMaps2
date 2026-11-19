@@ -519,3 +519,13 @@ final class TrackBackTests: XCTestCase {
         XCTAssertEqual(NavigationEngine.skipAhead(plan: normal, targetIndex: 0, current: near3), 0)
     }
 }
+
+final class FuelRangeTests: XCTestCase {
+    func testLevels() {
+        // أقرب محطة ١٠٠ كم ← نحتاج ١٢٥ كم مع هامش الترابي
+        XCTAssertEqual(FuelRangeMonitor.level(remainingKm: 120, nearestKm: 100), .critical)
+        XCTAssertEqual(FuelRangeMonitor.level(remainingKm: 140, nearestKm: 100), .low)
+        XCTAssertEqual(FuelRangeMonitor.level(remainingKm: 200, nearestKm: 100), .ok)
+        XCTAssertEqual(FuelRangeMonitor.level(remainingKm: 40, nearestKm: nil), .low)
+    }
+}
