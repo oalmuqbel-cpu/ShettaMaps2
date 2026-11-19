@@ -87,9 +87,8 @@ s, r = req("PATCH", f"{BASE}/coverage/{cid}", cfields(uid), tok2); check("reject
 s, r = req("PATCH", f"{BASE}/coverage/24.710_46.675_stc_{a2['localId']}", cfields(uid), tok2); check("reject spoofed coverage author", s == 403)
 s, r = req("PATCH", f"{BASE}/coverage/{cid}", cfields(uid, level="great"), tok); check("reject invalid level", s == 403)
 s, r = req("PATCH", f"{BASE}/coverage/{cid}", cfields(uid, lat=50.0), tok); check("reject coverage outside Gulf", s == 403)
-cq = {"structuredQuery": {"from": [{"collectionId": "coverage"}], "where": {"compositeFilter": {"op": "AND", "filters": [
-    {"fieldFilter": {"field": {"fieldPath": "lat"}, "op": "GREATER_THAN_OR_EQUAL", "value": {"doubleValue": 24.6}}},
-    {"fieldFilter": {"field": {"fieldPath": "lat"}, "op": "LESS_THAN_OR_EQUAL", "value": {"doubleValue": 24.8}}}]}}, "limit": 50}}
+# الاستعلام العام بلا تسجيل دخول؛ نحصره في كاتب الاختبار لأن الرياض صار فيها قياسات حقيقية كثيرة
+cq = {"structuredQuery": {"from": [{"collectionId": "coverage"}], "where": {"fieldFilter": {"field": {"fieldPath": "author"}, "op": "EQUAL", "value": {"stringValue": uid}}}, "limit": 50}}
 s, rows = req("POST", f"{BASE}:runQuery?key={KEY}", cq); check("public coverage query", s == 200 and any(cid in json.dumps(x) for x in rows))
 s, r = req("DELETE", f"{BASE}/coverage/{cid}", None, tok); check("owner deletes coverage sample", s == 200)
 # معرّف سَمْت والمتابعون
