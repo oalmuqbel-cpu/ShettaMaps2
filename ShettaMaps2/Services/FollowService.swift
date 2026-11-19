@@ -23,6 +23,8 @@ struct FollowedTrip: Identifiable, Equatable {
     var acc: Double
     var active: Bool
     var endedAt: Date?
+    /// معرّف صاحب الرحلة (لمعرفة أعضاء القافلة).
+    var owner: String? = nil
 
     var coordinate: CLLocationCoordinate2D { .init(latitude: lat, longitude: lon) }
     var deadline: Date { updatedAt.addingTimeInterval(Double(hours) * 3600) }
@@ -195,7 +197,11 @@ final class FollowService: ObservableObject {
     private var convoyLoop: Task<Void, Never>?
 
     /// أعضاء القافلة النشطون (رحلاتهم الآمنة التي أضافوني فيها).
-    var convoyMembers: [FollowedTrip] { trips.filter { $0.active } }
+    /// أعضاء القافلة النشطون: رحلات من اخترتهم في قافلتي وأضافوني بدورهم.
+    var convoyMembers: [FollowedTrip] {
+        let uids = Set((SafeTripManager.shared.state?.watchers ?? []).map(\.uid))
+        return trips.filter { $0.active && $0.owner.map(uids.contains) == true }
+    }
 
     /// تحديث متكرر ما دامت القافلة نشطة.
     func startConvoyUpdates() {
@@ -289,7 +295,7 @@ final class FollowService: ObservableObject {
         let active = ((f["active"] as? [String: Any])?["booleanValue"] as? Bool) ?? false
         return FollowedTrip(id: String(name.split(separator: "/").last ?? ""), name: str("name") ?? "",
                             hours: Int(num("hours") ?? 6), startedAt: date("startedAt") ?? updated, updatedAt: updated,
-                            lat: lat, lon: lon, acc: num("acc") ?? 0, active: active, endedAt: date("endedAt"))
+                            lat: lat, lon: lon, acc: num("acc") ?? 0, active: active, endedAt: date("endedAt"), owner: str("owner"))
     }
 
     #if DEBUG
