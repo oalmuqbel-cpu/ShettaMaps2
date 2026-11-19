@@ -59,6 +59,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         return true
     }
 
+    /// تنزيل المناطق الجاهزة يكمل في الخلفية؛ النظام يوقظ التطبيق عند انتهائه.
+    func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String,
+                     completionHandler: @escaping () -> Void) {
+        MainActor.assumeIsolated {
+            RegionPackService.backgroundCompletion = completionHandler
+            _ = RegionPackService.shared
+        }
+    }
+
     /// لالتقاط لقطات الشاشة آليًا فقط: يبدأ ملاحة تجريبية عند تمرير الوسيط -DemoNavigation.
     @MainActor
     private static func startDemoNavigationIfRequested() {

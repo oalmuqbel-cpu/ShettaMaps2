@@ -38,6 +38,8 @@ final class RegionPackService: NSObject, ObservableObject {
     @Published private(set) var progress: [String: Double] = [:]
     @Published private(set) var installed: [String: Int] = [:]   // المعرّف ← نسخة البيانات المنزلة
     @Published var lastError: String?
+    /// إكمال جلسة التنزيل في الخلفية (يمرره النظام عند إيقاظ التطبيق).
+    static var backgroundCompletion: (() -> Void)?
 
     private let installedKey = "regionPacksInstalled"
     private var tasks: [String: URLSessionDownloadTask] = [:]
@@ -142,6 +144,14 @@ final class RegionPackService: NSObject, ObservableObject {
 }
 
 extension RegionPackService: URLSessionDownloadDelegate {
+    /// يستدعيه النظام بعد اكتمال تنزيلات الخلفية والتطبيق مغلق.
+    nonisolated func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
+        MainActor.assumeIsolated {
+            RegionPackService.backgroundCompletion?()
+            RegionPackService.backgroundCompletion = nil
+        }
+    }
+
     nonisolated func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64,
                                 totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
         guard let id = downloadTask.taskDescription, totalBytesExpectedToWrite > 0 else { return }
