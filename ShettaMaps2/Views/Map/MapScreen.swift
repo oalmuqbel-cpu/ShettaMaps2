@@ -40,6 +40,15 @@ struct MapScreen: View {
     @AppStorage(SettingsKeys.showWind) private var showWind = true
     @AppStorage(SettingsKeys.showRainMap) private var showRainMap = false
     @State private var rainHour = 0
+    @StateObject private var rainNow = RainNowService.shared
+    @AppStorage(RainNowService.modeKey) private var rainObserved = true
+
+    /// خلايا طبقة الأمطار: المطر الفعلي من القمر الصناعي، أو توقعات النموذج.
+    private var shownRainCells: [RainCell] {
+        guard showRainMap else { return [] }
+        return rainObserved ? rainNow.cells : weather.rainCells
+    }
+    private var shownRainHour: Int { rainObserved ? 0 : rainHour }
     @State private var showFuel = false
     @State private var showLayers = false
     @State private var dirtRoads: [DirtRoad] = []
@@ -220,6 +229,9 @@ struct MapScreen: View {
             if showCoverage && !navigation.snapshot.isNavigating {
                 CoverageLegend(note: coverageNote)
             }
+            if showRainMap && !navigation.snapshot.isNavigating {
+                RainNowPanel(service: rainNow, observed: $rainObserved, forecastLoading: weather.rainLoading)
+            }
             if navigation.snapshot.isNavigating { NavigationPanel() }
             if recorder.isActive { RecordingPanel(onStop: { showStopRecordingConfirm = true }) }
             Spacer()
@@ -280,6 +292,14 @@ struct MapScreen: View {
         .onChange(of: location.location?.coordinate.latitude) { _, _ in refreshWeather() }
         .onChange(of: network.isOnline) { _, on in if on { refreshWeather(); refreshRain() } }
         .onChange(of: showRainMap) { _, on in rainHour = 0; if on { refreshRain() } }
+        .onChange(of: rainObserved) { _, _ in refreshRain() }
+        // المطر الفعلي يتجدد كل ١٥ دقيقة عند الخادم: نتحقق كل ٥ دقائق ما دامت الطبقة ظاهرة
+        .task(id: showRainMap) {
+            while showRainMap && !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(300))
+                if showRainMap { refreshRain() }
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             Task { await follow.refresh() }
             refreshWeather()
@@ -392,18 +412,18 @@ struct MapScreen: View {
             // نفس مصدر الخرائط المجاني مع إبراز الطرق الترابية؛ يعمل دون إنترنت في المناطق المنزّلة
             OfflineMapView(styleURL: URL(string: OfflineMapManager.defaultStyleURL), overlays: overlays, mapManager: mapManager,
                            highlightDirtRoads: true, dirtRoads: dirtRoads, coverageCells: coverageCells,
-                           rainCells: showRainMap ? weather.rainCells : [], rainHour: rainHour,
+                           rainCells: shownRainCells, rainHour: shownRainHour,
                            markerStyle: markerStyle, markerColor: markerColor)
                 .overlay(nightDim)
         } else if mapManager.layer == .offline {
             OfflineMapView(styleURL: offlineMaps.activeStyleURL, overlays: overlays, mapManager: mapManager, highlightDirtRoads: true,
                            dirtRoads: dirtRoads, coverageCells: coverageCells,
-                           rainCells: showRainMap ? weather.rainCells : [], rainHour: rainHour,
+                           rainCells: shownRainCells, rainHour: shownRainHour,
                            markerStyle: markerStyle, markerColor: markerColor)
                 .overlay(nightDim)
         } else {
             OnlineMapView(overlays: overlays, mapManager: mapManager, dirtRoads: dirtRoads, dirtLabels: dirtLabels,
-                          coverageCells: coverageCells, rainCells: showRainMap ? weather.rainCells : [], rainHour: rainHour,
+                          coverageCells: coverageCells, rainCells: shownRainCells, rainHour: shownRainHour,
                           userCoordinate: location.location?.coordinate, userHeading: userHeading,
                           markerStyle: markerStyle, markerColor: markerColor)
         }
@@ -746,7 +766,11 @@ struct MapScreen: View {
 
     private func refreshRain() {
         guard showRainMap, network.isOnline, let b = mapManager.visibleBounds else { return }
-        Task { await weather.refreshRain(sw: b.sw, ne: b.ne) }
+        if rainObserved {
+            Task { await rainNow.refresh(sw: b.sw, ne: b.ne) }
+        } else {
+            Task { await weather.refreshRain(sw: b.sw, ne: b.ne) }
+        }
     }
 
     /// أقرب محطات الوقود من قاعدة الأماكن (تعمل دون إنترنت).

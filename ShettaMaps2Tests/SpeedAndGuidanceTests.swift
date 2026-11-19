@@ -358,3 +358,39 @@ final class CoordinateBarTests: XCTestCase {
         XCTAssertEqual(t, "24.71361, 46.67530")
     }
 }
+
+final class RainNowTests: XCTestCase {
+    func testLatestTimeFromCapabilities() {
+        let xml = #"<Dimension name="time" default="2026-11-19T05:30:00Z" units="ISO8601" nearestValue="1">2022-12-09T08:00:00.000Z/2026-11-19T05:30:00.000Z/PT15M</Dimension>"#
+        let d = RainNowService.latestTime(inCapabilities: xml)
+        XCTAssertEqual(d, ISO8601DateFormatter().date(from: "2026-11-19T05:30:00Z"))
+    }
+
+    func testPaletteIntensityOrdering() {
+        XCTAssertLessThan(RainNowService.intensity(r: 255, g: 255, b: 204), 1)
+        XCTAssertEqual(RainScale.level(RainNowService.intensity(r: 126, g: 204, b: 186)), 2)
+        XCTAssertEqual(RainScale.level(RainNowService.intensity(r: 12, g: 44, b: 133)), 4)
+    }
+
+    func testBoxClampedToRegionAndPixelsBounded() {
+        let b = RainNowService.requestBox(sw: .init(latitude: 5, longitude: 20), ne: .init(latitude: 40, longitude: 70))
+        XCTAssertEqual(b.0, 10); XCTAssertEqual(b.1, 32); XCTAssertEqual(b.2, 36); XCTAssertEqual(b.3, 62)
+        let (w, h) = RainNowService.pixels(for: b)
+        XCTAssertLessThanOrEqual(max(w, h), 221)
+    }
+
+    func testImageToCellsMergesRuns() {
+        // صورة ٤×٢: الصف العلوي ثلاث نقاط بنفس اللون، والسفلي فارغ
+        let w = 4, h = 2
+        var px = [UInt8](repeating: 0, count: w * h * 4)
+        for x in 0..<3 { let i = x * 4; px[i] = 32; px[i + 1] = 120; px[i + 2] = 180; px[i + 3] = 255 }
+        let ctx = CGContext(data: &px, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        let img = ctx.makeImage()!
+        let cells = RainNowService.cells(from: img, box: (20, 40, 22, 44))
+        XCTAssertEqual(cells.count, 1)
+        XCTAssertEqual(cells[0].lat, 21.5, accuracy: 0.001)      // الصف العلوي = الشمال
+        XCTAssertEqual(cells[0].width ?? 0, 3, accuracy: 0.001)  // ثلاث نقاط بعرض درجة
+        XCTAssertEqual(RainScale.level(cells[0].hourly[0]), 4)
+    }
+}

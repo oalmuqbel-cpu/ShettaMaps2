@@ -183,3 +183,63 @@ struct RainTimeline: View {
         return index == 0 ? "الأمطار الآن" : "الأمطار الساعة \(Fmt.time.string(from: hours[index]))"
     }
 }
+
+/// لوحة «المطر الآن»: المطر الفعلي من القمر الصناعي مع شريط زمن لآخر ساعتين، أو التحويل إلى التوقعات.
+struct RainNowPanel: View {
+    @ObservedObject var service: RainNowService
+    @Binding var observed: Bool
+    var forecastLoading = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Picker("", selection: $observed) {
+                    Text("المطر الآن").tag(true)
+                    Text("التوقعات").tag(false)
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 200)
+                Spacer(minLength: 4)
+                if observed ? service.loading : forecastLoading { ProgressView().controlSize(.small) }
+                legend
+            }
+            if observed {
+                if service.frames.count > 1 {
+                    Slider(value: Binding(get: { Double(service.index) },
+                                          set: { service.index = Int($0.rounded()) }),
+                           in: 0...Double(service.frames.count - 1), step: 1)
+                        .environment(\.layoutDirection, .leftToRight)
+                }
+                HStack {
+                    Text(timeLabel).font(.caption.weight(.semibold))
+                    Spacer()
+                    if service.failed { Text("تعذّر التحميل").font(.caption2).foregroundStyle(.red) }
+                }
+                Text(RainNowService.attribution + "، تقدير بالقمر الصناعي وليس رادارًا أرضيًا.")
+                    .font(.system(size: 9)).foregroundStyle(.secondary)
+            } else {
+                Text("توقعات نموذج الطقس (Open-Meteo) للساعة الحالية، وليست رصدًا فعليًا.")
+                    .font(.system(size: 9)).foregroundStyle(.secondary)
+            }
+        }
+        .hudCard()
+    }
+
+    private var legend: some View {
+        HStack(spacing: 5) {
+            ForEach(1..<5) { l in
+                HStack(spacing: 2) {
+                    RoundedRectangle(cornerRadius: 2).fill(RainScale.color(l).opacity(0.75)).frame(width: 9, height: 9)
+                    Text(RainScale.titles[l]).font(.system(size: 9))
+                }
+            }
+        }
+    }
+
+    private var timeLabel: String {
+        guard let t = service.selectedTime else { return "جارٍ التحميل" }
+        let minutes = max(0, Int(Date().timeIntervalSince(t) / 60))
+        let ago = minutes < 60 ? "قبل \(minutes) دقيقة" : "قبل \(minutes / 60) ساعة و\(minutes % 60) دقيقة"
+        return "صورة الساعة \(Fmt.time.string(from: t)) · \(ago)"
+    }
+}

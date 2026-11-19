@@ -61,7 +61,8 @@ struct OfflineMapView: UIViewRepresentable {
             map.showsUserLocation = false
             map.showsUserLocation = true
         }
-        let rainKey = "\(rainHour)|" + rainCells.map(\.id).joined(separator: ",")
+        // المفتاح يشمل الشدة: صورة قمر جديدة قد تعطي نفس المربعات بشدة مختلفة
+        let rainKey = "\(rainHour)|" + rainCells.map { "\($0.id):\(RainScale.level($0.hourly.indices.contains(rainHour) ? $0.hourly[rainHour] : 0))" }.joined(separator: ",")
         if c.lastRainKey != rainKey {
             c.lastRainKey = rainKey
             c.pendingRain = (rainCells, rainHour)

@@ -45,11 +45,13 @@ struct RainCell: Identifiable, Equatable {
     var size: Double
     var hourly: [Double]   // مم لكل ساعة ابتداءً من الساعة الحالية
     var cloud: [Double]    // نسبة الغيوم %
+    /// عرض المربع بالطول إن اختلف عن ارتفاعه (مستطيل يجمع عدة نقاط متجاورة من صورة القمر الصناعي).
+    var width: Double? = nil
 
     var corners: [CLLocationCoordinate2D] {
-        let h = size / 2
-        return [.init(latitude: lat - h, longitude: lon - h), .init(latitude: lat + h, longitude: lon - h),
-                .init(latitude: lat + h, longitude: lon + h), .init(latitude: lat - h, longitude: lon + h)]
+        let h = size / 2, w = (width ?? size) / 2
+        return [.init(latitude: lat - h, longitude: lon - w), .init(latitude: lat + h, longitude: lon - w),
+                .init(latitude: lat + h, longitude: lon + w), .init(latitude: lat - h, longitude: lon + w)]
     }
 }
 

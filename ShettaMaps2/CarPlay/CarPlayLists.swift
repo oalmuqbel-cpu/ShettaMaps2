@@ -350,7 +350,8 @@ extension CarPlayTemplateManager {
             toggle("مشاركات المجتمع", SettingsKeys.showCommunity, true),
             toggle("مساراتي السابقة", SettingsKeys.showMyTracks, false),
             toggle("تغطية الشبكة", SettingsKeys.showCoverage, false),
-            toggle("الأمطار المتوقعة", SettingsKeys.showRainMap, false)
+            toggle("الأمطار", SettingsKeys.showRainMap, false),
+            rainModeItem()
         ]
 
         let northUp = CarPlaySettings.northUp
@@ -378,6 +379,19 @@ extension CarPlayTemplateManager {
         if let t = tileset { return t.contains(here) ? "يغطي موقعك" : "خارج موقعك الحالي" }
         let covered = env.offlineMaps.regions.contains { $0.state == .complete && $0.contains(here) }
         return covered ? "منزلة لموقعك" : "لا توجد منطقة منزلة هنا"
+    }
+
+    /// نوع طبقة الأمطار: المطر الفعلي من القمر الصناعي أو توقعات النموذج.
+    func rainModeItem() -> CPListItem {
+        let observed = RainNowService.observedMode
+        let item = CPListItem(text: "نوع الأمطار", detailText: (observed ? "المطر الآن (قمر صناعي)" : "التوقعات") + " · اضغط للتغيير",
+                              image: symbol(observed ? "cloud.rain.fill" : "cloud.sun.rain"))
+        item.handler = { [weak self] _, done in
+            UserDefaults.standard.set(!RainNowService.observedMode, forKey: RainNowService.modeKey)
+            self?.reloadLayers()
+            done()
+        }
+        return item
     }
 
     func toggle(_ title: String, _ key: String, _ fallback: Bool) -> CPListItem {

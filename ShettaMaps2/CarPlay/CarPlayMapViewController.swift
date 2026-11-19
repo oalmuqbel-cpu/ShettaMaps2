@@ -58,7 +58,7 @@ enum CarPlaySettings {
     /// بصمة لكل ما يؤثر على الرسم، لاكتشاف تغيّر الإعدادات من الهاتف.
     static var signature: String {
         [showLandmarks, showCommunity, showDirtRoads, showDetectedRoads, showMyTracks, showCoverage, coverageOnlyMine,
-         showRainMap, northUp].map { $0 ? "1" : "0" }.joined()
+         showRainMap, northUp, RainNowService.observedMode].map { $0 ? "1" : "0" }.joined()
             + (UserDefaults.standard.string(forKey: SettingsKeys.landmarkKinds) ?? "")
             + (UserDefaults.standard.string(forKey: SettingsKeys.coverageCarrier) ?? "")
             + (UserDefaults.standard.string(forKey: "waterSubs") ?? "")
@@ -304,7 +304,8 @@ final class CarPlayMapViewController: UIViewController {
         // قياس تغطية جديد (مثل مربع صار أخضر) أو اكتمال فهرس الأماكن: نعيد رسم الطبقات
         CoverageService.shared.$revision.map { _ in () }
             .merge(with: SearchService.shared.$indexRevision.map { _ in () })
-            .dropFirst(2)
+            .merge(with: RainNowService.shared.$cells.map { _ in () })
+            .dropFirst(3)
             .throttle(for: .seconds(3), scheduler: RunLoop.main, latest: true)
             .sink { [weak self] _ in
                 guard let self, self.role == .main, !self.gestureActive else { return }
@@ -507,7 +508,8 @@ final class CarPlayMapViewController: UIViewController {
         } else {
             coverageCells = []
         }
-        rainCells = CarPlaySettings.showRainMap ? WeatherService.shared.rainCells : []
+        rainCells = CarPlaySettings.showRainMap
+            ? (RainNowService.observedMode ? RainNowService.shared.cells : WeatherService.shared.rainCells) : []
     }
 
     /// جلب ما يحتاج الإنترنت، ثم إعادة الرسم من البيانات المحلية فقط.
@@ -521,7 +523,16 @@ final class CarPlayMapViewController: UIViewController {
                 await CommunityTrackStore.shared.refresh(sw: sw, ne: ne)
             }
             if CarPlaySettings.showCoverage, span <= 0.6 { await CoverageService.shared.refresh(sw: sw, ne: ne) }
-            if CarPlaySettings.showRainMap { await WeatherService.shared.refreshRain(sw: sw, ne: ne) }
+            if CarPlaySettings.showRainMap {
+                if RainNowService.observedMode {
+                    // في السيارة نعرض أحدث صورة دائمًا
+                    let rn = RainNowService.shared
+                    if !rn.isLatest, !rn.frames.isEmpty { rn.index = rn.frames.count - 1 }
+                    await rn.refresh(sw: sw, ne: ne)
+                } else {
+                    await WeatherService.shared.refreshRain(sw: sw, ne: ne)
+                }
+            }
             guard let self else { return }
             self.collectData()
             self.applyAll()
