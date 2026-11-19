@@ -1,0 +1,19 @@
+# فحص مصادر بيانات خارجية من خادم GitHub (للتحقق قبل استخدامها في التطبيق)
+name: Probe data source
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run probe
+        run: bash ci/probe/run.sh
+      - name: Commit results
+        run: |
+          git config user.name "probe-bot"; git config user.email "probe-bot@users.noreply.github.com"
+          git add ci/probe/out || true
+          git commit -m "Probe results" || exit 0
+          git pull --rebase && git push
