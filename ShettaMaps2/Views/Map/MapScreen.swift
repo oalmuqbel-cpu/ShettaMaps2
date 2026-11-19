@@ -41,14 +41,19 @@ struct MapScreen: View {
     @AppStorage(SettingsKeys.showRainMap) private var showRainMap = false
     @State private var rainHour = 0
     @StateObject private var rainNow = RainNowService.shared
-    @AppStorage(RainNowService.modeKey) private var rainObserved = true
+    @StateObject private var rainForecast = RainForecastService.shared
+    @AppStorage(RainNowService.modeKey) private var rainObserved = false
 
-    /// خلايا طبقة الأمطار: المطر الفعلي من القمر الصناعي، أو توقعات النموذج.
+    /// طبقة الأمطار: توقعات الساعات القادمة بأشكال ناعمة (افتراضيًا)، أو رصد القمر الصناعي الآن.
     private var shownRainCells: [RainCell] {
-        guard showRainMap else { return [] }
-        return rainObserved ? rainNow.cells : weather.rainCells
+        guard showRainMap, rainObserved else { return [] }
+        return rainNow.cells
     }
-    private var shownRainHour: Int { rainObserved ? 0 : rainHour }
+    private var shownRainShapes: [RainShape] {
+        guard showRainMap, !rainObserved else { return [] }
+        return rainForecast.selected?.shapes ?? []
+    }
+    private var shownRainHour: Int { 0 }
     @State private var showFuel = false
     @State private var showLayers = false
     @State private var dirtRoads: [DirtRoad] = []
@@ -230,7 +235,7 @@ struct MapScreen: View {
                 CoverageLegend(note: coverageNote)
             }
             if showRainMap && !navigation.snapshot.isNavigating {
-                RainNowPanel(service: rainNow, observed: $rainObserved, forecastLoading: weather.rainLoading)
+                RainPanel(forecast: rainForecast, observedService: rainNow, observed: $rainObserved)
             }
             if navigation.snapshot.isNavigating { NavigationPanel() }
             if recorder.isActive { RecordingPanel(onStop: { showStopRecordingConfirm = true }) }
@@ -412,18 +417,18 @@ struct MapScreen: View {
             // نفس مصدر الخرائط المجاني مع إبراز الطرق الترابية؛ يعمل دون إنترنت في المناطق المنزّلة
             OfflineMapView(styleURL: URL(string: OfflineMapManager.defaultStyleURL), overlays: overlays, mapManager: mapManager,
                            highlightDirtRoads: true, dirtRoads: dirtRoads, coverageCells: coverageCells,
-                           rainCells: shownRainCells, rainHour: shownRainHour,
+                           rainCells: shownRainCells, rainHour: shownRainHour, rainShapes: shownRainShapes,
                            markerStyle: markerStyle, markerColor: markerColor)
                 .overlay(nightDim)
         } else if mapManager.layer == .offline {
             OfflineMapView(styleURL: offlineMaps.activeStyleURL, overlays: overlays, mapManager: mapManager, highlightDirtRoads: true,
                            dirtRoads: dirtRoads, coverageCells: coverageCells,
-                           rainCells: shownRainCells, rainHour: shownRainHour,
+                           rainCells: shownRainCells, rainHour: shownRainHour, rainShapes: shownRainShapes,
                            markerStyle: markerStyle, markerColor: markerColor)
                 .overlay(nightDim)
         } else {
             OnlineMapView(overlays: overlays, mapManager: mapManager, dirtRoads: dirtRoads, dirtLabels: dirtLabels,
-                          coverageCells: coverageCells, rainCells: shownRainCells, rainHour: shownRainHour,
+                          coverageCells: coverageCells, rainCells: shownRainCells, rainHour: shownRainHour, rainShapes: shownRainShapes,
                           userCoordinate: location.location?.coordinate, userHeading: userHeading,
                           markerStyle: markerStyle, markerColor: markerColor)
         }
@@ -769,7 +774,7 @@ struct MapScreen: View {
         if rainObserved {
             Task { await rainNow.refresh(sw: b.sw, ne: b.ne) }
         } else {
-            Task { await weather.refreshRain(sw: b.sw, ne: b.ne) }
+            Task { await rainForecast.refresh() }
         }
     }
 

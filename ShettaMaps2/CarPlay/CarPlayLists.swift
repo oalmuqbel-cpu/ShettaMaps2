@@ -384,7 +384,7 @@ extension CarPlayTemplateManager {
     /// نوع طبقة الأمطار: المطر الفعلي من القمر الصناعي أو توقعات النموذج.
     func rainModeItem() -> CPListItem {
         let observed = RainNowService.observedMode
-        let item = CPListItem(text: "نوع الأمطار", detailText: (observed ? "المطر الآن (قمر صناعي)" : "التوقعات") + " · اضغط للتغيير",
+        let item = CPListItem(text: "نوع الأمطار", detailText: (observed ? "الآن بالقمر الصناعي" : "توقعات الساعة الحالية") + " · اضغط للتغيير",
                               image: symbol(observed ? "cloud.rain.fill" : "cloud.sun.rain"))
         item.handler = { [weak self] _, done in
             UserDefaults.standard.set(!RainNowService.observedMode, forKey: RainNowService.modeKey)

@@ -86,6 +86,7 @@ final class CarPlayMapViewController: UIViewController {
     private var dirt: [DirtRoad] = []
     private var coverageCells: [CoverageCell] = []
     private var rainCells: [RainCell] = []
+    private var rainShapes: [RainShape] = []
     private var lastDataRegion: MKCoordinateRegion?
     private var dataWork: DispatchWorkItem?
     private var settingsSignature = CarPlaySettings.signature
@@ -305,7 +306,8 @@ final class CarPlayMapViewController: UIViewController {
         CoverageService.shared.$revision.map { _ in () }
             .merge(with: SearchService.shared.$indexRevision.map { _ in () })
             .merge(with: RainNowService.shared.$cells.map { _ in () })
-            .dropFirst(3)
+            .merge(with: RainForecastService.shared.$frames.map { _ in () })
+            .dropFirst(4)
             .throttle(for: .seconds(3), scheduler: RunLoop.main, latest: true)
             .sink { [weak self] _ in
                 guard let self, self.role == .main, !self.gestureActive else { return }
@@ -508,8 +510,10 @@ final class CarPlayMapViewController: UIViewController {
         } else {
             coverageCells = []
         }
-        rainCells = CarPlaySettings.showRainMap
-            ? (RainNowService.observedMode ? RainNowService.shared.cells : WeatherService.shared.rainCells) : []
+        // في السيارة: رصد القمر الآن، أو توقعات الساعة الحالية بأشكال ناعمة
+        rainCells = CarPlaySettings.showRainMap && RainNowService.observedMode ? RainNowService.shared.cells : []
+        rainShapes = CarPlaySettings.showRainMap && !RainNowService.observedMode
+            ? (RainForecastService.shared.frames.first?.shapes ?? []) : []
     }
 
     /// جلب ما يحتاج الإنترنت، ثم إعادة الرسم من البيانات المحلية فقط.
@@ -530,7 +534,7 @@ final class CarPlayMapViewController: UIViewController {
                     if !rn.isLatest, !rn.frames.isEmpty { rn.index = rn.frames.count - 1 }
                     await rn.refresh(sw: sw, ne: ne)
                 } else {
-                    await WeatherService.shared.refreshRain(sw: sw, ne: ne)
+                    await RainForecastService.shared.refresh()
                 }
             }
             guard let self else { return }
@@ -547,12 +551,13 @@ final class CarPlayMapViewController: UIViewController {
     private func applyDataLayers() {
         guard role == .main else { return }
         if let m = mapKitView {
-            MapKitDataLayers.apply(dirt: dirt, coverage: coverageCells, rain: rainCells, rainHour: 0, to: m)
+            MapKitDataLayers.apply(dirt: dirt, coverage: coverageCells, rain: rainCells, rainHour: 0, rainShapes: rainShapes, to: m)
         }
         if let m = libreView {
             MapLibreDataLayers.dirt(dirt, on: m)
             MapLibreDataLayers.coverage(coverageCells, on: m)
             MapLibreDataLayers.rain(rainCells, hour: 0, on: m)
+            MapLibreDataLayers.rainShapes(rainShapes, on: m)
             MapLibreDataLayers.highlightStyleDirt(on: m, visible: CarPlaySettings.showDirtRoads)
         }
     }

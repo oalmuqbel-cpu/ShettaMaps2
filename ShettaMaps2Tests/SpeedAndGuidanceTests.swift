@@ -394,3 +394,25 @@ final class RainNowTests: XCTestCase {
         XCTAssertEqual(RainScale.level(cells[0].hourly[0]), 4)
     }
 }
+
+final class RainForecastTests: XCTestCase {
+    func testParseFramesShapesAndHoles() throws {
+        let json = """
+        {"source":"NOAA GFS 0.25°","run":1763510400,"frames":[
+          {"t":1763517600,"max":3.2,"levels":[
+            {"l":1,"p":[[[[46,24],[47,24],[47,25],[46,25],[46,24]],[[46.4,24.4],[46.6,24.4],[46.6,24.6],[46.4,24.4]]]]},
+            {"l":2,"p":[[[[46.2,24.2],[46.5,24.2],[46.5,24.5],[46.2,24.2]]]]}]},
+          {"t":1763514000,"max":0,"levels":[]}]}
+        """
+        let r = try RainForecastService.parse(Data(json.utf8))
+        XCTAssertEqual(r.frames.count, 2)
+        XCTAssertEqual(r.frames[0].time.timeIntervalSince1970, 1763514000)   // مرتبة زمنيًا
+        let shapes = r.frames[1].shapes
+        XCTAssertEqual(shapes.count, 2)
+        XCTAssertEqual(shapes[0].level, 1)
+        XCTAssertEqual(shapes[0].rings.count, 2)                              // حد خارجي وثقب
+        XCTAssertEqual(shapes[0].rings[0][1].longitude, 47)                   // [lon, lat]
+        XCTAssertEqual(shapes[0].polygon.interiorPolygons?.count, 1)
+        XCTAssertNotEqual(shapes[0].id, shapes[1].id)
+    }
+}

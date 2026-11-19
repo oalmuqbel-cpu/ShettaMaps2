@@ -73,6 +73,31 @@ enum MapLibreDataLayers {
         insertBelowLabels([fill], in: style)
     }
 
+    /// توقعات الأمطار بأشكال ناعمة (مستوى فوق مستوى، الأشد أغمق).
+    @MainActor static func rainShapes(_ shapes: [RainShape], on map: MLNMapView) {
+        guard let style = map.style else { return }
+        let polys: [MLNPolygonFeature] = shapes.map { sh in
+            var outer = sh.rings[0]
+            let holes = sh.rings.dropFirst().map { r -> MLNPolygon in var c = r; return MLNPolygon(coordinates: &c, count: UInt(c.count)) }
+            let f = MLNPolygonFeature(coordinates: &outer, count: UInt(outer.count), interiorPolygons: holes.isEmpty ? nil : Array(holes))
+            f.attributes = ["l": sh.level]
+            return f
+        }
+        let shape = MLNShapeCollectionFeature(shapes: polys)
+        if let src = style.source(withIdentifier: "samt-rain-shapes") as? MLNShapeSource {
+            src.shape = shape
+            return
+        }
+        let src = MLNShapeSource(identifier: "samt-rain-shapes", shape: shape, options: nil)
+        style.addSource(src)
+        let fill = MLNFillStyleLayer(identifier: "samt-rain-shapes-fill", source: src)
+        fill.fillColor = NSExpression(format: "TERNARY(l == 1, %@, TERNARY(l == 2, %@, TERNARY(l == 3, %@, %@)))",
+                                      RainScale.colorsUI[1], RainScale.colorsUI[2], RainScale.colorsUI[3], RainScale.colorsUI[4])
+        fill.fillOpacity = NSExpression(forConstantValue: 0.4)
+        fill.fillAntialiased = NSExpression(forConstantValue: true)
+        insertBelowLabels([fill], in: style)
+    }
+
     /// مربعات تغطية الشبكة (تعبئة ملونة حسب الحالة).
     @MainActor static func coverage(_ cells: [CoverageCell], on map: MLNMapView) {
         guard let style = map.style else { return }
@@ -150,7 +175,8 @@ final class DataMKMultiPolygon: MKMultiPolygon {
 
 enum MapKitDataLayers {
     /// يستبدل طبقات البيانات على الخريطة. تُضاف تحت خطوط الملاحة والمسارات.
-    @MainActor static func apply(dirt: [DirtRoad], coverage: [CoverageCell], rain: [RainCell], rainHour: Int, to m: MKMapView) {
+    @MainActor static func apply(dirt: [DirtRoad], coverage: [CoverageCell], rain: [RainCell], rainHour: Int,
+                                 rainShapes: [RainShape] = [], to m: MKMapView) {
         m.removeOverlays(m.overlays.filter { $0 is DataMKMultiPolyline || $0 is DataMKMultiPolygon })
         var bottomToTop: [MKOverlay] = []
 
@@ -171,6 +197,14 @@ enum MapKitDataLayers {
             guard !polys.isEmpty else { continue }
             let mp = DataMKMultiPolygon(polys)
             mp.fill = RainScale.colorsUI[l].withAlphaComponent(0.45)
+            bottomToTop.append(mp)
+        }
+        // توقعات الأمطار بأشكال ناعمة: كل مستوى فوق الأخف منه
+        for l in 1...4 {
+            let polys = rainShapes.filter { $0.level == l }.map(\.polygon)
+            guard !polys.isEmpty else { continue }
+            let mp = DataMKMultiPolygon(polys)
+            mp.fill = RainScale.colorsUI[l].withAlphaComponent(0.4)
             bottomToTop.append(mp)
         }
         // الردميات: إطار ثم خط، والمرصودة فوق المؤكدة بلون مختلف

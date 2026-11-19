@@ -12,6 +12,7 @@ struct OfflineMapView: UIViewRepresentable {
     var coverageCells: [CoverageCell] = []
     var rainCells: [RainCell] = []
     var rainHour: Int = 0
+    var rainShapes: [RainShape] = []
     var markerStyle: UserMarkerStyle = .dot
     var markerColor: UserMarkerColor = .white
 
@@ -68,6 +69,13 @@ struct OfflineMapView: UIViewRepresentable {
             c.pendingRain = (rainCells, rainHour)
             c.applyRain(rainCells, hour: rainHour, on: map)
         }
+        // معرّف كل شكل يتضمن وقت الساعة، فأول معرّف والعدد يكفيان لمعرفة تغيّر الساعة المعروضة
+        let shapesKey = "\(rainShapes.first?.id ?? "-")|\(rainShapes.count)"
+        if c.lastRainShapesKey != shapesKey {
+            c.lastRainShapesKey = shapesKey
+            c.pendingRainShapes = rainShapes
+            MapLibreDataLayers.rainShapes(rainShapes, on: map)
+        }
         // المفتاح يشمل الحالة: مربع تغيّر لونه (برتقالي إلى أخضر) يُعاد رسمه حتى لو بقيت المربعات نفسها
         let covKey = coverageCells.map { "\($0.id):\($0.level.rawValue)" }.joined(separator: ",")
         if c.lastCoverageKey != covKey {
@@ -101,6 +109,8 @@ struct OfflineMapView: UIViewRepresentable {
         var lastRainKey = ""
         var pendingRain: ([RainCell], Int) = ([], 0)
         var pendingCoverage: [CoverageCell] = []
+        var pendingRainShapes: [RainShape] = []
+        var lastRainShapesKey = ""
         var markerKey = ""
         var markerStyle: UserMarkerStyle = .dot
         var markerColor: UserMarkerColor = .white
@@ -118,6 +128,7 @@ struct OfflineMapView: UIViewRepresentable {
                 applyDirt(on: mapView)
                 applyCoverage(on: mapView)
                 applyRain(pendingRain.0, hour: pendingRain.1, on: mapView)
+                MapLibreDataLayers.rainShapes(pendingRainShapes, on: mapView)
                 if highlightDirtRoads { MapLibreDataLayers.highlightStyleDirt(on: mapView, visible: true) }
             }
         }

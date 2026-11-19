@@ -12,13 +12,13 @@ final class RainNowService: ObservableObject {
 
     /// عرض المطر الفعلي من الأقمار (true) أو توقعات النموذج (false).
     nonisolated static let modeKey = "rainNowMode"
-    nonisolated static var observedMode: Bool { UserDefaults.standard.object(forKey: modeKey) as? Bool ?? true }
+    nonisolated static var observedMode: Bool { UserDefaults.standard.object(forKey: modeKey) as? Bool ?? false }
 
     nonisolated static let attribution = "يحتوي على بيانات EUMETSAT (Meteosat، H SAF H63)"
     nonisolated static let base = "https://view.eumetsat.int/geoserver"
     nonisolated static let layer = "msg_iodc:h63"
     nonisolated static let step: TimeInterval = 15 * 60
-    nonisolated static let frameCount = 8   // آخر ساعتين
+    nonisolated static let frameCount = 1   // أحدث صورة فقط (التوقعات تغطي القادم)
 
     @Published private(set) var frames: [Date] = []
     /// الصورة المختارة في شريط الوقت (الأخيرة افتراضيًا).

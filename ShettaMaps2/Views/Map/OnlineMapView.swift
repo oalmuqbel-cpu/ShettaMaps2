@@ -10,6 +10,7 @@ struct OnlineMapView: View {
     var coverageCells: [CoverageCell] = []
     var rainCells: [RainCell] = []
     var rainHour: Int = 0
+    var rainShapes: [RainShape] = []
     var userCoordinate: CLLocationCoordinate2D?
     var userHeading: Double?
     var markerStyle: UserMarkerStyle = .dot
@@ -30,6 +31,10 @@ struct OnlineMapView: View {
                         MapPolygon(coordinates: cell.corners)
                             .foregroundStyle(RainScale.color(l).opacity(0.45))
                     }
+                }
+                ForEach(rainShapes) { shape in
+                    MapPolygon(shape.polygon)
+                        .foregroundStyle(RainScale.color(shape.level).opacity(0.4))
                 }
                 ForEach(coverageCells) { cell in
                     MapPolygon(coordinates: cell.corners)

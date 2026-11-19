@@ -184,45 +184,73 @@ struct RainTimeline: View {
     }
 }
 
-/// لوحة «المطر الآن»: المطر الفعلي من القمر الصناعي مع شريط زمن لآخر ساعتين، أو التحويل إلى التوقعات.
-struct RainNowPanel: View {
-    @ObservedObject var service: RainNowService
+/// لوحة الأمطار: توقعات الساعات القادمة (حتى يومين) مع تشغيل متحرك، أو رصد القمر الصناعي الآن.
+struct RainPanel: View {
+    @ObservedObject var forecast: RainForecastService
+    @ObservedObject var observedService: RainNowService
     @Binding var observed: Bool
-    var forecastLoading = false
+    @State private var playing = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Picker("", selection: $observed) {
-                    Text("المطر الآن").tag(true)
                     Text("التوقعات").tag(false)
+                    Text("الآن بالقمر الصناعي").tag(true)
                 }
                 .pickerStyle(.segmented)
-                .frame(maxWidth: 200)
+                .frame(maxWidth: 240)
                 Spacer(minLength: 4)
-                if observed ? service.loading : forecastLoading { ProgressView().controlSize(.small) }
-                legend
+                if observed ? observedService.loading : forecast.loading { ProgressView().controlSize(.small) }
             }
             if observed {
-                if service.frames.count > 1 {
-                    Slider(value: Binding(get: { Double(service.index) },
-                                          set: { service.index = Int($0.rounded()) }),
-                           in: 0...Double(service.frames.count - 1), step: 1)
-                        .environment(\.layoutDirection, .leftToRight)
+                HStack {
+                    Text(observedLabel).font(.caption.weight(.semibold))
+                    Spacer()
+                    if observedService.failed { Text("تعذّر التحميل").font(.caption2).foregroundStyle(.red) }
+                }
+                legend
+                Text(RainNowService.attribution + "، تقدير بالقمر الصناعي وليس رادارًا أرضيًا، ويتأخر قرابة نصف ساعة.")
+                    .font(.system(size: 9)).foregroundStyle(.secondary)
+            } else if forecast.frames.isEmpty {
+                Text(forecast.failed ? "تعذّر تنزيل التوقعات، تحقق من الاتصال." : "جارٍ تنزيل التوقعات...")
+                    .font(.caption)
+            } else {
+                HStack(spacing: 10) {
+                    Button {
+                        playing.toggle()
+                    } label: {
+                        Image(systemName: playing ? "pause.fill" : "play.fill")
+                            .font(.system(size: 16, weight: .bold))
+                            .frame(width: 34, height: 34)
+                            .background(Circle().fill(Theme.desertOrange.opacity(0.18)))
+                    }
+                    .accessibilityLabel(playing ? "إيقاف" : "تشغيل حركة المطر")
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(forecastLabel).font(.caption.weight(.bold))
+                        Slider(value: Binding(get: { Double(forecast.index) },
+                                              set: { forecast.index = Int($0.rounded()); playing = false }),
+                               in: 0...Double(max(1, forecast.frames.count - 1)), step: 1)
+                            .environment(\.layoutDirection, .leftToRight)
+                    }
                 }
                 HStack {
-                    Text(timeLabel).font(.caption.weight(.semibold))
+                    legend
                     Spacer()
-                    if service.failed { Text("تعذّر التحميل").font(.caption2).foregroundStyle(.red) }
+                    if let m = forecast.selected?.maxRate, m < 0.2 { Text("لا أمطار متوقعة").font(.caption2).foregroundStyle(.secondary) }
                 }
-                Text(RainNowService.attribution + "، تقدير بالقمر الصناعي وليس رادارًا أرضيًا.")
-                    .font(.system(size: 9)).foregroundStyle(.secondary)
-            } else {
-                Text("توقعات نموذج الطقس (Open-Meteo) للساعة الحالية، وليست رصدًا فعليًا.")
-                    .font(.system(size: 9)).foregroundStyle(.secondary)
+                Text(RainForecastService.attribution).font(.system(size: 9)).foregroundStyle(.secondary)
             }
         }
         .hudCard()
+        .task(id: playing) {
+            // تشغيل متحرك: ساعة كل ٠٫٦ ثانية، ثم يعود للبداية
+            while playing && !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(600))
+                guard playing, !forecast.frames.isEmpty else { break }
+                forecast.index = (forecast.index + 1) % forecast.frames.count
+            }
+        }
     }
 
     private var legend: some View {
@@ -236,10 +264,19 @@ struct RainNowPanel: View {
         }
     }
 
-    private var timeLabel: String {
-        guard let t = service.selectedTime else { return "جارٍ التحميل" }
+    private var forecastLabel: String {
+        guard let t = forecast.selected?.time else { return "" }
+        let hours = Int((t.timeIntervalSinceNow / 3600).rounded())
+        let when = hours <= 0 ? "الآن" : (hours == 1 ? "بعد ساعة" : (hours == 2 ? "بعد ساعتين" : (hours <= 10 ? "بعد \(hours) ساعات" : "بعد \(hours) ساعة")))
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ar")
+        f.dateFormat = "EEEE h a"
+        return "\(when) · \(f.string(from: t))"
+    }
+
+    private var observedLabel: String {
+        guard let t = observedService.frames.last else { return "جارٍ التحميل" }
         let minutes = max(0, Int(Date().timeIntervalSince(t) / 60))
-        let ago = minutes < 60 ? "قبل \(minutes) دقيقة" : "قبل \(minutes / 60) ساعة و\(minutes % 60) دقيقة"
-        return "صورة الساعة \(Fmt.time.string(from: t)) · \(ago)"
+        return "آخر صورة الساعة \(Fmt.time.string(from: t)) · قبل \(minutes) دقيقة"
     }
 }
