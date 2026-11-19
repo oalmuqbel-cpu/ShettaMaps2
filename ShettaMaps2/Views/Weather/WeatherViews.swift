@@ -97,6 +97,9 @@ struct WeatherView: View {
                     }
                     .environment(\.layoutDirection, .rightToLeft)
                 }
+                if let night = DesertNight.make(at: location.location?.coordinate ?? r.coordinate, hours: r.allHours.isEmpty ? r.hours : r.allHours) {
+                    DesertNightSection(night: night)
+                }
                 if !r.days.isEmpty {
                     Section {
                         ForEach(Array(r.days.enumerated()), id: \.element.id) { i, day in
@@ -410,5 +413,60 @@ struct RainPanel: View {
         guard let t = observedService.frames.last else { return "جارٍ التحميل" }
         let minutes = max(0, Int(Date().timeIntervalSince(t) / 60))
         return "آخر صورة الساعة \(Fmt.time.string(from: t)) · قبل \(minutes) دقيقة"
+    }
+}
+
+/// قسم «ليلة البر»: الشفق والظلام والقمر وأجواء الليلة.
+struct DesertNightSection: View {
+    let night: DesertNight
+
+    private var moonSymbol: String {
+        switch night.phaseName {
+        case "محاق": return "moonphase.new.moon"
+        case "هلال متزايد": return "moonphase.waxing.crescent"
+        case "تربيع أول": return "moonphase.first.quarter"
+        case "أحدب متزايد": return "moonphase.waxing.gibbous"
+        case "بدر": return "moonphase.full.moon"
+        case "أحدب متناقص": return "moonphase.waning.gibbous"
+        case "تربيع أخير": return "moonphase.last.quarter"
+        default: return "moonphase.waning.crescent"
+        }
+    }
+
+    private func t(_ d: Date?) -> String { d.map { Fmt.time.string(from: $0) } ?? "—" }
+
+    var body: some View {
+        Section {
+            HStack(spacing: 14) {
+                Image(systemName: moonSymbol).font(.system(size: 34)).foregroundStyle(.secondary)
+                    .environment(\.layoutDirection, .leftToRight)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(night.phaseName).font(.headline)
+                    Text("إضاءة القمر \(Int((night.illumination * 100).rounded()))٪").font(.subheadline).foregroundStyle(.secondary)
+                }
+            }
+            if night.moonRise != nil || night.moonSet != nil {
+                LabeledContent("القمر", value: [night.moonRise.map { "يشرق \(Fmt.time.string(from: $0))" },
+                                                night.moonSet.map { "يغيب \(Fmt.time.string(from: $0))" }]
+                    .compactMap { $0 }.joined(separator: " · "))
+            }
+            LabeledContent("الغروب", value: t(night.sunset))
+            LabeledContent("آخر ضوء (الشفق المدني)", value: t(night.civilDusk))
+            LabeledContent("الظلام الكامل", value: "\(t(night.astroDusk)) — \(t(night.astroDawn))")
+            LabeledContent("الشروق", value: t(night.sunrise))
+            if let b = night.bestDark {
+                LabeledContent("أفضل وقت لرصد النجوم", value: "\(Fmt.time.string(from: b.start)) — \(Fmt.time.string(from: b.end))")
+            } else {
+                LabeledContent("رصد النجوم", value: "القمر يضيء أغلب الليل")
+            }
+            if let w = night.windMax {
+                LabeledContent("رياح الليلة", value: "حتى \(Int(w.rounded())) كم/س" + (night.gustMax.map { " · هبات \(Int($0.rounded()))" } ?? ""))
+            }
+            if let m = night.tempMin { LabeledContent("أدنى حرارة", value: "\(Int(m.rounded()))°") }
+        } header: {
+            Text("ليلة البر")
+        } footer: {
+            Text("أوقات الشمس والقمر محسوبة في الجهاز دون إنترنت، وأوقات القمر تقريبية بحدود عشر دقائق.")
+        }
     }
 }
