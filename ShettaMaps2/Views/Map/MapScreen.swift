@@ -43,6 +43,7 @@ struct MapScreen: View {
     @State private var rainHour = 0
     @StateObject private var rainNow = RainNowService.shared
     @StateObject private var fuelRange = FuelRangeMonitor.shared
+    @StateObject private var proximity = ProximityAlerts.shared
     @StateObject private var rainForecast = RainForecastService.shared
     @AppStorage(RainNowService.modeKey) private var rainObserved = false
 
@@ -610,6 +611,18 @@ struct MapScreen: View {
                        "الوقود المتبقي قرابة \(Int(r)) كم، وأقرب محطة معروفة (\($0.name)) على بعد \(Int($0.km.rounded())) كم."
                    } ?? "الوقود المتبقي قرابة \(Int(r)) كم ولا توجد محطة معروفة قريبة.",
                    actionTitle: "أقرب محطة", tint: fuelRange.level == .critical ? .red : .orange) { showFuel = true }
+        }
+        if let p = proximity.current {
+            Banner(icon: p.candidate.kind == "ماء" ? "drop.fill" : "mappin.and.ellipse",
+                   text: "اقتربت من \(p.candidate.name) · \(Fmt.distance(p.meters))",
+                   actionTitle: "الملاحة", tint: Theme.brown) {
+                navigation.navigate(to: Waypoint(name: p.candidate.name, coordinate: p.candidate.coordinate))
+                proximity.dismiss()
+            }
+            .task(id: p.candidate.id) {
+                try? await Task.sleep(for: .seconds(60))
+                proximity.dismiss()
+            }
         }
         if let msg = location.lastError, location.isAuthorized {
             Banner(icon: "exclamationmark.circle", text: msg, tint: .orange)

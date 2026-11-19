@@ -87,6 +87,8 @@ struct SettingsView: View {
 
             FuelRangeSection()
 
+            ProximitySection()
+
             Section {
                 NavigationLink("مصدر الخرائط دون إنترنت") { MapSourceSettingsView() }
                 NavigationLink("الخرائط المحفوظة") { OfflineMapsView() }
@@ -269,6 +271,31 @@ struct StorageUsageView: View {
 
 
 /// مدى الوقود: مدى الخزان الكامل والمتبقي الآن، وزر «عبّأت».
+struct ProximitySection: View {
+    @AppStorage(ProximityAlerts.savedKey) private var saved = false
+    @AppStorage(ProximityAlerts.waterKey) private var water = false
+    @AppStorage(ProximityAlerts.radiusKey) private var radius: Double = 1000
+
+    var body: some View {
+        Section {
+            Toggle("الأماكن المحفوظة", isOn: $saved)
+            Toggle("موارد الماء والآبار", isOn: $water)
+            if saved || water {
+                Picker("التنبيه على بعد", selection: $radius) {
+                    Text("٥٠٠ م").tag(500.0)
+                    Text("١ كم").tag(1000.0)
+                    Text("٢ كم").tag(2000.0)
+                    Text("٥ كم").tag(5000.0)
+                }
+            }
+        } header: {
+            Text("تنبيه الاقتراب")
+        } footer: {
+            Text("ينبهك صوتيًا وبإشعار عند الاقتراب من المكان، مرة واحدة كل ١٢ ساعة لكل مكان. لا ينبه عن مكان كنت فيه عند فتح التطبيق.")
+        }
+    }
+}
+
 struct FuelRangeSection: View {
     @ObservedObject private var fuel = FuelRangeMonitor.shared
     @State private var rangeText = ""
