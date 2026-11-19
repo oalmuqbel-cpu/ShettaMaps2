@@ -116,6 +116,11 @@ enum GuideScreens {
             mapManager.send(.focus(here, spanMeters: 20_000))
         case "emergency":
             router.mapSheet = .emergency
+        case "regions":
+            router.mapSheet = .offlineMaps
+        case "towns":
+            UserDefaults.standard.set("town,service", forKey: SettingsKeys.landmarkKinds)
+            mapManager.send(.focus(.init(latitude: 25.45, longitude: 45.9), spanMeters: 60_000))
         case "rain":
             UserDefaults.standard.set(true, forKey: SettingsKeys.showRainMap)
             UserDefaults.standard.set(false, forKey: RainNowService.modeKey)
