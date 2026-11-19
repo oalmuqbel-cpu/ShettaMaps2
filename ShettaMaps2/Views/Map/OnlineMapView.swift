@@ -34,7 +34,7 @@ struct OnlineMapView: View {
                 }
                 ForEach(rainShapes) { shape in
                     MapPolygon(shape.polygon)
-                        .foregroundStyle(RainScale.color(shape.level).opacity(0.4))
+                        .foregroundStyle(RainScale.color(shape.level).opacity(0.55))
                 }
                 ForEach(coverageCells) { cell in
                     MapPolygon(coordinates: cell.corners)

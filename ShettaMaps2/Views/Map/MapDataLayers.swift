@@ -93,7 +93,7 @@ enum MapLibreDataLayers {
         let fill = MLNFillStyleLayer(identifier: "samt-rain-shapes-fill", source: src)
         fill.fillColor = NSExpression(format: "TERNARY(l == 1, %@, TERNARY(l == 2, %@, TERNARY(l == 3, %@, %@)))",
                                       RainScale.colorsUI[1], RainScale.colorsUI[2], RainScale.colorsUI[3], RainScale.colorsUI[4])
-        fill.fillOpacity = NSExpression(forConstantValue: 0.4)
+        fill.fillOpacity = NSExpression(forConstantValue: 0.55)
         fill.fillAntialiased = NSExpression(forConstantValue: true)
         insertBelowLabels([fill], in: style)
     }
@@ -204,7 +204,7 @@ enum MapKitDataLayers {
             let polys = rainShapes.filter { $0.level == l }.map(\.polygon)
             guard !polys.isEmpty else { continue }
             let mp = DataMKMultiPolygon(polys)
-            mp.fill = RainScale.colorsUI[l].withAlphaComponent(0.4)
+            mp.fill = RainScale.colorsUI[l].withAlphaComponent(0.55)
             bottomToTop.append(mp)
         }
         // الردميات: إطار ثم خط، والمرصودة فوق المؤكدة بلون مختلف
