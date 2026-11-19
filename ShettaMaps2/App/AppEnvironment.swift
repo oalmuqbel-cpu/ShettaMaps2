@@ -100,6 +100,7 @@ final class AppEnvironment {
         seedIfNeeded()
         recorder.recoverUnfinishedTrackIfNeeded()
         NavigationVoice.shared.start()
+        LiveActivityController.shared.start()
         // قياس تغطية الشبكة وتحديث موقع الرحلة الآمنة مع كل تحديث للموقع (حتى في الخلفية أثناء التسجيل)
         loc.$location.compactMap { $0 }
             .sink { l in

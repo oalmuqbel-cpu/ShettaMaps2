@@ -7,6 +7,7 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var context
     @EnvironmentObject private var location: LocationManager
     @EnvironmentObject private var carPlay: CarPlayConnectionMonitor
+    @AppStorage(LiveActivityController.enabledKey) private var liveActivity = true
     @AppStorage(SettingsKeys.batteryMode) private var batteryRaw = BatteryMode.balanced.rawValue
     @AppStorage(SettingsKeys.autoRecordTrips) private var autoRecord = true
     @AppStorage(SettingsKeys.autoPauseMinutes) private var autoPauseMinutes = 15.0
@@ -80,6 +81,7 @@ struct SettingsView: View {
                         ForEach(SpeedAlertSettings.marginOptions, id: \.self) { Text(SpeedAlertSettings.marginText($0)).tag($0) }
                     }
                     Toggle("صوت مع التنبيه", isOn: $speedSound)
+                    Toggle("الملاحة على شاشة القفل", isOn: $liveActivity)
                 }
             } header: { Text("الملاحة والسرعة") } footer: {
                 Text("الهامش يحدد متى يصدر التنبيه فقط، ولا يغيّر الحد النظامي المعروض. الحدود من بيانات OpenStreetMap، ولا يُعرض حد لطريق ليس له حد مسجل. تُطبَّق هذه الإعدادات على الهاتف وشاشة السيارة معًا، والتزم دائمًا باللوحات على الطريق.")

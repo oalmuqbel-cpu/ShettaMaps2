@@ -38,6 +38,7 @@ targets:
       - sdk: CarPlay.framework
       - sdk: MapKit.framework
       - sdk: CoreLocation.framework
+      - target: SamtWidgets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.almuqbel.ShettaMaps2
@@ -54,6 +55,29 @@ targets:
         # المحاكي: مع صلاحية CarPlay لاختبار CarPlay Simulator داخل Xcode
         "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": ShettaMaps2/Resources/ShettaMaps2-CarPlay.entitlements
         ENABLE_PREVIEWS: YES
+
+  # النشاط المباشر للملاحة (شاشة القفل والجزيرة الديناميكية)
+  SamtWidgets:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: SamtWidgets
+        excludes:
+          - "Info.plist"
+      - path: ShettaMaps2/Shared/NavigationActivity.swift
+    dependencies:
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.almuqbel.ShettaMaps2.Widgets
+        PRODUCT_NAME: SamtWidgets
+        INFOPLIST_FILE: SamtWidgets/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
 
   ShettaMaps2Tests:
     type: bundle.unit-test
