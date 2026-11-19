@@ -4,7 +4,7 @@ name: Build and Test
 on:
   push:
     # البيانات والأدوات لا تحتاج بناء التطبيق
-    paths-ignore: ["docs/**", "tools/**", "ci/probe/**", ".github/workflows/rain-forecast.yml", ".github/workflows/probe.yml"]
+    paths-ignore: ["docs/**", "notes/**", "tools/**", "ci/probe/**", ".github/workflows/rain-forecast.yml", ".github/workflows/probe.yml"]
   workflow_dispatch:
     inputs:
       runner:
