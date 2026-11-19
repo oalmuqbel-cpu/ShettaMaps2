@@ -225,7 +225,7 @@ final class FollowService: ObservableObject {
                 guard !convoyAlerted.contains(key) else { continue }
                 convoyAlerted.insert(key)
                 post(id: "convoy-\(key)", title: "القافلة",
-                     body: stale ? "\(t.displayName): لم يتحدث موقعه منذ أكثر من ١٠ دقائق."
+                     body: stale ? "\(t.displayName): لم يتحدث موقعه منذ أكثر من 10 دقائق."
                                  : "\(t.displayName) ابتعد عنك \(Int(km.rounded())) كم.")
             } else {
                 convoyAlerted.remove(t.id + "-far"); convoyAlerted.remove(t.id + "-stale")

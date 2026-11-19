@@ -37,7 +37,7 @@ struct ConvoyView: View {
 
     @ViewBuilder private var setupSections: some View {
         Section {
-            Text("كل عضو يبدأ القافلة من جواله ويختار البقية. يُرسَل موقع كل عضو كل ٤٥ ثانية تقريبًا، ويصلك تنبيه إذا ابتعد أحدهم أكثر من الحد الذي تختاره أو انقطع موقعه.")
+            Text("كل عضو يبدأ القافلة من جواله ويختار البقية. يُرسَل موقع كل عضو كل 45 ثانية تقريبًا، ويصلك تنبيه إذا ابتعد أحدهم أكثر من الحد الذي تختاره أو انقطع موقعه.")
                 .font(.footnote).foregroundStyle(.secondary)
         }
         Section("اسمك في القافلة") {
@@ -60,7 +60,7 @@ struct ConvoyView: View {
                     }
                 }
             }
-        } header: { Text("الأعضاء") } footer: { Text("حتى ١٠ أعضاء.") }
+        } header: { Text("الأعضاء") } footer: { Text("حتى 10 أعضاء.") }
         distanceSection
         Section {
             if otherTripActive {
@@ -79,10 +79,10 @@ struct ConvoyView: View {
     private var distanceSection: some View {
         Section {
             Picker("نبّهني إذا ابتعد عضو أكثر من", selection: $maxKm) {
-                Text("٢ كم").tag(2.0)
-                Text("٥ كم").tag(5.0)
-                Text("١٠ كم").tag(10.0)
-                Text("٢٠ كم").tag(20.0)
+                Text("2 كم").tag(2.0)
+                Text("5 كم").tag(5.0)
+                Text("10 كم").tag(10.0)
+                Text("20 كم").tag(20.0)
             }
         }
     }
@@ -140,6 +140,8 @@ struct ConvoyView: View {
                         .foregroundStyle(far ? .orange : .primary)
                 }
             }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 }
