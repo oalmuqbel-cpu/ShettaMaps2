@@ -4,7 +4,7 @@ import SwiftData
 
 /// تصنيفات البحث الصحراوي.
 enum PlaceKind: String, CaseIterable, Identifiable, Codable {
-    case all, mountain, valley, rawdah, nafud, shaib, camp, water, coldWater, cave, fuel, landmark, saved
+    case all, mountain, valley, rawdah, nafud, shaib, camp, water, coldWater, cave, fuel, landmark, town, service, saved
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -20,6 +20,8 @@ enum PlaceKind: String, CaseIterable, Identifiable, Codable {
         case .cave: return "غيران"
         case .fuel: return "محطات وقود"
         case .landmark: return "معالم"
+        case .town: return "مدن وقرى"
+        case .service: return "خدمات"
         case .saved: return "محفوظة"
         }
     }
@@ -37,12 +39,17 @@ enum PlaceKind: String, CaseIterable, Identifiable, Codable {
         case .cave: return "flashlight.on.fill"
         case .fuel: return "fuelpump.fill"
         case .landmark: return "building.columns"
+        case .town: return "house.and.flag"
+        case .service: return "cross.case"
         case .saved: return "bookmark"
         }
     }
 
     /// أنواع الأماكن المعروفة التي تظهر أسماؤها على الخريطة (للفلترة).
-    static let mapKinds: [PlaceKind] = [.rawdah, .nafud, .mountain, .valley, .shaib, .water, .cave, .fuel, .camp, .landmark]
+    static let mapKinds: [PlaceKind] = [.rawdah, .nafud, .mountain, .valley, .shaib, .water, .cave, .fuel, .camp, .landmark, .town, .service]
+
+    /// أنواع لا تظهر على الخريطة مع «الكل» (أسماء المدن والقرى موجودة أصلًا في الخريطة)، بل عند اختيارها صراحة.
+    static let hiddenByDefault: Set<PlaceKind> = [.town, .service]
 
     /// «مياه» في الفلتر تشمل الماء البارد أيضًا (التفصيل في الشريط الفرعي).
     static func expand(_ set: Set<PlaceKind>) -> Set<PlaceKind> {
@@ -188,16 +195,19 @@ final class SearchService: ObservableObject {
             gazetteer = []; return
         }
         // التحليل في الخلفية لأن القاعدة كبيرة
-        let extraURL = Self.extraURL
+        let extraURL = Self.extraURL, townsURL = Self.townsURL
         Task.detached(priority: .userInitiated) {
             let base = (try? Data(contentsOf: url)).flatMap { try? SearchService.parseGeoJSON($0) } ?? []
             let extra = (try? Data(contentsOf: extraURL)).flatMap { try? SearchService.parseGeoJSON($0) } ?? []
+            let towns = (try? Data(contentsOf: townsURL)).flatMap { try? SearchService.parseGeoJSON($0) } ?? []
             await MainActor.run {
                 self.baseEntries = base
                 self.extraEntries = extra
+                self.townEntries = towns
                 self.rebuildIndex()
             }
             await self.refreshExtra()
+            await self.refreshTowns()
         }
     }
 
@@ -211,11 +221,20 @@ final class SearchService: ObservableObject {
     }
     private var baseEntries: [GazetteerEntry] = []
     private var extraEntries: [GazetteerEntry] = []
+    /// المدن والقرى والهجر والأحياء والخدمات (OpenStreetMap + GeoNames)، ملف منفصل يُنزَّل مرة ويبقى دون إنترنت.
+    private var townEntries: [GazetteerEntry] = []
+    nonisolated static let townsRemote = URL(string: "https://oalmuqbel-cpu.github.io/ShettaMaps2/data/places-towns.geojson")!
+    nonisolated static var townsURL: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("places-towns.geojson")
+    }
+    /// عدد المدن والقرى المنزلة (لعرضه في الإعدادات).
+    var townsCount: Int { townEntries.count }
     /// مصادر الطبقات الإضافية للعرض في الإعدادات.
     @Published private(set) var extraSources: [String: Int] = [:]
 
     private func rebuildIndex() {
-        let all = baseEntries + extraEntries
+        let all = baseEntries + extraEntries + townEntries
         gazetteer = all
         // فهرس البحث (تطبيع الأسماء العربية لأكثر من ٢٦ ألف مكان) يُبنى خارج الواجهة حتى لا تعلق الخريطة عند التشغيل
         indexWork?.cancel()
@@ -250,6 +269,26 @@ final class SearchService: ObservableObject {
         UserDefaults.standard.set(Date(), forKey: key)
         UserDefaults.standard.set(build, forKey: "extraPlacesBuild")
         extraEntries = entries
+        rebuildIndex()
+    }
+
+    /// تحديث المدن والقرى (مرة أسبوعيًا على الأكثر؛ الملف كبير نسبيًا ويتغير ببطء).
+    func refreshTowns(force: Bool = false) async {
+        let key = "townsFetchedAt"
+        let haveFile = FileManager.default.fileExists(atPath: Self.townsURL.path)
+        if !force, haveFile, let last = UserDefaults.standard.object(forKey: key) as? Date,
+           Date().timeIntervalSince(last) < 7 * 86_400 { return }
+        guard NetworkMonitor.shared.isOnline else { return }
+        var req = URLRequest(url: Self.townsRemote, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 60)
+        req.setValue("Samt/1.0", forHTTPHeaderField: "User-Agent")
+        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let entries = try? await Task.detached(priority: .utility, operation: { try SearchService.parseGeoJSON(data) }).value,
+              entries.count > 1000 else { return }
+        try? FileManager.default.createDirectory(at: Self.townsURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? data.write(to: Self.townsURL, options: .atomic)
+        UserDefaults.standard.set(Date(), forKey: key)
+        townEntries = entries
         rebuildIndex()
     }
 
@@ -325,7 +364,7 @@ final class SearchService: ObservableObject {
         for item in normalizedIndex {
             let e = item.entry
             guard (sw.latitude...ne.latitude).contains(e.lat), (sw.longitude...ne.longitude).contains(e.lon),
-                  kinds.isEmpty || kinds.contains(e.kind),
+                  kinds.isEmpty ? !PlaceKind.hiddenByDefault.contains(e.kind) : kinds.contains(e.kind),
                   waterSubs.isEmpty || WaterSub.of(e).map({ waterSubs.contains($0) }) ?? true,
                   key.isEmpty || item.keys.contains(where: { $0.contains(key) }) else { continue }
             found.append(e)

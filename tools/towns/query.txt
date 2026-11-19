@@ -1,0 +1,8 @@
+[out:json][timeout:900][maxsize:1073741824];
+area["ISO3166-1"="__CC__"][admin_level=2]->.a;
+(
+  node["place"~"^(city|town|village|hamlet|suburb|neighbourhood|quarter|farm)$"]["name"](area.a);
+  nwr["amenity"~"^(hospital|clinic|police|fire_station)$"](area.a);
+  nwr["healthcare"="hospital"](area.a);
+);
+out center tags;

@@ -112,7 +112,7 @@ struct MapScreen: View {
                             navigation: navigation.snapshot,
                             currentLocation: location.location?.coordinate,
                             picked: mapManager.pickedCoordinate,
-                            extraPins: landmarkPins + communityPins + shownTrackPins + followPins,
+                            extraPins: landmarkPins + communityPins + shownTrackPins + followPins + (mapManager.searchPin.map { [$0] } ?? []),
                             extraLines: myTracksLines
                                 + (router.shownTrack?.segments ?? []).map { .init(kind: .importedTrack, coordinates: $0) }
                                 + communityTrackLines)
@@ -384,7 +384,10 @@ struct MapScreen: View {
         if let pin = mapManager.selectedPin {
             PlaceCard(title: pin.title, subtitle: pin.subtitle, detail: distanceText(to: pin.coordinate),
                       coordinateText: CoordinateUtilities.format(pin.coordinate, as: .decimal),
-                      primary: pinPrimaryActions(pin), more: pinMoreActions(pin)) { mapManager.selectedPin = nil }
+                      primary: pinPrimaryActions(pin), more: pinMoreActions(pin)) {
+                if mapManager.searchPin?.id == pin.id { mapManager.searchPin = nil }
+                mapManager.selectedPin = nil
+            }
         } else if showPickedOptions, let c = mapManager.pickedCoordinate {
             PlaceCard(title: "نقطة محددة", detail: distanceText(to: c),
                       coordinateText: CoordinateUtilities.format(c, as: .decimal),

@@ -90,6 +90,8 @@ final class MapManager: ObservableObject {
     @Published var is3D = false
     /// علامة ضغط عليها المستخدم على الخريطة (مكان معروف، روضة، مكان محفوظ...).
     @Published var selectedPin: MapOverlaySet.Pin?
+    /// نتيجة بحث معروضة على الخريطة كعلامة مؤقتة (مثل نتائج خرائط Apple التي لا يُسمح بتخزينها)، حتى يحفظها المستخدم أو يغلقها.
+    @Published var searchPin: MapOverlaySet.Pin?
     @Published private(set) var command: MapCommand?
     @Published private(set) var commandID = 0
 

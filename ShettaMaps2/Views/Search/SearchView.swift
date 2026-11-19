@@ -127,7 +127,7 @@ struct SearchView: View {
                 Text(Fmt.distance(GeoMath.distance(here, r.coordinate))).font(.caption).foregroundStyle(.secondary)
             }
             Menu {
-                Button { mapManager.send(.focus(r.coordinate, spanMeters: 4000)); dismiss(); router.showOnMap() } label: {
+                Button { showOnMap(r) } label: {
                     Label("عرض على الخريطة", systemImage: "map")
                 }
                 Button { navigation.navigate(to: r.waypoint); dismiss(); router.showOnMap() } label: {
@@ -144,6 +144,21 @@ struct SearchView: View {
                 }
             } label: { Image(systemName: "ellipsis.circle").font(.title3) }
         }
+        // الضغط على النتيجة يعرضها على الخريطة مع بطاقتها مباشرة
+        .contentShape(Rectangle())
+        .onTapGesture { showOnMap(r) }
+    }
+
+    /// عرض النتيجة على الخريطة بعلامة وبطاقتها (الحفظ والملاحة)، فتبقى ظاهرة حتى تُغلق.
+    private func showOnMap(_ r: SearchResult) {
+        let pin = MapOverlaySet.Pin(id: "s-\(r.id)", title: r.name, subtitle: r.subtitle.isEmpty ? r.kind.title : r.subtitle,
+                                    coordinate: r.coordinate, kind: r.source == .saved ? .saved : .search,
+                                    symbol: r.source == .online ? "magnifyingglass" : r.kind.icon)
+        mapManager.searchPin = r.source == .saved ? nil : pin
+        mapManager.send(.focus(r.coordinate, spanMeters: 4000))
+        mapManager.selectedPin = pin
+        dismiss()
+        router.showOnMap()
     }
 
     private func runOnline() async {
