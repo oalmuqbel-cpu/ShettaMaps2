@@ -43,6 +43,14 @@ final class SafeTripManager: ObservableObject {
         }
     }
 
+    #if DEBUG
+    /// لقطات الشاشة فقط: قافلة عرض دون رفع.
+    func injectDemoConvoy(watchers: [SamtContact]) {
+        state = State(token: "demo-convoy-000000000000", name: "عمر", contact: "", hours: 12, startedAt: Date(),
+                      watchers: watchers, convoy: true)
+    }
+    #endif
+
     private func save() {
         if let s = state, let d = try? JSONEncoder().encode(s) {
             UserDefaults.standard.set(d, forKey: "safeTrip.state")

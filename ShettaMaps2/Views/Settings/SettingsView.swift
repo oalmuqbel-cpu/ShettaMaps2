@@ -31,6 +31,7 @@ struct SettingsView: View {
     @State private var message: String?
 
     var body: some View {
+        ScrollViewReader { proxy in
         Form {
             Section("الموقع") {
                 LabeledContent("الإذن", value: authorizationText)
@@ -89,7 +90,7 @@ struct SettingsView: View {
 
             FuelRangeSection()
 
-            ProximitySection()
+            ProximitySection().id("proximity")
 
             Section {
                 NavigationLink("مصدر الخرائط دون إنترنت") { MapSourceSettingsView() }
@@ -152,6 +153,14 @@ struct SettingsView: View {
                 Text("محرك الخرائط دون إنترنت: MapLibre Native (رخصة BSD-2). الخرائط دون إنترنت: OpenFreeMap. الخرائط عبر الإنترنت: Apple MapKit.").font(.footnote)
                 Text("أسماء الأماكن المعروفة: © OpenStreetMap contributors، متاحة بموجب رخصة Open Database License (ODbL).").font(.footnote)
             }
+        }
+        #if DEBUG
+        .task {
+            guard GuideScreens.requested == "proximity" else { return }
+            try? await Task.sleep(for: .seconds(3))
+            proxy.scrollTo("proximity", anchor: .top)
+        }
+        #endif
         }
         .navigationTitle("الإعدادات")
         .sheet(item: Binding(get: { backupURL.map(ShareItem.init) }, set: { backupURL = $0?.url })) { ShareSheet(items: [$0.url]) }

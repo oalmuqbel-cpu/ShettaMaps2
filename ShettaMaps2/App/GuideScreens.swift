@@ -140,6 +140,20 @@ enum GuideScreens {
         case "weather":
             await WeatherService.shared.refresh(at: here, force: true)
             router.mapSheet = .weather
+        case "convoy":
+            let members = FollowService.shared.injectDemoConvoy(around: here)
+            SafeTripManager.shared.injectDemoConvoy(watchers: members)
+            router.mapSheet = .convoy
+        case "elevation":
+            seedTracks(around: here)
+            router.selectedSection = .tracks
+        case "nightsky":
+            await WeatherService.shared.refresh(at: here, force: true)
+            router.mapSheet = .weather
+        case "proximity":
+            UserDefaults.standard.set(true, forKey: ProximityAlerts.savedKey)
+            UserDefaults.standard.set(true, forKey: ProximityAlerts.waterKey)
+            router.selectedSection = .settings
         case "night":
             UserDefaults.standard.set(AppearanceMode.dark.rawValue, forKey: SettingsKeys.appearanceMode)
             AppearanceController.shared.update()
@@ -157,7 +171,8 @@ enum GuideScreens {
         for seg in 0..<legs {
             for i in 0..<40 {
                 p = GeoMath.destination(from: p, distance: 120, bearing: bearing + Double(seg) * 35 + sin(Double(i) / 5) * 12)
-                pts.append(TrackPoint(lat: p.latitude, lon: p.longitude, time: t, speed: 8, hAcc: 5, segment: seg))
+                let n = Double(seg * 40 + i)
+                pts.append(TrackPoint(lat: p.latitude, lon: p.longitude, alt: 640 + 35 * sin(n / 9) + n * 0.6, time: t, speed: 8, hAcc: 5, segment: seg))
                 t = t.addingTimeInterval(15)
             }
             t = t.addingTimeInterval(25 * 60)

@@ -35,6 +35,7 @@ struct WeatherView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
+        ScrollViewReader { proxy in
         List {
             if let r = weather.report {
                 let n = r.now
@@ -98,7 +99,7 @@ struct WeatherView: View {
                     .environment(\.layoutDirection, .rightToLeft)
                 }
                 if let night = DesertNight.make(at: location.location?.coordinate ?? r.coordinate, hours: r.allHours.isEmpty ? r.hours : r.allHours) {
-                    DesertNightSection(night: night)
+                    DesertNightSection(night: night).id("night")
                 }
                 if !r.days.isEmpty {
                     Section {
@@ -129,6 +130,14 @@ struct WeatherView: View {
             } footer: {
                 Text("توقعات نماذج الطقس، وقد تختلف عن الواقع خصوصًا في الغبار المحلي. تابع تنبيهات المركز الوطني للأرصاد.")
             }
+        }
+        #if DEBUG
+        .task {
+            guard GuideScreens.requested == "nightsky" else { return }
+            try? await Task.sleep(for: .seconds(4))
+            proxy.scrollTo("night", anchor: .top)
+        }
+        #endif
         }
         .navigationTitle("الطقس")
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("إغلاق") { dismiss() } } }

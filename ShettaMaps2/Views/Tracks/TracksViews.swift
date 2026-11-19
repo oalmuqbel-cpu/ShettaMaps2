@@ -46,6 +46,7 @@ struct TracksListView: View {
             }
             .onDelete { idx in pendingDelete = idx.map { tracks[$0] } }
         }
+        .modifier(GuideAutoOpenTrack(track: tracks.first))
         .confirmationDialog(pendingDelete.count == 1 ? "حذف المسار «\(pendingDelete.first?.name ?? "")»؟" : "حذف \(pendingDelete.count) مسارات؟",
                             isPresented: Binding(get: { !pendingDelete.isEmpty }, set: { if !$0 { pendingDelete = [] } }),
                             titleVisibility: .visible) {
@@ -511,5 +512,24 @@ struct TrackTrimView: View {
         }
         try? context.save()
         dismiss()
+    }
+}
+
+/// لقطات الشاشة فقط: يفتح أول مسار تلقائيًا لعرض مقطع الارتفاع.
+private struct GuideAutoOpenTrack: ViewModifier {
+    let track: RecordedTrack?
+    @State private var open = false
+    func body(content: Content) -> some View {
+        #if DEBUG
+        content
+            .navigationDestination(isPresented: $open) { if let track { TrackDetailView(track: track) } }
+            .task {
+                guard GuideScreens.requested == "elevation" else { return }
+                try? await Task.sleep(for: .seconds(3))
+                open = track != nil
+            }
+        #else
+        content
+        #endif
     }
 }

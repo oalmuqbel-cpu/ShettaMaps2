@@ -312,6 +312,20 @@ final class FollowService: ObservableObject {
         ]
         lastRefresh = now
     }
+
+    /// لقطات الشاشة: أعضاء قافلة عرض.
+    func injectDemoConvoy(around c: CLLocationCoordinate2D) -> [SamtContact] {
+        let now = Date()
+        let members = [("محمد", "u1", 0.006, 0.004, 1.0), ("عبدالله", "u2", -0.012, 0.018, 3.0), ("سعد", "u3", 0.05, 0.06, 14.0)]
+        contacts = members.map { SamtContact(code: "SAMT-\($0.1)", uid: $0.1, name: $0.0) }
+        trips = members.map { m in
+            FollowedTrip(id: "demo-\(m.1)", name: m.0, hours: 12, startedAt: now.addingTimeInterval(-3600),
+                         updatedAt: now.addingTimeInterval(-m.4 * 60), lat: c.latitude + m.2, lon: c.longitude + m.3,
+                         acc: 8, active: true, endedAt: nil, owner: m.1)
+        }
+        lastRefresh = now
+        return contacts
+    }
     #endif
 
     // MARK: - التحديث في الخلفية
