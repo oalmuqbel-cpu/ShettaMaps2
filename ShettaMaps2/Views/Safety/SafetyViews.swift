@@ -173,6 +173,13 @@ enum EmergencyContacts {
     static let enjadMobile = "0507911999"
     static let enjadWhatsApp = "966507911999"
     static let enjadX = URL(string: "https://x.com/enjad911")!
+    /// أرقام مختصة في المملكة.
+    static let services: [(title: String, number: String, icon: String)] = [
+        ("الهلال الأحمر (الإسعاف)", "997", "cross.case.fill"),
+        ("الدفاع المدني", "998", "flame.fill"),
+        ("الشرطة", "999", "shield.fill"),
+        ("أمن الطرق", "996", "car.side.fill")
+    ]
 }
 
 struct EmergencyView: View {
@@ -192,10 +199,41 @@ struct EmergencyView: View {
 
     var body: some View {
         List {
+            // موقعي أولًا: ما يحتاجه من يبحث عنك، بكل الصيغ، وأقرب بلدة معروفة
+            Section {
+                if let l = location.location {
+                    ForEach(CoordinateFormat.allCases) { f in
+                        HStack {
+                            Text(f.title).font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            Text(CoordinateUtilities.format(l.coordinate, as: f))
+                                .font(.system(.footnote, design: .monospaced).weight(.semibold))
+                                .environment(\.layoutDirection, .leftToRight)
+                                .textSelection(.enabled)
+                        }
+                    }
+                    if l.verticalAccuracy >= 0 { LabeledContent("الارتفاع", value: Fmt.altitude(l.altitude)) }
+                    LabeledContent("دقة الموقع", value: Fmt.accuracy(l.horizontalAccuracy))
+                    if let town = SearchService.shared.nearest(.town, to: l.coordinate, count: 1).first {
+                        LabeledContent("أقرب بلدة", value: "\(town.0.name) · \(Fmt.distance(town.1)) \(GeoMath.cardinalName(GeoMath.bearing(from: .init(latitude: town.0.lat, longitude: town.0.lon), to: l.coordinate)))")
+                    }
+                    Button {
+                        UIPasteboard.general.string = locationText
+                    } label: { Label("نسخ الموقع", systemImage: "doc.on.doc") }
+                } else {
+                    Text(locationText).font(.footnote)
+                }
+            } header: { Text("موقعي الآن") } footer: {
+                Text("«أقرب بلدة» تعني أنك في هذا الاتجاه منها، وهو ما يسأل عنه المنقذون عادة.")
+            }
+
             Section {
                 callRow(title: "الطوارئ الموحد", number: EmergencyContacts.unified, icon: "phone.fill", tint: .red)
+                ForEach(EmergencyContacts.services, id: \.number) { s in
+                    callRow(title: s.title, number: s.number, icon: s.icon, tint: .red)
+                }
             } footer: {
-                Text("رقم الطوارئ الموحد في المملكة.")
+                Text("رقم الطوارئ الموحد في المملكة، والأرقام المختصة.")
             }
 
             Section {
@@ -230,9 +268,7 @@ struct EmergencyView: View {
                 }
             } header: { Text("رقمي للطوارئ") }
 
-            Section("موقعي الحالي") {
-                Text(locationText).font(.footnote).textSelection(.enabled)
-            }
+
         }
         .navigationTitle("الطوارئ والمساعدة")
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("إغلاق") { dismiss() } } }
