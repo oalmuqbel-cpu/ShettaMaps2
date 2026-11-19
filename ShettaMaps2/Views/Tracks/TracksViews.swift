@@ -140,6 +140,7 @@ struct TrackDetailView: View {
     @EnvironmentObject private var mapManager: MapManager
     @Bindable var track: RecordedTrack
     @State private var points: [TrackPoint] = []
+    @State private var elevation: ElevationProfile?
     @State private var shareURL: URL?
     @State private var renaming = false
     @State private var newName = ""
@@ -199,6 +200,9 @@ struct TrackDetailView: View {
                 } footer: {
                     Text("يُقسم المسار عند كل وقفة تساوي مدة «الإيقاف التلقائي» في الإعدادات أو أطول. اضغط على جزء لعرضه، واسحب أو اضغط مطولًا للخيارات.")
                 }
+            }
+            if let profile = elevation {
+                Section("مقطع الارتفاع") { ElevationChart(profile: profile) }
             }
             Section("الإحصائيات") {
                 LabeledContent("المسافة", value: Fmt.distance(track.distanceMeters))
@@ -290,6 +294,7 @@ struct TrackDetailView: View {
             mapPosition = initialPosition
         }
         .onChange(of: track.pointCount) { _, _ in points = track.points }
+        .onChange(of: points.count, initial: true) { _, _ in elevation = ElevationProfile.make(from: points) }
         .sheet(isPresented: $sharing) { NavigationStack { ShareTrackView(track: track, points: points) } }
         .sheet(item: Binding(get: { shareURL.map(ShareItem.init) }, set: { shareURL = $0?.url })) { ShareSheet(items: [$0.url]) }
         .alert("إعادة التسمية", isPresented: $renaming) {
