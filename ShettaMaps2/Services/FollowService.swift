@@ -172,6 +172,7 @@ final class FollowService: ObservableObject {
                 .sorted { ($0.active ? 0 : 1, -$0.updatedAt.timeIntervalSince1970) < ($1.active ? 0 : 1, -$1.updatedAt.timeIntervalSince1970) }
             notifyChanges(old: trips, new: fresh)
             trips = fresh
+            checkConvoySpread()
             lastRefresh = Date()
             lastError = nil
             scheduleLateAlerts()
@@ -179,6 +180,50 @@ final class FollowService: ObservableObject {
             // دون اتصال: تبقى آخر بيانات وتنبيهات مجدولة كما هي
         } catch {
             lastError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    // MARK: - القافلة
+
+    /// أقصى مسافة بين أعضاء القافلة قبل التنبيه (كم).
+    static let convoyDistanceKey = "convoyMaxKm"
+    static var convoyMaxKm: Double {
+        let v = UserDefaults.standard.double(forKey: convoyDistanceKey)
+        return v > 0 ? v : 5
+    }
+    private var convoyAlerted: Set<String> = []
+    private var convoyLoop: Task<Void, Never>?
+
+    /// أعضاء القافلة النشطون (رحلاتهم الآمنة التي أضافوني فيها).
+    var convoyMembers: [FollowedTrip] { trips.filter { $0.active } }
+
+    /// تحديث متكرر ما دامت القافلة نشطة.
+    func startConvoyUpdates() {
+        convoyLoop?.cancel()
+        convoyLoop = Task { [weak self] in
+            while !Task.isCancelled, SafeTripManager.shared.isConvoy {
+                await self?.refresh()
+                try? await Task.sleep(for: .seconds(45))
+            }
+        }
+    }
+
+    /// تنبيه مرة واحدة إذا ابتعد عضو أكثر من الحد، أو تأخر تحديث موقعه أكثر من ١٠ دقائق.
+    private func checkConvoySpread() {
+        guard SafeTripManager.shared.isConvoy, let me = LocationManager.shared.location?.coordinate else { return }
+        for t in convoyMembers {
+            let km = GeoMath.distance(me, t.coordinate) / 1000
+            let stale = Date().timeIntervalSince(t.updatedAt) > 600
+            let key = t.id + (stale ? "-stale" : "-far")
+            if km > Self.convoyMaxKm || stale {
+                guard !convoyAlerted.contains(key) else { continue }
+                convoyAlerted.insert(key)
+                post(id: "convoy-\(key)", title: "القافلة",
+                     body: stale ? "\(t.displayName): لم يتحدث موقعه منذ أكثر من ١٠ دقائق."
+                                 : "\(t.displayName) ابتعد عنك \(Int(km.rounded())) كم.")
+            } else {
+                convoyAlerted.remove(t.id + "-far"); convoyAlerted.remove(t.id + "-stale")
+            }
         }
     }
 

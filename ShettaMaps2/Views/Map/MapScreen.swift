@@ -287,8 +287,8 @@ struct MapScreen: View {
         .onChange(of: router.mapSheet == nil) { _, closed in if !closed { filterFocused = false } }
         .onChange(of: showLayers) { _, open in if open { filterFocused = false } }
         .sheet(isPresented: $showLayers) {
-            LayersSheet(mapManager: mapManager, communityEnabled: community.isEnabled, safeTripActive: safeTrip.isActive,
-                        followingCount: follow.activeTrips.count) { action in
+            LayersSheet(mapManager: mapManager, communityEnabled: community.isEnabled, safeTripActive: safeTrip.isActive && !safeTrip.isConvoy,
+                        followingCount: follow.activeTrips.count, convoyActive: safeTrip.isConvoy) { action in
                 // ننتظر إغلاق اللوحة قبل فتح شاشة أخرى
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { performLayersAction(action) }
             }
@@ -339,6 +339,7 @@ struct MapScreen: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             Task { await follow.refresh() }
+            if safeTrip.isConvoy { follow.startConvoyUpdates() }
             refreshWeather()
         }
         .task {
@@ -792,6 +793,7 @@ struct MapScreen: View {
         case .fuel: showFuel = true
         case .safeTrip: router.mapSheet = .safeTrip
         case .following: router.mapSheet = .following
+        case .convoy: router.mapSheet = .convoy
         case .emergency: router.mapSheet = .emergency
         case .sendLocation: sendLocation()
         case .reportCoverage: requestCoverageReport()
@@ -883,6 +885,8 @@ struct MapScreen: View {
             NavigationStack { EmergencyView() }
         case .following:
             NavigationStack { FollowingView() }
+        case .convoy:
+            NavigationStack { ConvoyView() }
         case .weather:
             NavigationStack { WeatherView() }
         case .reviews(let key, let name):

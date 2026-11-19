@@ -21,6 +21,8 @@ final class SafeTripManager: ObservableObject {
         var lastUploadLon: Double?
         /// من أضفتهم بمعرّف سَمْت ليتابعوك من تطبيقهم.
         var watchers: [SamtContact]?
+        /// وضع القافلة: تحديث أسرع (كل ٤٥ ثانية أو ٣٠٠ م) ليرى الأعضاء بعضهم مباشرة.
+        var convoy: Bool?
     }
 
     @Published private(set) var state: State? {
@@ -30,6 +32,7 @@ final class SafeTripManager: ObservableObject {
     @Published private(set) var isUploading = false
 
     var isActive: Bool { state != nil }
+    var isConvoy: Bool { state?.convoy == true }
     var link: URL? { state.flatMap { URL(string: Self.pageBase + "?t=" + $0.token) } }
 
     private var pendingLocation: CLLocation?
@@ -81,9 +84,11 @@ final class SafeTripManager: ObservableObject {
 
     /// يبدأ رحلة آمنة ويعيد نص الرسالة المقترح إرسالها لجهة الاتصال.
     @discardableResult
-    func start(name: String, contact: String, hours: Int, watchers: [SamtContact] = [], location: CLLocation?) -> String {
+    func start(name: String, contact: String, hours: Int, watchers: [SamtContact] = [], convoy: Bool = false,
+               location: CLLocation?) -> String {
         let s = State(token: Self.makeToken(), name: String(name.trimmingCharacters(in: .whitespaces).prefix(40)),
-                      contact: contact, hours: max(1, min(72, hours)), startedAt: Date(), watchers: Array(watchers.prefix(10)))
+                      contact: contact, hours: max(1, min(72, hours)), startedAt: Date(), watchers: Array(watchers.prefix(10)),
+                      convoy: convoy ? true : nil)
         state = s
         lastError = nil
         scheduleReminder()
@@ -119,7 +124,8 @@ final class SafeTripManager: ObservableObject {
             return GeoMath.distance(.init(latitude: la, longitude: lo), loc.coordinate)
         }()
         let age = s.lastUploadAt.map { Date().timeIntervalSince($0) } ?? .infinity
-        guard age > 300 || moved > 1000 else { return }
+        let convoy = s.convoy == true
+        guard age > (convoy ? 45 : 300) || moved > (convoy ? 300 : 1000) else { return }
         guard NetworkMonitor.shared.isOnline else { return }
         Task { await upload(force: false) }
     }

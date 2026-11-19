@@ -7,6 +7,7 @@ struct LayersSheet: View {
     let communityEnabled: Bool
     let safeTripActive: Bool
     let followingCount: Int
+    var convoyActive: Bool = false
     /// ينفذ إجراء بعد إغلاق اللوحة.
     let perform: (LayersAction) -> Void
 
@@ -75,6 +76,7 @@ struct LayersSheet: View {
                             tool(safeTripActive ? "الرحلة الآمنة (مفعلة)" : "الرحلة الآمنة", "shield.lefthalf.filled", .safeTrip,
                                  highlight: safeTripActive)
                             tool(followingCount > 0 ? "أتابعهم (\(followingCount))" : "أتابعهم", "person.2.wave.2", .following)
+                            tool(convoyActive ? "القافلة (مفعلة)" : "القافلة", "car.2", .convoy, highlight: convoyActive)
                             tool("الطوارئ وإنجاد", "sos", .emergency, tint: .red)
                             tool("إرسال موقعي برسالة", "message", .sendLocation)
                             tool("بلّغ عن الشبكة هنا", "exclamationmark.bubble", .reportCoverage)
@@ -129,7 +131,7 @@ struct LayersSheet: View {
 }
 
 enum LayersAction {
-    case weather, fuel, safeTrip, following, emergency, sendLocation, reportCoverage
+    case weather, fuel, safeTrip, following, convoy, emergency, sendLocation, reportCoverage
 }
 
 private extension View {

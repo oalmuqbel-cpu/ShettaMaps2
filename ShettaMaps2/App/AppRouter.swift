@@ -37,6 +37,7 @@ enum MapSheet: Identifiable {
     case safeTrip
     case emergency
     case following
+    case convoy
     case weather
     case reviews(String, String)
 
@@ -52,6 +53,7 @@ enum MapSheet: Identifiable {
         case .safeTrip: return "safeTrip"
         case .emergency: return "emergency"
         case .following: return "following"
+        case .convoy: return "convoy"
         case .weather: return "weather"
         case .reviews(let k, _): return "reviews-\(k)"
         }
