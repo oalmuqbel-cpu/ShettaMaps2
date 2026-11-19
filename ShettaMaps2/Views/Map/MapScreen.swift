@@ -132,10 +132,11 @@ struct MapScreen: View {
     }
 
     /// تخفيف الازدحام: لا يظهر مكانان متقاربان جدًا على الشاشة (الأهم أولًا لأن القائمة مرتبة بالأولوية).
-    /// الشبكة قرابة ١٤ خانة بعرض الشاشة، أي علامة واحدة لكل ٤٠–٦٠ نقطة تقريبًا.
-    static func declutter(_ pins: [MapOverlaySet.Pin], region r: MKCoordinateRegion, columns: Double = 14) -> [MapOverlaySet.Pin] {
-        let cellLat = max(r.span.latitudeDelta / (columns * 1.6), 1e-6)
+    /// الشبكة ٩ خانات بعرض الشاشة (خانات مربعة على الأرض)، أي علامة واحدة لكل ٤٥ نقطة تقريبًا على الجوال.
+    static func declutter(_ pins: [MapOverlaySet.Pin], region r: MKCoordinateRegion, columns: Double = 9) -> [MapOverlaySet.Pin] {
         let cellLon = max(r.span.longitudeDelta / columns, 1e-6)
+        // درجة الطول أقصر من درجة العرض بمقدار جيب تمام خط العرض، فنجعل الخانة مربعة على الأرض
+        let cellLat = max(cellLon * cos(r.center.latitude * .pi / 180), 1e-6)
         var used = Set<Int64>()
         var out: [MapOverlaySet.Pin] = []
         for p in pins {
