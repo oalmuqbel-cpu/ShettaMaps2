@@ -41,29 +41,56 @@ enum Theme {
     }
 }
 
+/// نظام التصميم: مقاسات ومسافات وزوايا موحّدة لكل ما يطفو فوق الخريطة، حتى تتناسق الأحجام في الجوال والآيباد.
+enum DS {
+    /// مقاس كل زر عائم ومعلومة جانبية (عرض العمود).
+    static let control: CGFloat = 46
+    /// زاوية الأزرار المربعة الناعمة ومجموعاتها.
+    static let controlRadius: CGFloat = 13
+    /// زاوية البطاقات.
+    static let cardRadius: CGFloat = 16
+    /// المسافات.
+    static let xs: CGFloat = 4, s: CGFloat = 8, m: CGFloat = 12, l: CGFloat = 16
+    /// أقصى عرض للبطاقات العلوية على الشاشات الكبيرة (الآيباد) حتى لا تمتد بلا داعٍ.
+    static let panelMaxWidth: CGFloat = 460
+    static let actionBarMaxWidth: CGFloat = 620
+    /// خط أيقونات الأزرار: وزن وحجم واحد في كل مكان.
+    static let iconFont = Font.system(size: 17, weight: .semibold)
+    /// ظل واحد لكل العناصر العائمة.
+    static let shadow = Color.black.opacity(0.14)
+}
+
 /// بطاقة زجاجية للعناصر فوق الخريطة، مع دعم وضع التباين العالي للاستخدام تحت الشمس.
 struct HUDCard: ViewModifier {
     @AppStorage(SettingsKeys.highContrast) private var highContrast = false
+    var padding: CGFloat = 10
     func body(content: Content) -> some View {
         content
-            .padding(10)
+            .padding(padding)
             .background {
                 if highContrast {
-                    RoundedRectangle(cornerRadius: 14).fill(Color(uiColor: .systemBackground))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.primary, lineWidth: 2))
+                    RoundedRectangle(cornerRadius: DS.cardRadius, style: .continuous).fill(Color(uiColor: .systemBackground))
+                        .overlay(RoundedRectangle(cornerRadius: DS.cardRadius, style: .continuous).stroke(Color.primary, lineWidth: 2))
                 } else {
-                    RoundedRectangle(cornerRadius: 14).fill(.regularMaterial)
+                    RoundedRectangle(cornerRadius: DS.cardRadius, style: .continuous).fill(.regularMaterial)
                 }
             }
-            .shadow(color: .black.opacity(highContrast ? 0 : 0.15), radius: 6, y: 2)
+            .shadow(color: highContrast ? .clear : DS.shadow, radius: 8, y: 2)
     }
 }
 
 extension View {
-    func hudCard() -> some View { modifier(HUDCard()) }
+    func hudCard(padding: CGFloat = 10) -> some View { modifier(HUDCard(padding: padding)) }
+
+    /// خلفية موحّدة للأزرار والمعلومات العائمة (مربع ناعم الزوايا).
+    func floatingSurface(active: Bool = false) -> some View {
+        background(RoundedRectangle(cornerRadius: DS.controlRadius, style: .continuous)
+            .fill(active ? AnyShapeStyle(Theme.desertOrange) : AnyShapeStyle(.regularMaterial)))
+            .shadow(color: DS.shadow, radius: 6, y: 2)
+    }
 }
 
-/// زر دائري موحّد لأدوات الخريطة.
+/// زر عائم موحّد لأدوات الخريطة.
 struct MapControlButton: View {
     let systemImage: String
     let label: String
@@ -73,14 +100,60 @@ struct MapControlButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.title3.weight(.semibold))
-                .frame(width: 48, height: 48)
-                .foregroundStyle(isActive ? Color.white : tint)
-                .background(Circle().fill(isActive ? AnyShapeStyle(Theme.desertOrange) : AnyShapeStyle(.regularMaterial)))
-                .shadow(color: .black.opacity(0.15), radius: 4, y: 1)
+            MapControlGlyph(systemImage: systemImage, tint: tint, isActive: isActive)
+                .floatingSurface(active: isActive)
         }
+        .buttonStyle(.plain)
         .accessibilityLabel(label)
+    }
+}
+
+/// أيقونة زر عائم بلا خلفية (تُستخدم داخل مجموعة أزرار).
+struct MapControlGlyph: View {
+    let systemImage: String
+    var text: String? = nil
+    var tint: Color = Theme.brown
+    var isActive: Bool = false
+    var body: some View {
+        Group {
+            if let text {
+                Text(text).font(.system(size: 15, weight: .heavy, design: .rounded))
+            } else {
+                Image(systemName: systemImage).font(DS.iconFont)
+            }
+        }
+        .frame(width: DS.control, height: DS.control)
+        .foregroundStyle(isActive ? Color.white : tint)
+        .contentShape(Rectangle())
+    }
+}
+
+/// مجموعة أزرار متلاصقة بفواصل (مثل التكبير والتصغير)، بخلفية واحدة.
+struct MapControlGroup: View {
+    struct Item: Identifiable {
+        let id: String
+        let systemImage: String
+        var text: String? = nil
+        let label: String
+        var isActive = false
+        let action: () -> Void
+    }
+    let items: [Item]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(items.enumerated()), id: \.element.id) { i, item in
+                if i > 0 { Divider().frame(width: DS.control - 14) }
+                Button(action: item.action) {
+                    MapControlGlyph(systemImage: item.systemImage, text: item.text, isActive: item.isActive)
+                        .background(item.isActive ? Theme.desertOrange : Color.clear)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(item.label)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: DS.controlRadius, style: .continuous))
+        .floatingSurface()
     }
 }
 
@@ -95,15 +168,16 @@ struct ActionTile: View {
         Button(action: action) {
             VStack(spacing: 4) {
                 Image(systemName: systemImage)
-                    .font(.title3.weight(.semibold))
+                    .font(DS.iconFont)
                     .foregroundStyle(tint)
+                    .frame(height: 22)
                 Text(title)
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
-            .frame(maxWidth: .infinity, minHeight: 52)
+            .frame(maxWidth: .infinity, minHeight: 50)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -9,69 +9,125 @@ struct StatusHUD: View {
     @EnvironmentObject private var carPlay: CarPlayConnectionMonitor
     @AppStorage(SettingsKeys.coordinateFormat) private var formatRaw = CoordinateFormat.decimal.rawValue
     @State private var copied = false
+    @State private var showQibla = false
 
     private var format: CoordinateFormat { CoordinateFormat(rawValue: formatRaw) ?? .decimal }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            CompassDial(heading: location.currentHeadingDegrees)
-                .frame(width: 54, height: 54)
+        VStack(alignment: .leading, spacing: DS.s) {
+            HStack(alignment: .center, spacing: DS.m) {
+                Button { withAnimation(.easeInOut(duration: 0.2)) { showQibla.toggle() } } label: {
+                    // القرص مرسوم بمقاس ٥٤ ثم يُصغَّر لمقاس الأزرار الموحد
+                    CompassDial(heading: location.currentHeadingDegrees, qibla: qiblaBearing)
+                        .frame(width: 54, height: 54)
+                        .scaleEffect(DS.control / 54)
+                        .frame(width: DS.control, height: DS.control)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("اضغط لعرض اتجاه القبلة")
 
-            VStack(alignment: .leading, spacing: 4) {
-                if let loc = location.location {
-                    Text(CoordinateUtilities.format(loc.coordinate, as: format))
-                        .font(.system(.footnote, design: .monospaced).weight(.semibold))
-                        .environment(\.layoutDirection, .leftToRight)
+                VStack(alignment: .leading, spacing: 3) {
+                    if let loc = location.location {
+                        Text(CoordinateUtilities.format(loc.coordinate, as: format))
+                            .font(.system(.subheadline, design: .monospaced).weight(.semibold))
+                            .environment(\.layoutDirection, .leftToRight)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .onTapGesture { cycleFormat() }
+                            .onLongPressGesture {
+                                UIPasteboard.general.string = CoordinateUtilities.shareString(loc.coordinate)
+                                copied = true
+                            }
+                            .accessibilityHint("اضغط لتغيير الصيغة، واضغط مطولًا للنسخ")
+                        HStack(spacing: DS.m) {
+                            Label(Fmt.accuracy(loc.horizontalAccuracy), systemImage: "scope")
+                                .foregroundStyle(Theme.accuracyColor(loc.horizontalAccuracy))
+                            Label(Fmt.altitude(loc.verticalAccuracy >= 0 ? loc.altitude : nil), systemImage: "mountain.2")
+                            if let h = location.currentHeadingDegrees {
+                                Label(Fmt.bearing(h), systemImage: "location.north")
+                            }
+                        }
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .labelStyle(.titleAndIcon)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                        .onTapGesture { cycleFormat() }
-                        .onLongPressGesture {
-                            UIPasteboard.general.string = CoordinateUtilities.shareString(loc.coordinate)
-                            copied = true
-                        }
-                        .accessibilityHint("اضغط لتغيير الصيغة، واضغط مطولًا للنسخ")
-                    HStack(spacing: 10) {
-                        Label(Fmt.accuracy(loc.horizontalAccuracy), systemImage: "dot.radiowaves.left.and.right")
-                            .foregroundStyle(Theme.accuracyColor(loc.horizontalAccuracy))
-                        Label(Fmt.altitude(loc.verticalAccuracy >= 0 ? loc.altitude : nil), systemImage: "arrow.up.and.down")
-                        if let h = location.currentHeadingDegrees {
-                            Label(Fmt.bearing(h), systemImage: "safari")
-                        }
+                    } else if let last = location.lastKnownCoordinate {
+                        Text("آخر موقع معروف: " + CoordinateUtilities.format(last.0, as: .decimal))
+                            .font(.footnote)
+                        Text(Fmt.dateTime.string(from: last.1)).font(.caption2).foregroundStyle(.secondary)
+                    } else {
+                        Text("جارٍ تحديد الموقع…").font(.footnote)
                     }
-                    .font(.caption2)
-                    .labelStyle(.titleAndIcon)
-                } else if let last = location.lastKnownCoordinate {
-                    Text("آخر موقع معروف: " + CoordinateUtilities.format(last.0, as: .decimal))
-                        .font(.footnote)
-                    Text(Fmt.dateTime.string(from: last.1)).font(.caption2).foregroundStyle(.secondary)
-                } else {
-                    Text("جارٍ تحديد الموقع…").font(.footnote)
+                }
+                Spacer(minLength: 0)
+                // حالة الاتصال والخريطة: أيقونات صغيرة بدل نصوص، والتفاصيل لقارئ الشاشة
+                VStack(spacing: 6) {
+                    statusIcon(network.isOnline ? "wifi" : "wifi.slash", color: network.isOnline ? .green : .orange,
+                               label: network.isOnline ? "متصل بالإنترنت" : "دون اتصال")
+                    if let c = location.location?.coordinate {
+                        let covered = offlineMaps.hasOfflineCoverage(at: c)
+                        statusIcon(covered ? "map.fill" : "map", color: covered ? .green : .secondary,
+                                   label: covered ? "الخريطة محملة لهذه المنطقة" : "الخريطة غير محملة لهذه المنطقة")
+                    }
+                    if carPlay.isConnected {
+                        statusIcon("car.fill", color: Theme.desertOrange, label: "متصل بـ CarPlay")
+                    }
                 }
             }
-            Spacer(minLength: 0)
-            VStack(alignment: .trailing, spacing: 4) {
-                StatusChip(icon: network.isOnline ? "wifi" : "wifi.slash",
-                           text: network.isOnline ? "متصل" : "دون اتصال",
-                           color: network.isOnline ? .green : .orange)
-                if let c = location.location?.coordinate {
-                    let covered = offlineMaps.hasOfflineCoverage(at: c)
-                    StatusChip(icon: covered ? "checkmark.circle" : "xmark.circle",
-                               text: covered ? "خريطة محملة" : "غير محملة",
-                               color: covered ? .green : .gray)
+            if showQibla, let q = qiblaInfo {
+                HStack(spacing: DS.s) {
+                    KaabaMark().frame(width: 12, height: 12)
+                    Text("القبلة \(Fmt.bearing(q.bearing))").font(.footnote.weight(.semibold))
+                    Text("· مكة المكرمة على بعد \(Fmt.distance(q.distance))").font(.footnote).foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
                 }
-                if carPlay.isConnected {
-                    StatusChip(icon: "car", text: "CarPlay", color: Theme.desertOrange)
-                }
+                .transition(.opacity)
             }
         }
         .hudCard()
         .alert("تم نسخ الإحداثيات", isPresented: $copied) { Button("حسنًا", role: .cancel) {} }
     }
 
+    private var qiblaBearing: Double? { location.location.map { Qibla.bearing(from: $0.coordinate) } }
+
+    private var qiblaInfo: (bearing: Double, distance: Double)? {
+        guard let c = location.location?.coordinate else { return nil }
+        return (Qibla.bearing(from: c), Qibla.distance(from: c))
+    }
+
+    private func statusIcon(_ name: String, color: Color, label: String) -> some View {
+        Image(systemName: name)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(color)
+            .frame(width: 22, height: 18)
+            .accessibilityLabel(label)
+    }
+
     private func cycleFormat() {
         let all = CoordinateFormat.allCases
         let i = all.firstIndex(of: format) ?? 0
         formatRaw = all[(i + 1) % all.count].rawValue
+    }
+}
+
+/// اتجاه القبلة: الدائرة العظمى من الموقع إلى الكعبة المشرفة، بالنسبة للشمال الحقيقي.
+enum Qibla {
+    static let kaaba = CLLocationCoordinate2D(latitude: 21.422487, longitude: 39.826206)
+    static func bearing(from c: CLLocationCoordinate2D) -> Double { GeoMath.bearing(from: c, to: kaaba) }
+    static func distance(from c: CLLocationCoordinate2D) -> Double { GeoMath.distance(c, kaaba) }
+}
+
+/// رمز الكعبة الصغير: مربع داكن بحزام ذهبي.
+struct KaabaMark: View {
+    var body: some View {
+        GeometryReader { g in
+            let w = g.size.width
+            ZStack(alignment: .top) {
+                RoundedRectangle(cornerRadius: w * 0.12).fill(Color(white: 0.12))
+                Rectangle().fill(Color(red: 0.85, green: 0.68, blue: 0.25)).frame(height: max(1.5, w * 0.16)).offset(y: w * 0.24)
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 
@@ -91,10 +147,13 @@ struct StatusChip: View {
 /// الدوران يُحسب بأقصر طريق (لا تلف دورة كاملة عند المرور بين 359° و0°)، والرسم من اليسار لليمين دائمًا.
 struct CompassDial: View {
     let heading: Double?
+    /// اتجاه القبلة (درجات من الشمال الحقيقي)، يظهر علامة الكعبة على إطار البوصلة.
+    var qibla: Double? = nil
     @State private var angle: Double
 
-    init(heading: Double?) {
+    init(heading: Double?, qibla: Double? = nil) {
         self.heading = heading
+        self.qibla = qibla
         _angle = State(initialValue: -(heading ?? 0))
     }
 
@@ -118,6 +177,13 @@ struct CompassDial: View {
                 CompassNeedle()
                     .frame(width: 8, height: 30)
                     .opacity(heading == nil ? 0.35 : 1)
+                // علامة القبلة على الإطار: تدور مع القرص فتشير دائمًا لاتجاه الكعبة الفعلي
+                if let q = qibla {
+                    KaabaMark()
+                        .frame(width: 8, height: 8)
+                        .offset(y: -20)
+                        .rotationEffect(.degrees(q))
+                }
             }
             .rotationEffect(.degrees(angle))
             // مؤشر اتجاه الجوال (ثابت أعلى القرص)
@@ -321,24 +387,24 @@ struct SpeedBubble: View {
         ZStack(alignment: .topLeading) {
             VStack(spacing: -2) {
                 Text(speedMS.map { "\(Int(($0 * 3.6).rounded()))" } ?? "—")
-                    .font(.system(size: 24, weight: .heavy, design: .rounded))
+                    .font(.system(size: 19, weight: .heavy, design: .rounded))
                     .monospacedDigit()
                     .minimumScaleFactor(0.6)
                     .foregroundStyle(over ? Color.white : Color.primary)
                 Text("كم/س").font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(over ? Color.white.opacity(0.9) : Color.secondary)
             }
-            .frame(width: 62, height: 62)
+            .frame(width: DS.control + 4, height: DS.control + 4)
             .background(Circle().fill(over ? AnyShapeStyle(Color.red) : AnyShapeStyle(.regularMaterial)))
             .overlay(Circle().stroke(over ? Color.red : Theme.brown.opacity(0.35), lineWidth: over ? 3 : 1.5))
             .shadow(color: over ? .red.opacity(0.5) : .black.opacity(0.15), radius: over ? 8 : 4, y: 1)
             if let limit {
                 SpeedLimitSign(limit: limit)
-                    .offset(x: -16, y: -16)
+                    .offset(x: -14, y: -14)
             } else if limitNote != nil, let v = speedMS, v > 1.5 {
                 // حد غير معروف أثناء السير فقط: إشارة رمادية بلا رقم بدل تخمين حد
                 UnknownLimitSign()
-                    .offset(x: -16, y: -16)
+                    .offset(x: -14, y: -14)
             }
         }
         .environment(\.layoutDirection, .leftToRight)
@@ -377,5 +443,88 @@ struct SpeedLimitSign: View {
             .background(Circle().fill(.white))
             .overlay(Circle().stroke(Color.red, lineWidth: 4))
             .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
+    }
+}
+
+/// بطاقة المكان أسفل الخريطة (بدل نافذة الخيارات): الاسم والمسافة والإحداثيات، وأهم الإجراءات أزرارًا،
+/// وبقيتها في «المزيد». تعمل بنفس الشكل على الجوال والآيباد.
+struct PlaceCard: View {
+    struct Action: Identifiable {
+        let id: String
+        let title: String
+        let icon: String
+        var role: ButtonRole? = nil
+        let run: () -> Void
+    }
+
+    let title: String
+    var subtitle: String?
+    var detail: String?
+    let coordinateText: String
+    let primary: [Action]
+    var more: [Action] = []
+    let onClose: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DS.m) {
+            HStack(alignment: .top, spacing: DS.s) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title).font(.headline).lineLimit(2)
+                    if let subtitle, !subtitle.isEmpty {
+                        Text(subtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                    HStack(spacing: DS.s) {
+                        if let detail { Text(detail).font(.footnote.weight(.semibold)) }
+                        Text(coordinateText)
+                            .font(.system(.footnote, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .environment(\.layoutDirection, .leftToRight)
+                            .lineLimit(1).minimumScaleFactor(0.7)
+                    }
+                }
+                Spacer(minLength: 0)
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 30, height: 30)
+                        .background(Circle().fill(Color.secondary.opacity(0.15)))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("إغلاق")
+            }
+            HStack(spacing: DS.s) {
+                ForEach(Array(primary.enumerated()), id: \.element.id) { i, a in
+                    Button(action: a.run) {
+                        VStack(spacing: 4) {
+                            Image(systemName: a.icon).font(DS.iconFont)
+                            Text(a.title).font(.caption.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.75)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                        .foregroundStyle(i == 0 ? Color.white : Theme.brown)
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(i == 0 ? AnyShapeStyle(Theme.desertOrange) : AnyShapeStyle(Theme.sand)))
+                    }
+                    .buttonStyle(.plain)
+                }
+                if !more.isEmpty {
+                    Menu {
+                        ForEach(more) { a in
+                            Button(role: a.role, action: a.run) { Label(a.title, systemImage: a.icon) }
+                        }
+                    } label: {
+                        VStack(spacing: 4) {
+                            Image(systemName: "ellipsis").font(DS.iconFont)
+                            Text("المزيد").font(.caption.weight(.semibold))
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                        .foregroundStyle(Theme.brown)
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.sand))
+                    }
+                }
+            }
+        }
+        .hudCard(padding: DS.m)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 }

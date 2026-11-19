@@ -17,7 +17,8 @@ struct CarPlaySpeedOverlay: View {
             if showSpeed {
                 SpeedBubble(speedMS: speedMS, limit: limits.currentLimit, over: limits.isOver,
                             limitNote: limits.state.note)
-                    .padding(.top, 16).padding(.leading, 16) // مساحة لإشارة الحد فوق الفقاعة
+                    .scaleEffect(1.2, anchor: .topTrailing)  // أكبر قليلًا في شاشة السيارة
+                    .padding(.top, 18).padding(.leading, 18) // مساحة لإشارة الحد فوق الفقاعة
             }
         }
         // حجم ثابت ملتصق بأعلى يمين المساحة، فلا تنزاح الفقاعة لوسط الشاشة

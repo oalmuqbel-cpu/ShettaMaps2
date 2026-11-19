@@ -26,6 +26,7 @@ struct MapScreen: View {
     @Query(sort: \SavedPlace.name) private var places: [SavedPlace]
 
     @State private var showPickedOptions = false
+    @Environment(\.horizontalSizeClass) private var hSizeClass
     @State private var sendingLocation = false
     @State private var shareLocationText: String?
     @AppStorage(SettingsKeys.emergencyNumber) private var emergencyNumber = ""
@@ -181,11 +182,6 @@ struct MapScreen: View {
         return "قرّب للعرض"
     }
 
-    private var selectedPinTitle: String { mapManager.selectedPin?.title ?? "" }
-
-    private var pinDialogShown: Binding<Bool> {
-        Binding(get: { mapManager.selectedPin != nil }, set: { if !$0 { mapManager.selectedPin = nil } })
-    }
 
     private var mainStack: some View {
         ZStack {
@@ -193,7 +189,7 @@ struct MapScreen: View {
 
             overlayColumn
 
-            if showLandmarks || showCommunity || !dirtRoads.isEmpty {
+            if (showLandmarks || showCommunity || !dirtRoads.isEmpty) && !hasPlaceCard {
                 VStack {
                     Spacer()
                     HStack {
@@ -225,30 +221,44 @@ struct MapScreen: View {
         }
     }
 
+    /// على الآيباد (العرض الواسع) لا تمتد البطاقات بعرض الشاشة.
+    private var isWide: Bool { hSizeClass == .regular }
+
     private var overlayColumn: some View {
-        VStack(spacing: 8) {
-            StatusHUD()
-            if showLandmarks && !navigation.snapshot.isNavigating && !mapManager.isPickingPoint { placeFilterBar }
-            banners
-            // مفتاح ألوان التغطية أعلى الشاشة تحت الشريط، لا في وسط الخريطة
-            if showCoverage && !navigation.snapshot.isNavigating {
-                CoverageLegend(note: coverageNote)
+        VStack(spacing: DS.s) {
+            VStack(spacing: DS.s) {
+                StatusHUD()
+                if showLandmarks && !navigation.snapshot.isNavigating && !mapManager.isPickingPoint { placeFilterBar }
+                banners
+                // مفتاح ألوان التغطية أعلى الشاشة تحت الشريط، لا في وسط الخريطة
+                if showCoverage && !navigation.snapshot.isNavigating {
+                    CoverageLegend(note: coverageNote)
+                }
+                if showRainMap && !navigation.snapshot.isNavigating {
+                    RainPanel(forecast: rainForecast, observedService: rainNow, observed: $rainObserved)
+                }
+                if navigation.snapshot.isNavigating { NavigationPanel() }
+                if recorder.isActive { RecordingPanel(onStop: { showStopRecordingConfirm = true }) }
             }
-            if showRainMap && !navigation.snapshot.isNavigating {
-                RainPanel(forecast: rainForecast, observedService: rainNow, observed: $rainObserved)
-            }
-            if navigation.snapshot.isNavigating { NavigationPanel() }
-            if recorder.isActive { RecordingPanel(onStop: { showStopRecordingConfirm = true }) }
+            .frame(maxWidth: isWide ? DS.panelMaxWidth : .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
             Spacer()
             HStack(alignment: .bottom) {
                 secondaryControls
                 Spacer()
                 controls
             }
-            ActionBar(onRecordTap: toggleRecording)
+            Group {
+                if hasPlaceCard {
+                    placeCard.frame(maxWidth: isWide ? DS.panelMaxWidth : .infinity)
+                } else {
+                    ActionBar(onRecordTap: toggleRecording).frame(maxWidth: isWide ? DS.actionBarMaxWidth : .infinity)
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: hasPlaceCard)
         }
-        .padding(.horizontal, 12)
-        .padding(.bottom, 8)
+        .padding(.horizontal, DS.m)
+        .padding(.bottom, DS.s)
         // ظهور لوحة المفاتيح أو إغلاق شاشة فوق الخريطة لا يحرك الأزرار من أماكنها
         .ignoresSafeArea(.keyboard, edges: .bottom)
     }
@@ -348,37 +358,50 @@ struct MapScreen: View {
         }
     }
 
-    private func withPinDialogs<V: View>(_ v: V) -> some View {
-        v
-        .confirmationDialog("نقطة محددة", isPresented: $showPickedOptions, titleVisibility: .visible) {
-            if let c = mapManager.pickedCoordinate {
-                Button("حفظ الموقع") { router.mapSheet = .savePlace(c) }
-                Button("الملاحة إلى هذه النقطة") {
-                    navigation.navigate(to: Waypoint(name: "نقطة محددة", coordinate: c))
-                    mapManager.pickedCoordinate = nil
-                }
-                Button("إضافة إلى مخطط المسار") {
-                    router.plannerDraft.waypoints.append(Waypoint(name: "نقطة \(router.plannerDraft.waypoints.count + 1)", coordinate: c))
-                    mapManager.pickedCoordinate = nil
-                    router.mapSheet = .routePlanner
-                }
-                Button("نسخ الإحداثيات") {
-                    UIPasteboard.general.string = CoordinateUtilities.shareString(c)
-                    mapManager.pickedCoordinate = nil
-                }
-                Button("إلغاء", role: .cancel) { mapManager.pickedCoordinate = nil }
-            }
-        } message: {
-            if let c = mapManager.pickedCoordinate {
-                Text(CoordinateUtilities.format(c, as: .decimal))
-            }
+    /// الخيارات صارت بطاقة أسفل الخريطة (placeCard) بدل نافذة الخيارات التي لا تظهر على الآيباد.
+    private func withPinDialogs<V: View>(_ v: V) -> some View { v }
+
+    /// بطاقة النقطة المحددة أو المكان المضغوط عليه.
+    @ViewBuilder
+    private var placeCard: some View {
+        if let pin = mapManager.selectedPin {
+            PlaceCard(title: pin.title, subtitle: pin.subtitle, detail: distanceText(to: pin.coordinate),
+                      coordinateText: CoordinateUtilities.format(pin.coordinate, as: .decimal),
+                      primary: pinPrimaryActions(pin), more: pinMoreActions(pin)) { mapManager.selectedPin = nil }
+        } else if showPickedOptions, let c = mapManager.pickedCoordinate {
+            PlaceCard(title: "نقطة محددة", detail: distanceText(to: c),
+                      coordinateText: CoordinateUtilities.format(c, as: .decimal),
+                      primary: [
+                        .init(id: "nav", title: "الملاحة", icon: "location.north.line.fill") {
+                            navigation.navigate(to: Waypoint(name: "نقطة محددة", coordinate: c)); closePicked()
+                        },
+                        .init(id: "save", title: "حفظ", icon: "mappin.and.ellipse") { router.mapSheet = .savePlace(c); closePicked() },
+                        .init(id: "share", title: "مشاركة", icon: "square.and.arrow.up") {
+                            shareLocationText = CoordinateUtilities.shareString(c); closePicked()
+                        }
+                      ],
+                      more: [
+                        .init(id: "plan", title: "إضافة إلى مخطط المسار", icon: "point.3.connected.trianglepath.dotted") {
+                            router.plannerDraft.waypoints.append(Waypoint(name: "نقطة \(router.plannerDraft.waypoints.count + 1)", coordinate: c))
+                            closePicked(); router.mapSheet = .routePlanner
+                        },
+                        .init(id: "copy", title: "نسخ الإحداثيات", icon: "doc.on.doc") {
+                            UIPasteboard.general.string = CoordinateUtilities.shareString(c); closePicked()
+                        }
+                      ]) { closePicked() }
         }
-        .confirmationDialog(selectedPinTitle, isPresented: pinDialogShown,
-                            titleVisibility: .visible, presenting: mapManager.selectedPin) { (pin: MapOverlaySet.Pin) in
-            pinActions(pin)
-        } message: { (pin: MapOverlaySet.Pin) in
-            Text(pinMessage(pin))
-        }
+    }
+
+    private var hasPlaceCard: Bool { mapManager.selectedPin != nil || (showPickedOptions && mapManager.pickedCoordinate != nil) }
+
+    private func closePicked() {
+        showPickedOptions = false
+        mapManager.pickedCoordinate = nil
+    }
+
+    private func distanceText(to c: CLLocationCoordinate2D) -> String? {
+        guard let here = location.location?.coordinate else { return nil }
+        return "\(Fmt.distance(GeoMath.distance(here, c))) · \(Fmt.bearing(GeoMath.bearing(from: here, to: c)))"
     }
 
     private func withDialogs<V: View>(_ v: V) -> some View {
@@ -444,30 +467,22 @@ struct MapScreen: View {
 
     // MARK: - أدوات الخريطة
 
+    /// العمود الأساسي: الطبقات، ثم التكبير والتصغير معًا، ثم موقعي وتحديد نقطة معًا (مثل خرائط Apple).
     private var controls: some View {
-        VStack(spacing: 10) {
-            Button { showLayers = true } label: {
-                Image(systemName: "square.3.layers.3d")
-                    .font(.title3.weight(.semibold))
-                    .frame(width: 48, height: 48)
-                    .foregroundStyle(Theme.brown)
-                    .background(Circle().fill(.regularMaterial))
-                    .shadow(color: .black.opacity(0.15), radius: 4, y: 1)
-            }
-            .accessibilityLabel("الطبقات والأدوات")
-
-            MapControlButton(systemImage: "plus", label: "تكبير") { mapManager.send(.zoomIn) }
-            MapControlButton(systemImage: "minus", label: "تصغير") { mapManager.send(.zoomOut) }
-            MapControlButton(systemImage: mapManager.followsUser ? "location.fill" : "location",
-                             label: "موقعي الحالي", isActive: mapManager.followsUser) {
-                mapManager.send(.centerOnUser)
-            }
-            MapControlButton(systemImage: "scope", label: "تحديد نقطة من الخريطة",
-                             isActive: mapManager.isPickingPoint) {
-                mapManager.isPickingPoint.toggle()
-            }
+        VStack(spacing: DS.s) {
+            MapControlButton(systemImage: "square.3.layers.3d", label: "الطبقات والأدوات") { showLayers = true }
+            MapControlGroup(items: [
+                .init(id: "in", systemImage: "plus", label: "تكبير") { mapManager.send(.zoomIn) },
+                .init(id: "out", systemImage: "minus", label: "تصغير") { mapManager.send(.zoomOut) }
+            ])
+            MapControlGroup(items: [
+                .init(id: "me", systemImage: mapManager.followsUser ? "location.fill" : "location", label: "موقعي الحالي",
+                      isActive: mapManager.followsUser) { mapManager.send(.centerOnUser) },
+                .init(id: "pick", systemImage: "scope", label: "تحديد نقطة من الخريطة",
+                      isActive: mapManager.isPickingPoint) { mapManager.isPickingPoint.toggle() }
+            ])
         }
-        .padding(.bottom, 8)
+        .padding(.bottom, DS.s)
     }
 
     /// العمود الثاني: المنظور ثلاثي الأبعاد، مساراتي السابقة، والشمال.
@@ -486,8 +501,9 @@ struct MapScreen: View {
         return GeoMath.distance(c, r.coordinate) < 50_000
     }
 
+    /// العمود الثاني: المعلومات (الرياح والسرعة) بنفس عرض الأزرار، ثم أدوات العرض في مجموعة واحدة.
     private var secondaryControls: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: DS.s) {
             if showWind, let r = weather.report, isWeatherNearby(r) {
                 Button { router.mapSheet = .weather } label: { WindChip(now: r.now, mapHeading: mapManager.cameraHeading) }
                     .buttonStyle(.plain)
@@ -495,30 +511,26 @@ struct MapScreen: View {
             if showSpeed {
                 SpeedBubble(speedMS: currentSpeed, limit: speedLimits.currentLimit, over: speedLimits.isOver,
                             limitNote: speedLimits.state.note)
-                    .padding(.top, 14)
+                    .padding(.top, 12)
             }
-            Button { mapManager.send(.pitch(!mapManager.is3D)) } label: {
-                Text(mapManager.is3D ? "2D" : "3D")
-                    .font(.system(size: 15, weight: .heavy, design: .rounded))
-                    .frame(width: 48, height: 48)
-                    .foregroundStyle(mapManager.is3D ? Color.white : Theme.brown)
-                    .background(Circle().fill(mapManager.is3D ? AnyShapeStyle(Theme.desertOrange) : AnyShapeStyle(.regularMaterial)))
-                    .shadow(color: .black.opacity(0.15), radius: 4, y: 1)
-            }
-            .accessibilityLabel(mapManager.is3D ? "عرض مسطح" : "عرض ثلاثي الأبعاد")
-            MapControlButton(systemImage: "point.topleft.down.to.point.bottomright.curvepath",
-                             label: showMyTracks ? "إخفاء مساراتي السابقة" : "عرض كل مساراتي السابقة",
-                             isActive: showMyTracks) {
-                showMyTracks.toggle()
-                if showMyTracks, !myTracks.isEmpty, mapManager.visibleRegion.map({ $0.span.latitudeDelta > 3 }) ?? true {
-                    // تقريب على مكان المسارات إن كانت الخريطة بعيدة
-                    let pts = myTracks.prefix(30).compactMap { $0.points.first?.coordinate }
-                    if !pts.isEmpty { mapManager.send(.fit(pts)) }
-                }
-            }
-            MapControlButton(systemImage: "location.north.line", label: "توجيه الخريطة للشمال") { mapManager.send(.resetNorth) }
+            MapControlGroup(items: [
+                .init(id: "3d", systemImage: "view.3d", text: mapManager.is3D ? "2D" : "3D",
+                      label: mapManager.is3D ? "عرض مسطح" : "عرض ثلاثي الأبعاد", isActive: mapManager.is3D) {
+                    mapManager.send(.pitch(!mapManager.is3D))
+                },
+                .init(id: "tracks", systemImage: "point.topleft.down.to.point.bottomright.curvepath",
+                      label: showMyTracks ? "إخفاء مساراتي السابقة" : "عرض كل مساراتي السابقة", isActive: showMyTracks) {
+                    showMyTracks.toggle()
+                    if showMyTracks, !myTracks.isEmpty, mapManager.visibleRegion.map({ $0.span.latitudeDelta > 3 }) ?? true {
+                        // تقريب على مكان المسارات إن كانت الخريطة بعيدة
+                        let pts = myTracks.prefix(30).compactMap { $0.points.first?.coordinate }
+                        if !pts.isEmpty { mapManager.send(.fit(pts)) }
+                    }
+                },
+                .init(id: "north", systemImage: "location.north.line", label: "توجيه الخريطة للشمال") { mapManager.send(.resetNorth) }
+            ])
         }
-        .padding(.bottom, 8)
+        .padding(.bottom, DS.s)
     }
 
     // MARK: - التنبيهات
@@ -699,55 +711,47 @@ struct MapScreen: View {
 
     // MARK: - الضغط على مكان في الخريطة
 
-    @ViewBuilder
-    private func pinActions(_ pin: MapOverlaySet.Pin) -> some View {
-        Button("الملاحة إليه") {
-            navigation.navigate(to: Waypoint(name: pin.title, coordinate: pin.coordinate))
-            mapManager.selectedPin = nil
-        }
-        Button("طريق بالسيارة إن وُجد") {
-            navigation.navigate(to: Waypoint(name: pin.title, coordinate: pin.coordinate), mode: .road)
-            mapManager.selectedPin = nil
-        }
+    private func pinPrimaryActions(_ pin: MapOverlaySet.Pin) -> [PlaceCard.Action] {
+        var list: [PlaceCard.Action] = [
+            .init(id: "nav", title: "الملاحة", icon: "location.north.line.fill") {
+                navigation.navigate(to: Waypoint(name: pin.title, coordinate: pin.coordinate)); mapManager.selectedPin = nil
+            }
+        ]
         if pin.kind != .saved {
-            Button("حفظ في أماكني") { router.mapSheet = .savePlace(pin.coordinate); mapManager.selectedPin = nil }
+            list.append(.init(id: "save", title: "حفظ", icon: "mappin.and.ellipse") {
+                router.mapSheet = .savePlace(pin.coordinate); mapManager.selectedPin = nil
+            })
         }
-        Button("إضافة إلى مخطط المسار") {
-            router.plannerDraft.waypoints.append(Waypoint(name: pin.title, coordinate: pin.coordinate))
-            mapManager.selectedPin = nil
-            router.mapSheet = .routePlanner
-        }
-        if let key = ReviewsService.placeKey(forPinID: pin.id) {
-            Button("التقييمات والتعليقات") {
-                router.mapSheet = .reviews(key, pin.title)
-                mapManager.selectedPin = nil
-            }
-        }
-        if let link = search.entry(forPinID: pin.id)?.url, let url = URL(string: link) {
-            Button("فتح المصدر الأصلي") {
-                UIApplication.shared.open(url)
-                mapManager.selectedPin = nil
-            }
-        }
-        Button("نسخ الإحداثيات") {
-            UIPasteboard.general.string = CoordinateUtilities.shareString(pin.coordinate)
-            mapManager.selectedPin = nil
-        }
-        Button("مشاركة الموقع") {
-            shareLocationText = pin.title + "\n" + CoordinateUtilities.shareString(pin.coordinate)
-            mapManager.selectedPin = nil
-        }
-        Button("إلغاء", role: .cancel) { mapManager.selectedPin = nil }
+        list.append(.init(id: "share", title: "مشاركة", icon: "square.and.arrow.up") {
+            shareLocationText = pin.title + "\n" + CoordinateUtilities.shareString(pin.coordinate); mapManager.selectedPin = nil
+        })
+        return list
     }
 
-    private func pinMessage(_ pin: MapOverlaySet.Pin) -> String {
-        var parts: [String] = []
-        if let s = pin.subtitle, !s.isEmpty { parts.append(s) }
-        if let here = location.location?.coordinate {
-            parts.append("\(Fmt.distance(GeoMath.distance(here, pin.coordinate))) · \(Fmt.bearing(GeoMath.bearing(from: here, to: pin.coordinate)))")
+    private func pinMoreActions(_ pin: MapOverlaySet.Pin) -> [PlaceCard.Action] {
+        var list: [PlaceCard.Action] = [
+            .init(id: "road", title: "طريق بالسيارة إن وُجد", icon: "car") {
+                navigation.navigate(to: Waypoint(name: pin.title, coordinate: pin.coordinate), mode: .road); mapManager.selectedPin = nil
+            },
+            .init(id: "plan", title: "إضافة إلى مخطط المسار", icon: "point.3.connected.trianglepath.dotted") {
+                router.plannerDraft.waypoints.append(Waypoint(name: pin.title, coordinate: pin.coordinate))
+                mapManager.selectedPin = nil; router.mapSheet = .routePlanner
+            }
+        ]
+        if let key = ReviewsService.placeKey(forPinID: pin.id) {
+            list.append(.init(id: "reviews", title: "التقييمات والتعليقات", icon: "star.bubble") {
+                router.mapSheet = .reviews(key, pin.title); mapManager.selectedPin = nil
+            })
         }
-        parts.append(CoordinateUtilities.format(pin.coordinate, as: .decimal))
-        return parts.joined(separator: "\n")
+        if let link = search.entry(forPinID: pin.id)?.url, let url = URL(string: link) {
+            list.append(.init(id: "source", title: "فتح المصدر الأصلي", icon: "arrow.up.left.square") {
+                UIApplication.shared.open(url); mapManager.selectedPin = nil
+            })
+        }
+        list.append(.init(id: "copy", title: "نسخ الإحداثيات", icon: "doc.on.doc") {
+            UIPasteboard.general.string = CoordinateUtilities.shareString(pin.coordinate); mapManager.selectedPin = nil
+        })
+        return list
     }
 
     private func performLayersAction(_ a: LayersAction) {

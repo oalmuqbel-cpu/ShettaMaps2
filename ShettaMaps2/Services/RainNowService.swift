@@ -103,10 +103,10 @@ final class RainNowService: ObservableObject {
         return (minLat, minLon, max(minLat + 0.25, maxLat), max(minLon + 0.25, maxLon))
     }
 
-    /// أبعاد الصورة: دقة القمر قرابة ٤ كم (0.04°)، وحد أقصى ٢٢٠ نقطة في كل اتجاه.
+    /// أبعاد الصورة: دقة القمر قرابة ٤ كم، ونطلب حتى ٤٠٠ نقطة في كل اتجاه حتى تبدو الحواف ناعمة لا مربعات كبيرة.
     nonisolated static func pixels(for b: (Double, Double, Double, Double)) -> (Int, Int) {
         let spanLat = b.2 - b.0, spanLon = b.3 - b.1
-        let deg = max(0.04, max(spanLat, spanLon) / 220)
+        let deg = max(0.03, max(spanLat, spanLon) / 400)
         return (max(8, Int((spanLon / deg).rounded())), max(8, Int((spanLat / deg).rounded())))
     }
 
@@ -185,7 +185,7 @@ final class RainNowService: ObservableObject {
                 }
             }
             flush(w)
-            if out.count > 6000 { break }
+            if out.count > 12000 { break }
         }
         return out
     }

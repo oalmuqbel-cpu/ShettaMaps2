@@ -376,7 +376,7 @@ final class RainNowTests: XCTestCase {
         let b = RainNowService.requestBox(sw: .init(latitude: 5, longitude: 20), ne: .init(latitude: 40, longitude: 70))
         XCTAssertEqual(b.0, 10); XCTAssertEqual(b.1, 32); XCTAssertEqual(b.2, 36); XCTAssertEqual(b.3, 62)
         let (w, h) = RainNowService.pixels(for: b)
-        XCTAssertLessThanOrEqual(max(w, h), 221)
+        XCTAssertLessThanOrEqual(max(w, h), 401)
     }
 
     func testImageToCellsMergesRuns() {
@@ -435,5 +435,19 @@ final class WeatherDaysTests: XCTestCase {
         XCTAssertEqual(r?.days[1].weatherCode, 61)
         XCTAssertEqual(r?.allHours.count, 2)
         XCTAssertEqual(WeatherService.forecastDays, 14)
+    }
+}
+
+final class QiblaTests: XCTestCase {
+    func testQiblaFromRiyadhPointsWestSouthWest() {
+        // القبلة من الرياض قرابة 244° (غرب جنوب غرب) والمسافة قرابة ٧٩٠ كم
+        let riyadh = CLLocationCoordinate2D(latitude: 24.7136, longitude: 46.6753)
+        XCTAssertEqual(Qibla.bearing(from: riyadh), 244, accuracy: 2)
+        XCTAssertEqual(Qibla.distance(from: riyadh) / 1000, 790, accuracy: 10)
+    }
+
+    func testQiblaFromMadinahPointsSouth() {
+        let madinah = CLLocationCoordinate2D(latitude: 24.4672, longitude: 39.6111)
+        XCTAssertEqual(Qibla.bearing(from: madinah), 176, accuracy: 3)
     }
 }

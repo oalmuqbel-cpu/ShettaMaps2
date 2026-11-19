@@ -20,10 +20,10 @@ struct WindChip: View {
             Text("\(Int(now.windSpeed.rounded()))").font(.system(size: 13, weight: .bold, design: .rounded)).monospacedDigit()
             Text("كم/س").font(.system(size: 8, weight: .semibold)).foregroundStyle(.secondary)
         }
-        .frame(width: 52, height: 66)
-        .background(RoundedRectangle(cornerRadius: 14).fill(.regularMaterial))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(WeatherText.dustWarning(now) != nil ? Color.orange : .clear, lineWidth: 2))
-        .shadow(color: .black.opacity(0.15), radius: 4, y: 1)
+        .frame(width: DS.control, height: 62)
+        .floatingSurface()
+        .overlay(RoundedRectangle(cornerRadius: DS.controlRadius, style: .continuous)
+            .stroke(WeatherText.dustWarning(now) != nil ? Color.orange : .clear, lineWidth: 2))
         .accessibilityLabel("رياح \(WeatherText.windFrom(now.windDirection)) بسرعة \(Int(now.windSpeed)) كيلومتر في الساعة")
     }
 }
@@ -306,56 +306,72 @@ struct RainPanel: View {
     @ObservedObject var observedService: RainNowService
     @Binding var observed: Bool
     @State private var playing = false
+    /// بطاقة مدمجة: سطر واحد افتراضيًا، والتفاصيل عند فتحها.
+    @AppStorage("rainPanelExpanded") private var expanded = true
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: DS.s) {
+            // السطر الرئيسي: الحالة والوقت وزر التشغيل وزر الطي
+            HStack(spacing: DS.s) {
+                Image(systemName: observed ? "cloud.rain.fill" : "cloud.sun.rain.fill")
+                    .symbolRenderingMode(.multicolor)
+                    .font(.system(size: 17))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(observed ? "المطر الآن" : "توقعات الأمطار").font(.subheadline.weight(.semibold))
+                    Text(observed ? observedLabel : forecastLabel)
+                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                if observed ? observedService.loading : forecast.loading { ProgressView().controlSize(.small) }
+                if !observed && !forecast.frames.isEmpty {
+                    Button { playing.toggle() } label: {
+                        Image(systemName: playing ? "pause.fill" : "play.fill")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Theme.desertOrange)
+                            .frame(width: 32, height: 32)
+                            .background(Circle().fill(Theme.desertOrange.opacity(0.15)))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(playing ? "إيقاف" : "تشغيل حركة المطر")
+                }
+                Button { withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() } } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(expanded ? 180 : 0))
+                        .frame(width: 28, height: 32)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(expanded ? "طي التفاصيل" : "عرض التفاصيل")
+            }
+            if !observed && !forecast.frames.isEmpty {
+                Slider(value: Binding(get: { Double(forecast.index) },
+                                      set: { forecast.index = Int($0.rounded()); playing = false }),
+                       in: 0...Double(max(1, forecast.frames.count - 1)), step: 1)
+                    .environment(\.layoutDirection, .leftToRight)
+            }
+            if expanded {
                 Picker("", selection: $observed) {
                     Text("التوقعات").tag(false)
                     Text("الآن بالقمر الصناعي").tag(true)
                 }
                 .pickerStyle(.segmented)
-                .frame(maxWidth: 240)
-                Spacer(minLength: 4)
-                if observed ? observedService.loading : forecast.loading { ProgressView().controlSize(.small) }
-            }
-            if observed {
-                HStack {
-                    Text(observedLabel).font(.caption.weight(.semibold))
-                    Spacer()
-                    if observedService.failed { Text("تعذّر التحميل").font(.caption2).foregroundStyle(.red) }
-                }
-                legend
-                Text(RainNowService.attribution + "، تقدير بالقمر الصناعي وليس رادارًا أرضيًا، ويتأخر قرابة نصف ساعة.")
-                    .font(.system(size: 9)).foregroundStyle(.secondary)
-            } else if forecast.frames.isEmpty {
-                Text(forecast.failed ? "تعذّر تنزيل التوقعات، تحقق من الاتصال." : "جارٍ تنزيل التوقعات...")
-                    .font(.caption)
-            } else {
-                HStack(spacing: 10) {
-                    Button {
-                        playing.toggle()
-                    } label: {
-                        Image(systemName: playing ? "pause.fill" : "play.fill")
-                            .font(.system(size: 16, weight: .bold))
-                            .frame(width: 34, height: 34)
-                            .background(Circle().fill(Theme.desertOrange.opacity(0.18)))
-                    }
-                    .accessibilityLabel(playing ? "إيقاف" : "تشغيل حركة المطر")
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(forecastLabel).font(.caption.weight(.bold))
-                        Slider(value: Binding(get: { Double(forecast.index) },
-                                              set: { forecast.index = Int($0.rounded()); playing = false }),
-                               in: 0...Double(max(1, forecast.frames.count - 1)), step: 1)
-                            .environment(\.layoutDirection, .leftToRight)
-                    }
-                }
                 HStack {
                     legend
-                    Spacer()
-                    if let m = forecast.selected?.maxRate, m < 0.2 { Text("لا أمطار متوقعة").font(.caption2).foregroundStyle(.secondary) }
+                    Spacer(minLength: 4)
+                    if !observed, let m = forecast.selected?.maxRate, m < 0.2 {
+                        Text("لا أمطار متوقعة").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    if observed && observedService.failed {
+                        Text("تعذّر التحميل").font(.caption2).foregroundStyle(.red)
+                    }
                 }
-                Text(RainForecastService.attribution).font(.system(size: 9)).foregroundStyle(.secondary)
+                Text(observed ? RainNowService.attribution + "، تقدير بالقمر الصناعي ويتأخر قرابة نصف ساعة."
+                              : RainForecastService.attribution)
+                    .font(.system(size: 9)).foregroundStyle(.secondary)
+            }
+            if !observed && forecast.frames.isEmpty && forecast.failed {
+                Text("تعذّر تنزيل التوقعات، تحقق من الاتصال.").font(.caption)
             }
         }
         .hudCard()
@@ -381,7 +397,7 @@ struct RainPanel: View {
     }
 
     private var forecastLabel: String {
-        guard let t = forecast.selected?.time else { return "" }
+        guard let t = forecast.selected?.time else { return forecast.loading ? "جارٍ التنزيل" : "" }
         let hours = Int((t.timeIntervalSinceNow / 3600).rounded())
         let when = hours <= 0 ? "الآن" : (hours == 1 ? "بعد ساعة" : (hours == 2 ? "بعد ساعتين" : (hours <= 10 ? "بعد \(hours) ساعات" : "بعد \(hours) ساعة")))
         let f = DateFormatter()
