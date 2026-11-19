@@ -119,6 +119,8 @@ final class SharedNavigationState: ObservableObject {
     private func update(with loc: CLLocation) {
         guard let plan = snapshot.plan, snapshot.status != .idle else { return }
         let index = snapshot.progress?.targetIndex ?? persistedTargetIndex()
+        let ahead = NavigationEngine.skipAhead(plan: plan, targetIndex: index, current: loc.coordinate)
+        if ahead != index { setTarget(ahead); return }
         var p = NavigationEngine.progress(plan: plan, targetIndex: index, current: loc.coordinate,
                                           heading: location?.currentHeadingDegrees, speed: speed(of: loc))
         if NavigationEngine.hasArrived(p, accuracy: loc.horizontalAccuracy) {

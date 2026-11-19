@@ -299,6 +299,7 @@ struct NavigationPanel: View {
 /// لوحة التسجيل النشط.
 struct RecordingPanel: View {
     @EnvironmentObject private var recorder: RouteRecordingManager
+    @EnvironmentObject private var navigation: SharedNavigationState
     let onStop: () -> Void
 
     var body: some View {
@@ -323,6 +324,16 @@ struct RecordingPanel: View {
             }
             .buttonStyle(.bordered)
             .accessibilityLabel(recorder.state == .recording ? "إيقاف مؤقت" : "استئناف")
+            // العودة على نفس المسار المسجل حتى بدايته
+            Button {
+                let coords = recorder.liveSegments.flatMap { $0 }
+                if let plan = TrackBack.plan(coordinates: coords, current: LocationManager.shared.location?.coordinate, name: "المسار") {
+                    navigation.start(plan)
+                }
+            } label: { Image(systemName: "arrow.uturn.backward") }
+                .buttonStyle(.bordered)
+                .disabled(recorder.liveSegments.flatMap { $0 }.count < 2 || navigation.snapshot.isNavigating)
+                .accessibilityLabel("ارجع من نفس الطريق")
             Button(action: onStop) { Image(systemName: "stop.fill") }
                 .buttonStyle(.borderedProminent)
                 .tint(.red)

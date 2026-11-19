@@ -223,7 +223,12 @@ struct TrackDetailView: View {
                     Button {
                         navigation.navigate(to: Waypoint(name: "بداية \(track.name)", coordinate: start.coordinate))
                         router.showOnMap()
-                    } label: { Label("العودة إلى بداية المسار", systemImage: "arrow.uturn.backward") }
+                    } label: { Label("الملاحة المباشرة إلى بداية المسار", systemImage: "location.north.line") }
+                    Button {
+                        if let plan = TrackBack.plan(from: points, current: LocationManager.shared.location?.coordinate, name: track.name) {
+                            navigation.start(plan); router.showOnMap()
+                        }
+                    } label: { Label("ارجع من نفس الطريق", systemImage: "arrow.uturn.backward") }
                 }
                 Button { exportGPX() } label: { Label("تصدير GPX", systemImage: "square.and.arrow.up") }
                 if let pid = track.publicID {

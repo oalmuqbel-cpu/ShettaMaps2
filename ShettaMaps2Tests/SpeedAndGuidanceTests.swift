@@ -491,3 +491,31 @@ final class StoredZipTests: XCTestCase {
         XCTAssertThrowsError(try StoredZip.extract(z, to: FileManager.default.temporaryDirectory))
     }
 }
+
+final class TrackBackTests: XCTestCase {
+    private func line(_ n: Int, step: Double) -> [CLLocationCoordinate2D] {
+        (0..<n).map { CLLocationCoordinate2D(latitude: 24.7 + Double($0) * step, longitude: 46.7) }
+    }
+
+    func testReversedSampledEndsAtStart() {
+        let coords = line(101, step: 0.0005)   // قرابة ٥٫٥ كم بنقطة كل ٥٥ م
+        let plan = TrackBack.plan(coordinates: coords, current: coords.last, name: "مسار")!
+        XCTAssertEqual(plan.breadcrumb, true)
+        XCTAssertEqual(plan.destination.coordinate.latitude, coords[0].latitude, accuracy: 1e-9)
+        XCTAssertGreaterThan(plan.waypoints.count, 20)
+        XCTAssertLessThan(plan.waypoints.count, 35)
+        // الأولى قريبة من النهاية (موقعي الحالي)
+        XCTAssertGreaterThan(plan.waypoints[0].coordinate.latitude, coords[90].latitude)
+    }
+
+    func testSkipAheadWhenPassedWaypoint() {
+        let coords = line(101, step: 0.0005)
+        let plan = TrackBack.plan(coordinates: coords, current: coords.last, name: "مسار")!
+        // تجاوزت النقطة الأولى قليلًا وأنا بجانب الثالثة
+        let near3 = plan.waypoints[2].coordinate
+        XCTAssertEqual(NavigationEngine.skipAhead(plan: plan, targetIndex: 0, current: near3), 2)
+        // خطة عادية لا تتجاوز
+        var normal = plan; normal.breadcrumb = nil
+        XCTAssertEqual(NavigationEngine.skipAhead(plan: normal, targetIndex: 0, current: near3), 0)
+    }
+}

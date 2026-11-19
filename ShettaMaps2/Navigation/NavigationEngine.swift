@@ -16,6 +16,8 @@ struct NavigationPlan: Codable, Equatable {
     var destination: Waypoint
     var mode: GuidanceMode = .direct
     var tripID: UUID?
+    /// «ارجع من نفس الطريق»: نقاط كثيرة متقاربة على مسار مسجل، تُتجاوز تلقائيًا إذا مررت بجانبها.
+    var breadcrumb: Bool? = nil
 
     /// الأهداف بالترتيب (نقاط المرور ثم الوجهة).
     var targets: [Waypoint] { waypoints + [destination] }
@@ -82,6 +84,21 @@ enum NavigationEngine {
         return NavigationProgress(targetIndex: idx, target: target, distanceToTarget: d, bearingToTarget: b,
                                   remainingDistance: remaining, relativeBearing: rel,
                                   estimatedSeconds: eta, isFinalTarget: idx == targets.count - 1)
+    }
+
+    /// على مسار العودة: إن كانت نقطة لاحقة (حتى ٦ نقاط) أقرب من الهدف الحالي وقريبة فعلًا، ننتقل إليها مباشرة
+    /// حتى لا يعلق الإرشاد على نقطة تجاوزها السائق بقليل.
+    static func skipAhead(plan: NavigationPlan, targetIndex: Int, current: CLLocationCoordinate2D) -> Int {
+        guard plan.breadcrumb == true else { return targetIndex }
+        let t = plan.targets
+        guard targetIndex < t.count - 1 else { return targetIndex }
+        let dNow = GeoMath.distance(current, t[targetIndex].coordinate)
+        var best = targetIndex, bestD = dNow
+        for j in (targetIndex + 1)...min(t.count - 1, targetIndex + 6) {
+            let d = GeoMath.distance(current, t[j].coordinate)
+            if d < bestD && d < 150 { best = j; bestD = d }
+        }
+        return best
     }
 
     static func hasArrived(_ p: NavigationProgress, accuracy: Double?) -> Bool {
