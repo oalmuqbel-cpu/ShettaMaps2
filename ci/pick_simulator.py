@@ -7,7 +7,8 @@ for runtime, devices in data["devices"].items():
     if "iOS" not in runtime:
         continue
     for d in devices:
-        if d.get("isAvailable") and d["name"].startswith(kind):
+        # نستبعد الأجهزة القابلة للطي أو بشاشتين (تصويرها يفشل)
+        if d.get("isAvailable") and d["name"].startswith(kind) and not any(x in d["name"] for x in ("Duo", "Fold", "Flip")):
             # للآيباد نفضّل Pro بحجم 13 بوصة، وللآيفون Pro
             pref = 1 if ("Pro" in d["name"]) else 0
             ver = runtime.split("iOS-")[-1]
