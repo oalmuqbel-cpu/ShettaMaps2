@@ -97,6 +97,19 @@ struct WeatherView: View {
                     }
                     .environment(\.layoutDirection, .rightToLeft)
                 }
+                if !r.days.isEmpty {
+                    Section {
+                        ForEach(Array(r.days.enumerated()), id: \.element.id) { i, day in
+                            WeatherDayRow(day: day, index: i, hours: r.allHours.filter {
+                                $0.time >= day.date && $0.time < day.date.addingTimeInterval(86_400)
+                            }, isNight: { isNight(r, $0) })
+                        }
+                    } header: {
+                        Text("توقعات \(r.days.count) يومًا")
+                    } footer: {
+                        Text("ما بعد اليوم \(WeatherService.reliableDays) تقديري وقد يتغير. اضغط على اليوم لعرض ساعاته.")
+                    }
+                }
                 if let rise = r.sunrise, let set = r.sunset {
                     Section("الشمس") {
                         LabeledContent("الشروق", value: Fmt.time.string(from: rise))
@@ -122,6 +135,109 @@ struct WeatherView: View {
 
     private func isNight(_ r: WeatherReport, _ t: Date) -> Bool {
         AppearanceController.isNight(at: r.coordinate, now: t)
+    }
+}
+
+/// سطر يوم في توقعات الأيام: الحالة والعظمى والصغرى والمطر والرياح، ويُفتح لعرض الساعات.
+struct WeatherDayRow: View {
+    let day: WeatherDay
+    let index: Int
+    let hours: [WeatherHour]
+    let isNight: (Date) -> Bool
+    @State private var expanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button { withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() } } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: WeatherText.icon(day.weatherCode))
+                        .symbolRenderingMode(.multicolor).font(.title2).frame(width: 34)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(title).font(.headline)
+                            if index >= WeatherService.reliableDays {
+                                Text("تقديري").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                                    .padding(.horizontal, 5).padding(.vertical, 1)
+                                    .background(Capsule().fill(Color.secondary.opacity(0.15)))
+                            }
+                        }
+                        HStack(spacing: 8) {
+                            Text(WeatherText.describe(day.weatherCode)).font(.subheadline).foregroundStyle(.secondary)
+                            if let p = day.precipitationProbability, p >= 10 {
+                                Label("\(Int(p))٪", systemImage: "drop.fill").font(.caption).foregroundStyle(.blue)
+                            }
+                            Label("\(Int(day.windMax.rounded()))", systemImage: "wind").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("\(Int(day.tempMax.rounded()))°").font(.headline.monospacedDigit())
+                        Text("\(Int(day.tempMin.rounded()))°").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                    }
+                    Image(systemName: "chevron.down").font(.caption).foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(expanded ? 180 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(accessibility)
+
+            if expanded {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 14) {
+                        if day.precipitationSum > 0 {
+                            Label(String(format: "%.1f مم", day.precipitationSum), systemImage: "cloud.rain").font(.caption)
+                        }
+                        if let g = day.gustsMax { Label("هبات \(Int(g.rounded())) كم/س", systemImage: "wind").font(.caption) }
+                        if let d = day.windDirection { Text("رياح \(WeatherText.windFrom(d))").font(.caption) }
+                    }
+                    .foregroundStyle(.secondary)
+                    if let rise = day.sunrise, let set = day.sunset {
+                        Text("الشروق \(Fmt.time.string(from: rise)) · الغروب \(Fmt.time.string(from: set))")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    if !hours.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                // كل ساعتين حتى يبقى الشريط واضحًا
+                                ForEach(hours.enumerated().filter { $0.offset % 2 == 0 }.map(\.element)) { h in
+                                    VStack(spacing: 4) {
+                                        Text(Fmt.time.string(from: h.time)).font(.caption2).foregroundStyle(.secondary)
+                                        Image(systemName: WeatherText.icon(h.weatherCode, night: isNight(h.time)))
+                                            .symbolRenderingMode(.multicolor)
+                                        Text("\(Int(h.temperature.rounded()))°").font(.caption.weight(.semibold))
+                                        Text("\(Int(h.windSpeed.rounded()))").font(.caption2).monospacedDigit().foregroundStyle(.secondary)
+                                        if let p = h.precipitationProbability, p > 0 {
+                                            Text("\(Int(p))٪").font(.caption2).foregroundStyle(.blue)
+                                        } else { Text(" ").font(.caption2) }
+                                    }
+                                    .frame(width: 44)
+                                }
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                }
+                .transition(.opacity)
+            }
+        }
+    }
+
+    private var title: String {
+        let cal = Calendar.current
+        if cal.isDateInToday(day.date) { return "اليوم" }
+        if cal.isDateInTomorrow(day.date) { return "غدًا" }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ar")
+        f.dateFormat = "EEEE d"
+        return f.string(from: day.date)
+    }
+
+    private var accessibility: String {
+        var s = "\(title)، \(WeatherText.describe(day.weatherCode))، العظمى \(Int(day.tempMax.rounded()))، الصغرى \(Int(day.tempMin.rounded()))"
+        if let p = day.precipitationProbability, p >= 10 { s += "، احتمال المطر \(Int(p)) بالمئة" }
+        s += "، الرياح حتى \(Int(day.windMax.rounded())) كيلومتر في الساعة"
+        return s
     }
 }
 

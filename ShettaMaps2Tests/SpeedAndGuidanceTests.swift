@@ -416,3 +416,24 @@ final class RainForecastTests: XCTestCase {
         XCTAssertNotEqual(shapes[0].id, shapes[1].id)
     }
 }
+
+final class WeatherDaysTests: XCTestCase {
+    func testDailyForecastParsed() {
+        let now = Date().timeIntervalSince1970
+        let day = (now / 86_400).rounded(.down) * 86_400
+        let json: [String: Any] = [
+            "current": ["time": now, "temperature_2m": 25, "wind_speed_10m": 10, "wind_direction_10m": 0, "weather_code": 0],
+            "hourly": ["time": [now, now + 3600], "temperature_2m": [25, 26], "weather_code": [0, 1]],
+            "daily": ["time": [day, day + 86_400], "weather_code": [0, 61], "temperature_2m_max": [29, 30],
+                      "temperature_2m_min": [15, 16], "precipitation_sum": [0, 4.2], "precipitation_probability_max": [0, 70],
+                      "wind_speed_10m_max": [18, 35], "wind_gusts_10m_max": [30, 55], "wind_direction_10m_dominant": [350, 200]]
+        ]
+        let r = WeatherService.parse(json, at: .init(latitude: 24.7, longitude: 46.7))
+        XCTAssertEqual(r?.days.count, 2)
+        XCTAssertEqual(r?.days[1].tempMax, 30)
+        XCTAssertEqual(r?.days[1].precipitationProbability, 70)
+        XCTAssertEqual(r?.days[1].weatherCode, 61)
+        XCTAssertEqual(r?.allHours.count, 2)
+        XCTAssertEqual(WeatherService.forecastDays, 14)
+    }
+}

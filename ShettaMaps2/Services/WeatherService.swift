@@ -27,6 +27,22 @@ struct WeatherHour: Identifiable, Equatable {
     var id: Date { time }
 }
 
+/// يوم في توقعات الأيام القادمة.
+struct WeatherDay: Identifiable, Equatable {
+    var date: Date               // بداية اليوم بتوقيت الموقع
+    var weatherCode: Int
+    var tempMax: Double
+    var tempMin: Double
+    var precipitationSum: Double
+    var precipitationProbability: Double?
+    var windMax: Double
+    var gustsMax: Double?
+    var windDirection: Double?
+    var sunrise: Date?
+    var sunset: Date?
+    var id: Date { date }
+}
+
 struct WeatherReport: Equatable {
     var coordinate: CLLocationCoordinate2D
     var fetchedAt: Date
@@ -34,6 +50,10 @@ struct WeatherReport: Equatable {
     var hours: [WeatherHour]
     var sunrise: Date?
     var sunset: Date?
+    /// توقعات الأيام القادمة (حتى ١٤ يومًا).
+    var days: [WeatherDay] = []
+    /// كل الساعات المتوقعة (لتفاصيل كل يوم).
+    var allHours: [WeatherHour] = []
     static func == (a: WeatherReport, b: WeatherReport) -> Bool { a.fetchedAt == b.fetchedAt && a.now == b.now }
 }
 
@@ -130,6 +150,10 @@ final class WeatherService: ObservableObject {
         report = Self.loadCache()
     }
 
+    /// عدد أيام التوقعات (الدقة تقل بعد اليوم السابع).
+    nonisolated static let forecastDays = 14
+    nonisolated static let reliableDays = 7
+
     /// يجلب الطقس عند تغير الموقع أكثر من ١٠ كم أو مرور ٢٠ دقيقة.
     func refresh(at c: CLLocationCoordinate2D, force: Bool = false) async {
         if !force, let (lc, t) = lastFetch, GeoMath.distance(lc, c) < 10_000, Date().timeIntervalSince(t) < 1_200 { return }
@@ -139,8 +163,8 @@ final class WeatherService: ObservableObject {
             .init(name: "longitude", value: String(format: "%.4f", c.longitude)),
             .init(name: "current", value: "temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,precipitation,visibility"),
             .init(name: "hourly", value: "temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability,precipitation,weather_code"),
-            .init(name: "daily", value: "sunrise,sunset"),
-            .init(name: "forecast_days", value: "2"),
+            .init(name: "daily", value: "sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant"),
+            .init(name: "forecast_days", value: "\(Self.forecastDays)"),
             .init(name: "timezone", value: "auto"),
             .init(name: "timeformat", value: "unixtime"),
             .init(name: "wind_speed_unit", value: "kmh")
@@ -170,6 +194,7 @@ final class WeatherService: ObservableObject {
                              weatherCode: Int(d(cur["weather_code"]) ?? 0), precipitation: d(cur["precipitation"]) ?? 0,
                              visibility: d(cur["visibility"]))
         var hours: [WeatherHour] = []
+        var allHours: [WeatherHour] = []
         if let h = json["hourly"] as? [String: Any], let times = h["time"] as? [Any] {
             func arr(_ k: String) -> [Any] { h[k] as? [Any] ?? [] }
             let temp = arr("temperature_2m"), ws = arr("wind_speed_10m"), wd = arr("wind_direction_10m"), wg = arr("wind_gusts_10m")
@@ -179,18 +204,35 @@ final class WeatherService: ObservableObject {
                 let date = Date(timeIntervalSince1970: ts)
                 guard date > Date().addingTimeInterval(-3_600) else { continue }
                 func at(_ a: [Any]) -> Double? { i < a.count ? d(a[i]) : nil }
-                hours.append(WeatherHour(time: date, temperature: at(temp) ?? 0, windSpeed: at(ws) ?? 0, windDirection: at(wd) ?? 0,
-                                         windGusts: at(wg), precipitationProbability: at(pp), precipitation: at(pr) ?? 0,
-                                         weatherCode: Int(at(wc) ?? 0)))
-                if hours.count >= 24 { break }
+                let hour = WeatherHour(time: date, temperature: at(temp) ?? 0, windSpeed: at(ws) ?? 0, windDirection: at(wd) ?? 0,
+                                       windGusts: at(wg), precipitationProbability: at(pp), precipitation: at(pr) ?? 0,
+                                       weatherCode: Int(at(wc) ?? 0))
+                allHours.append(hour)
+                if hours.count < 24 { hours.append(hour) }
             }
         }
         var rise: Date?, set: Date?
+        var days: [WeatherDay] = []
         if let daily = json["daily"] as? [String: Any] {
-            rise = (daily["sunrise"] as? [Any])?.first.flatMap { d($0) }.map { Date(timeIntervalSince1970: $0) }
-            set = (daily["sunset"] as? [Any])?.first.flatMap { d($0) }.map { Date(timeIntervalSince1970: $0) }
+            func arr(_ k: String) -> [Any] { daily[k] as? [Any] ?? [] }
+            func at(_ a: [Any], _ i: Int) -> Double? { i < a.count ? d(a[i]) : nil }
+            let times = arr("time"), code = arr("weather_code"), tmax = arr("temperature_2m_max"), tmin = arr("temperature_2m_min")
+            let psum = arr("precipitation_sum"), pprob = arr("precipitation_probability_max"), wmax = arr("wind_speed_10m_max")
+            let gmax = arr("wind_gusts_10m_max"), wdir = arr("wind_direction_10m_dominant"), sr = arr("sunrise"), ss = arr("sunset")
+            rise = at(sr, 0).map { Date(timeIntervalSince1970: $0) }
+            set = at(ss, 0).map { Date(timeIntervalSince1970: $0) }
+            for i in times.indices {
+                guard let t = at(times, i), let hi = at(tmax, i), let lo = at(tmin, i) else { continue }
+                days.append(WeatherDay(date: Date(timeIntervalSince1970: t), weatherCode: Int(at(code, i) ?? 0),
+                                       tempMax: hi, tempMin: lo, precipitationSum: at(psum, i) ?? 0,
+                                       precipitationProbability: at(pprob, i), windMax: at(wmax, i) ?? 0,
+                                       gustsMax: at(gmax, i), windDirection: at(wdir, i),
+                                       sunrise: at(sr, i).map { Date(timeIntervalSince1970: $0) },
+                                       sunset: at(ss, i).map { Date(timeIntervalSince1970: $0) }))
+            }
         }
-        return WeatherReport(coordinate: c, fetchedAt: Date(), now: now, hours: hours, sunrise: rise, sunset: set)
+        return WeatherReport(coordinate: c, fetchedAt: Date(), now: now, hours: hours, sunrise: rise, sunset: set,
+                             days: days, allHours: allHours)
     }
 
     // MARK: - خريطة الأمطار
