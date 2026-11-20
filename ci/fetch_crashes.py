@@ -11,7 +11,7 @@ def get(path):
         with urllib.request.urlopen(req) as r: return json.load(r)
     except urllib.error.HTTPError as e:
         print("HTTP", e.code, path, e.read().decode()[:500]); return None
-subs = get(f"/v1/apps/{app_id}/betaFeedbackCrashSubmissions?limit=5") or {}
+subs = get(f"/v1/apps/{app_id}/betaFeedbackCrashSubmissions?limit=8&sort=-createdDate") or {}
 os.makedirs("crashlogs", exist_ok=True)
 for s in subs.get("data", []):
     sid = s["id"]; a = s.get("attributes", {})
@@ -30,3 +30,21 @@ for s in subs.get("data", []):
         idx = next((i for i, l in enumerate(lines) if l.startswith(f"Thread {t}:") or l.startswith(f"Thread {t} Crashed")), None)
         if idx is not None:
             print("\n".join(lines[idx:idx + 45]))
+
+# ملاحظات الصور المرسلة من TestFlight
+print("#" * 80); print("SCREENSHOT FEEDBACK")
+shots = get(f"/v1/apps/{app_id}/betaFeedbackScreenshotSubmissions?limit=20&sort=-createdDate") or {}
+os.makedirs("feedback", exist_ok=True)
+for s in shots.get("data", []):
+    sid = s["id"]; a = s.get("attributes", {})
+    print("=" * 80)
+    print(sid, a.get("createdDate"), "device:", a.get("deviceModel"), a.get("osVersion"), "build:", a.get("buildBundleId"))
+    print("COMMENT:", a.get("comment"))
+    for i, sc in enumerate(a.get("screenshots") or []):
+        url = sc.get("url")
+        if not url: continue
+        try:
+            with urllib.request.urlopen(url) as r: open(f"feedback/{sid}-{i}.png", "wb").write(r.read())
+            print("  saved", f"feedback/{sid}-{i}.png")
+        except Exception as e:
+            print("  shot fail", e)
