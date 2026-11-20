@@ -134,45 +134,61 @@ final class CarPlayMapViewController: UIViewController {
         buildMap()
         bind()
         if role == .cluster { setupClusterSign() }
-        if role == .main { setupSpeedOverlay() }
+        // احتياط إن لم تُستدعَ viewDidAppear في نافذة السيارة
+        if role == .main {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in self?.setupSpeedOverlay() }
+        }
     }
 
     // MARK: - السرعة على الخريطة
 
     private var speedHost: UIHostingController<CarPlaySpeedOverlay>?
 
+    /// يُنشأ بعد ظهور الخريطة لا أثناء تعيينها جذرًا لنافذة السيارة: إضافة واجهات SwiftUI بقيود Auto Layout
+    /// أثناء ذلك الانتقال كانت تُسقط التطبيق عند الاتصال بالسيارة. نستخدم إطارات ثابتة بلا قيود.
     private func setupSpeedOverlay() {
+        guard speedHost == nil else { return }
         let host = UIHostingController(rootView: CarPlaySpeedOverlay())
+        host.sizingOptions = []
         host.view.backgroundColor = .clear
         host.view.isUserInteractionEnabled = false
-        host.view.translatesAutoresizingMaskIntoConstraints = false
+        host.view.translatesAutoresizingMaskIntoConstraints = true
         addChild(host)
         view.addSubview(host.view)
         host.didMove(toParent: self)
-        // أقصى يمين أعلى الخريطة، فوق عمود أزرار الخريطة
-        NSLayoutConstraint.activate([
-            host.view.widthAnchor.constraint(equalToConstant: 96),
-            host.view.heightAnchor.constraint(equalToConstant: 96),
-            host.view.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 0),
-            host.view.rightAnchor.constraint(equalTo: view.safeAreaLayoutGuide.rightAnchor, constant: -4)
-        ])
         speedHost = host
 
-        // إحداثياتي أسفل الخريطة في المنتصف
         let coords = UIHostingController(rootView: CarPlayCoordinateBar())
+        coords.sizingOptions = []
         coords.view.backgroundColor = .clear
         coords.view.isUserInteractionEnabled = false
-        coords.view.translatesAutoresizingMaskIntoConstraints = false
+        coords.view.translatesAutoresizingMaskIntoConstraints = true
         addChild(coords)
         view.addSubview(coords.view)
         coords.didMove(toParent: self)
-        NSLayoutConstraint.activate([
-            coords.view.widthAnchor.constraint(equalToConstant: 220),
-            coords.view.heightAnchor.constraint(equalToConstant: 30),
-            coords.view.centerXAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerXAnchor),
-            coords.view.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -2)
-        ])
         coordsHost = coords
+        layoutOverlays()
+    }
+
+    private func layoutOverlays() {
+        let b = view.bounds, inset = view.safeAreaInsets
+        guard b.width > 0, b.height > 0 else { return }
+        // السرعة أقصى يمين أعلى الخريطة، والإحداثيات أسفلها في المنتصف
+        speedHost?.view.frame = CGRect(x: b.width - inset.right - 4 - 96, y: inset.top, width: 96, height: 96)
+        let w = min(220, b.width - inset.left - inset.right - 8)
+        coordsHost?.view.frame = CGRect(x: inset.left + (b.width - inset.left - inset.right - w) / 2,
+                                        y: b.height - inset.bottom - 2 - 30, width: w, height: 30)
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        layoutOverlays()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        guard role == .main, speedHost == nil else { return }
+        DispatchQueue.main.async { [weak self] in self?.setupSpeedOverlay() }
     }
 
     private var coordsHost: UIHostingController<CarPlayCoordinateBar>?
