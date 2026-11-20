@@ -15,8 +15,11 @@ struct ShareTrackView: View {
     @State private var showTerms = false
     @State private var sending = false
     @State private var error: String?
+    @AppStorage("communityTrackTrimMeters") private var trimMeters: Double = CommunityTrackLimits.privacyTrimMeters
 
-    private var prepared: [CLLocationCoordinate2D] { CommunityTrackStore.prepare(points.map(\.coordinate)) }
+    private var prepared: [CLLocationCoordinate2D] {
+        CommunityTrackStore.prepare(points.map(\.coordinate), trimMeters: trimMeters)
+    }
 
     var body: some View {
         Form {
@@ -28,7 +31,18 @@ struct ShareTrackView: View {
                 .frame(height: 220)
                 .listRowInsets(EdgeInsets())
             } footer: {
-                Text("للخصوصية: يُخفى أول وآخر 400 متر من المسار (الجزء الرمادي) حتى لا يظهر مكان انطلاقك أو بيتك. ولا يُنشر اسمك.")
+                Text(trimMeters > 0
+                     ? "الجزء الرمادي لا يُنشر، حتى لا يظهر مكان انطلاقك أو بيتك أو مخيمك. ولا يُنشر اسمك."
+                     : "سيُنشر المسار كاملًا من بدايته إلى نهايته. ولا يُنشر اسمك.")
+            }
+            Section {
+                Picker("إخفاء البداية والنهاية", selection: $trimMeters) {
+                    Text("بدون إخفاء").tag(0.0)
+                    Text("200 م").tag(200.0)
+                    Text("400 م").tag(400.0)
+                }
+            } footer: {
+                Text("يُخفى هذا الطول من أول المسار وآخره قبل نشره للعامة.")
             }
             Section("اسم المسار") {
                 TextField("مثال: طريق روضة خريم من الشمال", text: $name)
@@ -64,7 +78,7 @@ struct ShareTrackView: View {
         Task {
             defer { sending = false }
             do {
-                let id = try await store.publish(name: name, notes: notes, coordinates: points.map(\.coordinate))
+                let id = try await store.publish(name: name, notes: notes, coordinates: points.map(\.coordinate), trimMeters: trimMeters)
                 track.publicID = id
                 try? context.save()
                 dismiss()

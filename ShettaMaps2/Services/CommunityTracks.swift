@@ -59,16 +59,18 @@ final class CommunityTrackStore: ObservableObject {
         visibleTracks.filter { $0.intersects(sw: sw, ne: ne) }
     }
 
-    /// يجهّز المسار للنشر: إزالة أول وآخر 400 م، ثم تبسيطه.
-    nonisolated static func prepare(_ coords: [CLLocationCoordinate2D]) -> [CLLocationCoordinate2D] {
-        let trimmed = PolylineCodec.trimEnds(coords, meters: CommunityTrackLimits.privacyTrimMeters)
+    /// يجهّز المسار للنشر: إخفاء البداية والنهاية بالمسافة التي يختارها الناشر (400 م افتراضيًا)، ثم تبسيطه.
+    nonisolated static func prepare(_ coords: [CLLocationCoordinate2D],
+                                    trimMeters: Double = CommunityTrackLimits.privacyTrimMeters) -> [CLLocationCoordinate2D] {
+        let trimmed = PolylineCodec.trimEnds(coords, meters: max(0, trimMeters))
         return PolylineCodec.simplify(trimmed, maxPoints: CommunityTrackLimits.maxPoints)
     }
 
-    func publish(name: String, notes: String, coordinates: [CLLocationCoordinate2D]) async throws -> String {
+    func publish(name: String, notes: String, coordinates: [CLLocationCoordinate2D],
+                 trimMeters: Double = CommunityTrackLimits.privacyTrimMeters) async throws -> String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard (2...60).contains(trimmed.count) else { throw CommunityError.invalidName }
-        let pts = Self.prepare(coordinates)
+        let pts = Self.prepare(coordinates, trimMeters: trimMeters)
         guard pts.count >= 2 else { throw CommunityError.server("المسار قصير جدًا للمشاركة بعد إخفاء بدايته ونهايته") }
         guard let box = GeoMath.boundingBox(pts),
               CommunityConfig.latRange.contains(box.sw.latitude), CommunityConfig.latRange.contains(box.ne.latitude),
