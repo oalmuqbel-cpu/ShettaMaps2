@@ -237,9 +237,15 @@ final class CarPlayMapViewController: UIViewController {
     }
 
     /// تبدّل نهار/ليل السيارة: يُعاد تحميل خريطة MapLibre بالألوان المناسبة (MapKit يتبدّل تلقائيًا).
+    /// لا نحذف خريطة MapLibre هنا: يصل هذا الاستدعاء أثناء نقل الخريطة لنافذة السيارة، وحذفها في تلك اللحظة
+    /// كان يُسقط التطبيق عند الاتصال بالسيارة ليلًا. نعيد تحميل النمط فقط بعد انتهاء الانتقال.
     override func traitCollectionDidChange(_ previous: UITraitCollection?) {
         super.traitCollectionDidChange(previous)
-        if previous?.userInterfaceStyle != traitCollection.userInterfaceStyle, libreView != nil { buildMap() }
+        guard previous?.userInterfaceStyle != traitCollection.userInterfaceStyle, libreView != nil else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let m = self.libreView else { return }
+            m.styleURL = self.env.offlineMaps.activeStyleURL  // onStyleLoaded يطبّق ألوان الليل عند الحاجة
+        }
     }
 
     // MARK: - المحرك
