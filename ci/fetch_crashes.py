@@ -20,6 +20,11 @@ for s in subs.get("data", []):
     text = (log or {}).get("data", {}).get("attributes", {}).get("logText", "")
     open(f"crashlogs/{sid}.txt", "w").write(text)
     lines = text.splitlines()
+    for l in lines[:40]:
+        if l.startswith(("Version:", "OS Version:", "Hardware Model:", "Date/Time:")): print(l)
+    if "Last Exception Backtrace:" in text:
+        i0 = next(i for i, l in enumerate(lines) if l.startswith("Last Exception Backtrace:"))
+        print("\n".join(lines[i0:i0 + 60]))
     for i, l in enumerate(lines):
         if any(k in l for k in ("Exception Type", "Exception Reason", "Termination Reason", "Crashed Thread", "Triggered by Thread", "Application Specific", "Last Exception")):
             print(l)
