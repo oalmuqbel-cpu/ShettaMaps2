@@ -1,0 +1,35 @@
+# طبقة المحميات (OpenStreetMap) تُنشر في docs/data ويقرؤها التطبيق ويحفظها دون إنترنت
+name: Build Reserves
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract from OpenStreetMap (Geofabrik)
+        run: |
+          sudo apt-get install -y -qq osmium-tool >/dev/null
+          pip3 install --quiet shapely matplotlib
+          mkdir -p osm
+          curl -sSL --fail --retry 6 --retry-delay 20 --retry-all-errors -o osm/gcc.osm.pbf https://download.geofabrik.de/asia/gcc-states-latest.osm.pbf
+          osmium tags-filter osm/gcc.osm.pbf \
+            wr/boundary=protected_area,national_park wr/leisure=nature_reserve \
+            -o osm/reserves.osm.pbf --overwrite
+          osmium export osm/reserves.osm.pbf --geometry-types=polygon -a id -f geojsonseq -o osm/reserves.geojsonseq --overwrite
+          wc -l osm/reserves.geojsonseq
+      - name: Build
+        run: |
+          mkdir -p docs/data ci-shots/reserves
+          python3 tools/reserves/build_reserves.py docs/data/reserves.geojson ci-shots/reserves/summary.md ci-shots/reserves/preview.png osm/reserves.geojsonseq
+          ls -la docs/data/reserves.geojson; gzip -9 -c docs/data/reserves.geojson | wc -c
+          cat ci-shots/reserves/summary.md | head -80
+      - name: Commit
+        run: |
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git add docs/data/reserves.geojson ci-shots/reserves
+          git commit -m "تحديث طبقة المحميات" || echo "no changes"
+          git pull --rebase -q && git push
