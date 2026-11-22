@@ -19,7 +19,7 @@ jobs:
           osmium tags-filter osm/gcc.osm.pbf \
             wr/boundary=protected_area,national_park wr/leisure=nature_reserve \
             -o osm/reserves.osm.pbf --overwrite
-          osmium export osm/reserves.osm.pbf --geometry-types=polygon -a id -f geojsonseq -o osm/reserves.geojsonseq --overwrite
+          osmium export osm/reserves.osm.pbf --geometry-types=polygon -a type,id -f geojsonseq -o osm/reserves.geojsonseq --overwrite
           osmium tags-filter osm/gcc.osm.pbf r/admin_level=2 -o osm/countries.osm.pbf --overwrite
           osmium export osm/countries.osm.pbf --geometry-types=polygon -f geojsonseq -o osm/countries.geojsonseq --overwrite
           wc -l osm/reserves.geojsonseq

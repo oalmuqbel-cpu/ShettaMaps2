@@ -14,7 +14,7 @@ out, summary, preview, src = sys.argv[1:5]
 countries_src = sys.argv[5] if len(sys.argv) > 5 else None
 REGION = box(34.4, 16.0, 60.0, 32.2)   # السعودية ودول الخليج
 # عناصر ليست محميات طبيعية (حدود دينية أو منشآت أو مناطق مغلقة بلا اسم)
-EXCLUDE = ("حدود الحرم", "منطقة مغلقة", "Qatar Steel", "KISR", "مدائن صالح")
+EXCLUDE = ("حدود الحرم", "منطقة مغلقة", "Qatar Steel", "KISR", "مدائن صالح", "الأثري", "مقابر", "Safari")
 
 # حدود الدول لمعرفة دولة كل محمية
 COUNTRIES = []
@@ -43,13 +43,12 @@ def country(geom):
             best, area = code, a
     return best
 
-def osm_url(osm_id):
-    # معرّف المساحة في osmium: الطريق ×2، والعلاقة ×2+1
-    try:
-        n = int(str(osm_id).lstrip("a"))
-    except ValueError:
-        return None
-    return f"https://www.openstreetmap.org/relation/{(n - 1) // 2}" if n % 2 else f"https://www.openstreetmap.org/way/{n // 2}"
+def osm_url(t):
+    # osmium export -a type,id: نوع العنصر الأصلي ورقمه
+    typ, oid = t.get("@type"), t.get("@id")
+    if typ in ("way", "relation") and oid:
+        return f"https://www.openstreetmap.org/{typ}/{oid}"
+    return None
 
 def kind(t):
     name = " ".join(t.get(k, "") for k in ("name", "name:ar", "name:en", "official_name"))
@@ -86,7 +85,6 @@ for line in open(src, encoding="utf-8"):
     name = name_ar or t.get("name") or t.get("name:en")
     if not name or any(x in name for x in EXCLUDE):
         continue
-    osm_id = t.get("@id") or f.get("id") or ""
     simp = geom.simplify(0.002, preserve_topology=True)
     props = {
         "name": name,
@@ -97,7 +95,7 @@ for line in open(src, encoding="utf-8"):
         "wikidata": t.get("wikidata"),
         "protect_class": t.get("protect_class"),
         "area_km2": round(area_km2),
-        "osm": osm_url(osm_id),
+        "osm": osm_url(t),
         "country": country(geom),
     }
     feats.append({"type": "Feature", "geometry": mapping(simp), "properties": props})
