@@ -83,7 +83,7 @@ final class SpeedLimitStore: ObservableObject {
             lastCheck = Date()
             updateLimit(at: loc)
         }
-        evaluate(LiveSpeed.kmh(loc))
+        evaluate(LiveSpeed.kmh(loc, recent: LocationManager.shared.recentLocations))
     }
 
     private func updateLimit(at loc: CLLocation) {

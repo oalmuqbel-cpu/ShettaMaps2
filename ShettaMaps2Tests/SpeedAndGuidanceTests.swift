@@ -149,6 +149,26 @@ final class LiveSpeedTests: XCTestCase {
         XCTAssertNil(LiveSpeed.kmh(nil, now: now))
     }
 
+    private func fix(_ c: CLLocationCoordinate2D, speed: Double, acc: Double = 1, at t: Date) -> CLLocation {
+        CLLocation(coordinate: c, altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
+                   course: 90, courseAccuracy: 5, speed: speed, speedAccuracy: acc, timestamp: t)
+    }
+
+    func testStandingStillShowsZero() {
+        let now = Date()
+        let here = CLLocationCoordinate2D(latitude: 24.7, longitude: 46.8)
+        // سرعة ضمن خطأ القياس
+        XCTAssertEqual(LiveSpeed.kmh(fix(here, speed: 1.5, acc: 2, at: now), now: now), 0)
+        // قراءة 8 كم/س لكن الموقع لم يتحرك خلال 4 ثوانٍ
+        let past = [fix(GeoMath.destination(from: here, distance: 2, bearing: 0), speed: 2, at: now.addingTimeInterval(-4))]
+        XCTAssertEqual(LiveSpeed.kmh(fix(here, speed: 2.2, at: now), now: now, recent: past), 0)
+        // يتحرك فعلًا 10 م/ث
+        let moving = [fix(GeoMath.destination(from: here, distance: 40, bearing: 180), speed: 10, at: now.addingTimeInterval(-4))]
+        XCTAssertEqual(LiveSpeed.kmh(fix(here, speed: 10, at: now), now: now, recent: moving) ?? 0, 36, accuracy: 0.01)
+        // سرعة عالية لا تُصفَّر حتى لو كانت القراءات السابقة قريبة
+        XCTAssertEqual(LiveSpeed.kmh(fix(here, speed: 20, at: now), now: now, recent: past) ?? 0, 72, accuracy: 0.01)
+    }
+
     func testLimitStateNotes() {
         XCTAssertEqual(SpeedLimitState.known(80).limit, 80)
         XCTAssertNil(SpeedLimitState.noData.limit)

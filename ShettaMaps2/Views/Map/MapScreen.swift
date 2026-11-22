@@ -516,7 +516,7 @@ struct MapScreen: View {
     /// السرعة الحالية إذا كانت موثوقة وأعلى من المشي البطيء.
     private var currentSpeed: Double? {
         // سرعة حية فقط (أحدث من ٣ ثوانٍ وبدقة مقبولة)؛ القديمة لا تُعرض كأنها حالية
-        guard let kmh = LiveSpeed.kmh(location.location) else { return nil }
+        guard let kmh = LiveSpeed.kmh(location.location, recent: location.recentLocations) else { return nil }
         // أقل من ٤ كم/س تقريبًا يعني واقف (ضجيج GPS)
         return kmh > 4.3 ? kmh / 3.6 : 0
     }

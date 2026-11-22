@@ -60,6 +60,8 @@ final class LocationManager: NSObject, ObservableObject {
     @Published private(set) var authorization: CLAuthorizationStatus = .notDetermined
     @Published private(set) var isFullAccuracy: Bool = true
     @Published private(set) var location: CLLocation?
+    /// آخر قراءات الموقع (10 ثوانٍ) لتمييز الوقوف عن السير في عرض السرعة.
+    private(set) var recentLocations: [CLLocation] = []
     @Published private(set) var heading: CLHeading?
     @Published private(set) var lastError: String?
     @Published private(set) var isUpdating = false
@@ -240,6 +242,8 @@ final class LocationManager: NSObject, ObservableObject {
             // نتجاهل القراءات غير الصالحة والقديمة جدًا
             guard loc.horizontalAccuracy >= 0,
                   abs(loc.timestamp.timeIntervalSinceNow) < 120 else { continue }
+            recentLocations.append(loc)
+            recentLocations.removeAll { loc.timestamp.timeIntervalSince($0.timestamp) > 10 }
             location = loc
             lastError = nil
             persistLastKnown(loc)

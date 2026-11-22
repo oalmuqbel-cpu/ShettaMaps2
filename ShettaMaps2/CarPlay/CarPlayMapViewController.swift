@@ -173,8 +173,10 @@ final class CarPlayMapViewController: UIViewController {
     private func layoutOverlays() {
         let b = view.bounds, inset = view.safeAreaInsets
         guard b.width > 0, b.height > 0 else { return }
-        // السرعة أقصى يمين أعلى الخريطة، والإحداثيات أسفلها في المنتصف
-        speedHost?.view.frame = CGRect(x: b.width - inset.right - 4 - 96, y: inset.top, width: 96, height: 96)
+        // عداد السرعة أعلى يمين الخريطة فوق أزرار الموقع والتقريب مباشرة، والإحداثيات أسفلها في المنتصف
+        let usableH = b.height - inset.top - inset.bottom
+        let g = max(96, min(150, usableH * 0.36))
+        speedHost?.view.frame = CGRect(x: b.width - inset.right - 6 - g, y: inset.top + 4, width: g, height: g)
         let w = min(220, b.width - inset.left - inset.right - 8)
         coordsHost?.view.frame = CGRect(x: inset.left + (b.width - inset.left - inset.right - w) / 2,
                                         y: b.height - inset.bottom - 2 - 30, width: w, height: 30)

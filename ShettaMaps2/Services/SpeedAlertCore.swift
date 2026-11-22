@@ -159,10 +159,23 @@ enum SpeedLimitState: Equatable {
 enum LiveSpeed {
     static let maxAge: TimeInterval = 3
 
-    static func kmh(_ loc: CLLocation?, now: Date = Date()) -> Double? {
+    static func kmh(_ loc: CLLocation?, now: Date = Date(), recent: [CLLocation] = []) -> Double? {
         guard let loc, now.timeIntervalSince(loc.timestamp) <= maxAge, loc.speed >= 0 else { return nil }
-        if loc.speedAccuracy > 5 { return nil }   // دقة السرعة أسوأ من ±١٨ كم/س
+        if loc.speedAccuracy > 5 { return nil }   // دقة السرعة أسوأ من ±18 كم/س
+        // واقف: سرعة ضمن خطأ القياس، أو لم يتحرك الموقع فعليًا خلال الثواني الماضية رغم قراءة سرعة صغيرة
+        if loc.speedAccuracy > 0, loc.speed <= loc.speedAccuracy { return 0 }
+        if loc.speed < 15 / 3.6, isStationary(loc, recent: recent) { return 0 }
         return loc.speed * 3.6
+    }
+
+    /// لم يبتعد الموقع أكثر من 1.2 م/ث في المتوسط خلال 3 إلى 8 ثوانٍ مضت.
+    static func isStationary(_ loc: CLLocation, recent: [CLLocation]) -> Bool {
+        guard let ref = recent.last(where: {
+            let dt = loc.timestamp.timeIntervalSince($0.timestamp)
+            return dt >= 3 && dt <= 8 && $0.horizontalAccuracy >= 0 && $0.horizontalAccuracy < 30
+        }) else { return false }
+        let dt = loc.timestamp.timeIntervalSince(ref.timestamp)
+        return loc.distance(from: ref) / dt < 1.2
     }
 }
 
