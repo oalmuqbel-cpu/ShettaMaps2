@@ -76,7 +76,7 @@ struct SpeedGauge: View {
                     Text("كم/س").font(.system(size: d * 0.09, weight: .semibold))
                         .foregroundStyle(Color.white.opacity(0.75))
                 }
-                .offset(y: -d * 0.03)
+                .offset(y: -d * 0.07)
                 limitBadge(d: d)
                     .offset(y: d * 0.32)
             }
@@ -101,7 +101,7 @@ struct SpeedGauge: View {
     private func ticks(d: Double, line: Double) -> some View {
         Canvas { ctx, size in
             let c = CGPoint(x: size.width / 2, y: size.height / 2)
-            let rOut = d / 2 - line * 2.2, rIn = rOut - d * 0.05
+            let rOut = d / 2 - line * 2.2, rIn = rOut - d * 0.04
             var v = 0.0
             while v <= scaleMax + 0.1 {
                 var p = Path()
