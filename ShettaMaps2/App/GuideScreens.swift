@@ -154,6 +154,19 @@ enum GuideScreens {
             UserDefaults.standard.set(true, forKey: ProximityAlerts.savedKey)
             UserDefaults.standard.set(true, forKey: ProximityAlerts.waterKey)
             router.selectedSection = .settings
+        case "reserves":
+            await ReserveService.shared.refresh(force: true)
+            UserDefaults.standard.set(true, forKey: SettingsKeys.showReserves)
+            mapManager.layer = .hybrid
+            mapManager.send(.focus(.init(latitude: 25.9, longitude: 46.6), spanMeters: 260_000))
+        case "reserveinfo":
+            await ReserveService.shared.refresh(force: true)
+            if let r = ReserveService.shared.reserves.first(where: { $0.name.contains("الإمام عبدالعزيز بن محمد") })
+                ?? ReserveService.shared.reserves.first {
+                mapManager.send(.focus(r.labelPoint, spanMeters: 120_000))
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                router.mapSheet = .reserve(r.id)
+            }
         case "night":
             UserDefaults.standard.set(AppearanceMode.dark.rawValue, forKey: SettingsKeys.appearanceMode)
             AppearanceController.shared.update()
