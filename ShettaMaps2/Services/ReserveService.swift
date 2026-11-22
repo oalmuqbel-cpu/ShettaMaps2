@@ -207,11 +207,29 @@ final class ReserveService: ObservableObject {
             guard !polys.isEmpty else { continue }
             let all = polys.flatMap { $0.first ?? [] }
             let lats = all.map(\.latitude), lons = all.map(\.longitude)
-            // نقطة الاسم: أقرب رأس من الحلقة الكبرى إلى مركزها إن كان المركز خارجها
-            let biggest = polys.max { $0[0].count < $1[0].count }![0]
+            // نقطة الاسم: مركز المضلع الأكبر إن وقع داخله (خارج الثقوب)، وإلا أقرب نقطة داخلية إلى المركز
+            let main = polys.max { $0[0].count < $1[0].count }!
+            let biggest = main[0]
+            func within(_ p: CLLocationCoordinate2D) -> Bool {
+                Reserve.inside(p, biggest) && !main.dropFirst().contains { Reserve.inside(p, $0) }
+            }
             let c = CLLocationCoordinate2D(latitude: biggest.map(\.latitude).reduce(0, +) / Double(biggest.count),
                                            longitude: biggest.map(\.longitude).reduce(0, +) / Double(biggest.count))
-            let label = Reserve.inside(c, biggest) ? c : biggest.min { GeoMath.distance($0, c) < GeoMath.distance($1, c) }!
+            var label = c
+            if !within(c) {
+                let bl = biggest.map(\.latitude), bo = biggest.map(\.longitude)
+                var best: (CLLocationCoordinate2D, Double)?
+                for i in 0...20 {
+                    for j in 0...20 {
+                        let p = CLLocationCoordinate2D(latitude: bl.min()! + (bl.max()! - bl.min()!) * Double(i) / 20,
+                                                       longitude: bo.min()! + (bo.max()! - bo.min()!) * Double(j) / 20)
+                        guard within(p) else { continue }
+                        let d = GeoMath.distance(p, c)
+                        if best == nil || d < best!.1 { best = (p, d) }
+                    }
+                }
+                label = best?.0 ?? biggest[0]
+            }
             out.append(Reserve(
                 id: (p["osm"] as? String) ?? "r\(i)",
                 name: name,
