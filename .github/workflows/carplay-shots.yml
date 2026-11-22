@@ -63,8 +63,15 @@ jobs:
             sleep 4
             t 20 xcrun simctl location "$UDID" set "$LOC"
             # أيقونة التطبيق في الشريط الجانبي لـ CarPlay
-            t 30 python3 ci/carplay_tap.py shots/windows.txt 53 200 cliclick
-            sleep 7
+            # عدة محاولات نقر (الشريط الجانبي ثم أيقونة الشاشة الرئيسية) مع لقطة بعد كل محاولة
+            N=0
+            for TAP in "53 200 cliclick" "53 200 osa" "205 280 cliclick" "53 215 cliclick" "205 300 osa"; do
+              N=$((N+1))
+              t 30 python3 ci/carplay_tap.py shots/windows.txt $TAP
+              sleep 6
+              t 30 xcrun simctl io "$UDID" screenshot --display=external "shots/cp-$S-try$N.png"
+            done
+            sleep 3
             t 30 xcrun simctl io "$UDID" screenshot --display=external "shots/cp-$S-a.png"
             sleep 18
             t 30 xcrun simctl io "$UDID" screenshot --display=external "shots/cp-$S.png"
