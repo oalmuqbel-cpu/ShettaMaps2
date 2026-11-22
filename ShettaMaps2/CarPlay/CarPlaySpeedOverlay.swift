@@ -53,7 +53,7 @@ struct SpeedGauge: View {
             let line = d * 0.075
             ZStack {
                 Circle().fill(Color.black.opacity(0.72))
-                Circle().stroke(over ? Color.red : Color.white.opacity(0.25), lineWidth: over ? d * 0.03 : 1)
+                Circle().stroke(over ? Color.red : Color.white.opacity(0.25), lineWidth: over ? d * 0.02 : 1)
                 // المسار الكامل
                 arc(1).stroke(Color.white.opacity(0.18), style: StrokeStyle(lineWidth: line, lineCap: .round))
                     .padding(line)
@@ -72,12 +72,13 @@ struct SpeedGauge: View {
                         .foregroundStyle(over ? Color.red : Color.white)
                         .minimumScaleFactor(0.5)
                         .lineLimit(1)
+                        .frame(maxWidth: d * 0.56)
                     Text("كم/س").font(.system(size: d * 0.09, weight: .semibold))
                         .foregroundStyle(Color.white.opacity(0.75))
                 }
                 .offset(y: -d * 0.03)
                 limitBadge(d: d)
-                    .offset(y: d * 0.36)
+                    .offset(y: d * 0.32)
             }
             .frame(width: d, height: d)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -124,7 +125,7 @@ struct SpeedGauge: View {
     }
 
     @ViewBuilder private func limitBadge(d: Double) -> some View {
-        let s = d * 0.27
+        let s = d * 0.25
         if let limit {
             Text(verbatim: String(limit))
                 .font(.system(size: s * (limit >= 100 ? 0.36 : 0.44), weight: .heavy, design: .rounded))
