@@ -18,6 +18,9 @@ struct RootView: View {
             if showSplash {
                 SplashView().transition(.opacity).zIndex(1)
             }
+            #if DEBUG
+            if GuideScreens.requested == "gauge" { GaugePreviewBoard().zIndex(2) }
+            #endif
         }
         .onAppear { location.start() }
         .task {
@@ -93,3 +96,24 @@ struct PadRootView: View {
         }
     }
 }
+
+#if DEBUG
+/// لقطات الشاشة فقط: عداد السرعة في حالاته المختلفة على خلفية خريطة.
+private struct GaugePreviewBoard: View {
+    var body: some View {
+        VStack(spacing: 20) {
+            HStack(spacing: 20) {
+                SpeedGauge(kmh: 0, limit: 60).frame(width: 150, height: 150)
+                SpeedGauge(kmh: 72, limit: 80).frame(width: 150, height: 150)
+            }
+            HStack(spacing: 20) {
+                SpeedGauge(kmh: 134, limit: 120, over: true).frame(width: 150, height: 150)
+                SpeedGauge(kmh: 45, limit: nil, limitUnknown: true).frame(width: 120, height: 120)
+            }
+            SpeedGauge(kmh: nil, limit: nil).frame(width: 96, height: 96)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(red: 0.55, green: 0.5, blue: 0.42))
+    }
+}
+#endif
