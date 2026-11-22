@@ -29,6 +29,11 @@ jobs:
           python3 tools/reserves/build_reserves.py docs/data/reserves.geojson ci-shots/reserves/summary.md ci-shots/reserves/preview.png osm/reserves.geojsonseq osm/countries.geojsonseq
           ls -la docs/data/reserves.geojson; gzip -9 -c docs/data/reserves.geojson | wc -c
           cat ci-shots/reserves/summary.md | head -80
+          # تحقق أن روابط المصدر تشير للعناصر الصحيحة: أول ثلاث محميات
+          for u in $(grep -o 'https://www.openstreetmap.org/[a-z]*/[0-9]*' ci-shots/reserves/summary.md | head -3); do
+            T=$(echo "$u" | cut -d/ -f4); N=$(echo "$u" | cut -d/ -f5); P=$( [ "$T" = relation ] && echo r || echo w )
+            echo "$u => $(osmium getid osm/reserves.osm.pbf $P$N -f opl 2>/dev/null | grep -o 'name=[^,]*' | head -1)"
+          done
       - name: Commit
         run: |
           git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
