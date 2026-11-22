@@ -20,11 +20,13 @@ jobs:
             wr/boundary=protected_area,national_park wr/leisure=nature_reserve \
             -o osm/reserves.osm.pbf --overwrite
           osmium export osm/reserves.osm.pbf --geometry-types=polygon -a id -f geojsonseq -o osm/reserves.geojsonseq --overwrite
+          osmium tags-filter osm/gcc.osm.pbf r/admin_level=2 -o osm/countries.osm.pbf --overwrite
+          osmium export osm/countries.osm.pbf --geometry-types=polygon -f geojsonseq -o osm/countries.geojsonseq --overwrite
           wc -l osm/reserves.geojsonseq
       - name: Build
         run: |
           mkdir -p docs/data ci-shots/reserves
-          python3 tools/reserves/build_reserves.py docs/data/reserves.geojson ci-shots/reserves/summary.md ci-shots/reserves/preview.png osm/reserves.geojsonseq
+          python3 tools/reserves/build_reserves.py docs/data/reserves.geojson ci-shots/reserves/summary.md ci-shots/reserves/preview.png osm/reserves.geojsonseq osm/countries.geojsonseq
           ls -la docs/data/reserves.geojson; gzip -9 -c docs/data/reserves.geojson | wc -c
           cat ci-shots/reserves/summary.md | head -80
       - name: Commit
