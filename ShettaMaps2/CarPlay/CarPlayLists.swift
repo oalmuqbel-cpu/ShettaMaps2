@@ -348,6 +348,7 @@ extension CarPlayTemplateManager {
             toggle("الردميات والطرق الترابية", SettingsKeys.showDirtRoads, true),
             toggle("طرق مرصودة من الأقمار الصناعية", SettingsKeys.showDetectedRoads, true),
             toggle("مشاركات المجتمع", SettingsKeys.showCommunity, true),
+            toggle("المحميات", SettingsKeys.showReserves, true),
             toggle("مساراتي السابقة", SettingsKeys.showMyTracks, false),
             toggle("تغطية الشبكة", SettingsKeys.showCoverage, false),
             toggle("الأمطار", SettingsKeys.showRainMap, false),

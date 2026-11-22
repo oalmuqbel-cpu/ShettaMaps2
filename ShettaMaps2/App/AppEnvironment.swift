@@ -34,6 +34,8 @@ enum SettingsKeys {
     static let showSpeed = "showSpeed"
     static let showWind = "showWind"
     static let showRainMap = "showRainMap"
+    static let showReserves = "showReserves"
+    static let reserveAlerts = "reserveAlerts"
 }
 
 let appLog = Logger(subsystem: "com.almuqbel.ShettaMaps2", category: "app")

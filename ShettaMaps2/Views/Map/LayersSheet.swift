@@ -17,6 +17,7 @@ struct LayersSheet: View {
     @AppStorage(SettingsKeys.showDirtRoads) private var showDirtRoads = true
     @AppStorage(SettingsKeys.showDetectedRoads) private var showDetectedRoads = true
     @AppStorage(SettingsKeys.showRainMap) private var showRainMap = false
+    @AppStorage(SettingsKeys.showReserves) private var showReserves = true
     @AppStorage(SettingsKeys.showWind) private var showWind = true
     @AppStorage(SettingsKeys.showCoverage) private var showCoverage = false
     @AppStorage(SettingsKeys.coverageOnlyMine) private var coverageOnlyMine = true
@@ -54,6 +55,7 @@ struct LayersSheet: View {
                             row("الردميات والطرق الترابية", "road.lanes", $showDirtRoads)
                             if showDirtRoads { row("طرق مرصودة من الأقمار الصناعية", "globe.asia.australia", $showDetectedRoads, indent: true) }
                             row("مساراتي السابقة", "point.topleft.down.to.point.bottomright.curvepath", $showMyTracks)
+                            row("المحميات", "leaf", $showReserves)
                         }
                         .card()
                     }

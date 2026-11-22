@@ -98,6 +98,39 @@ enum MapLibreDataLayers {
         insertBelowLabels([fill], in: style)
     }
 
+    /// حدود المحميات: تعبئة خفيفة وإطار منقط بلون نوع المحمية.
+    @MainActor static func reserves(_ list: [Reserve], on map: MLNMapView) {
+        guard let style = map.style else { return }
+        var feats: [MLNPolygonFeature] = []
+        for r in list {
+            for poly in r.polygons {
+                guard var outer = poly.first, outer.count > 2 else { continue }
+                let holes = poly.dropFirst().filter { $0.count > 2 }.map { h -> MLNPolygon in var c = h; return MLNPolygon(coordinates: &c, count: UInt(c.count)) }
+                let f = MLNPolygonFeature(coordinates: &outer, count: UInt(outer.count), interiorPolygons: holes.isEmpty ? nil : holes)
+                f.attributes = ["k": r.kind.rawValue]
+                feats.append(f)
+            }
+        }
+        let shape = MLNShapeCollectionFeature(shapes: feats)
+        if let src = style.source(withIdentifier: "samt-reserves") as? MLNShapeSource {
+            src.shape = shape
+            return
+        }
+        let src = MLNShapeSource(identifier: "samt-reserves", shape: shape, options: nil)
+        style.addSource(src)
+        let color = NSExpression(format: "TERNARY(k == 'royal', %@, TERNARY(k == 'park', %@, %@))",
+                                 Reserve.Kind.royal.uiColor, Reserve.Kind.park.uiColor, Reserve.Kind.wildlife.uiColor)
+        let fill = MLNFillStyleLayer(identifier: "samt-reserves-fill", source: src)
+        fill.fillColor = color
+        fill.fillOpacity = NSExpression(forConstantValue: 0.10)
+        let line = MLNLineStyleLayer(identifier: "samt-reserves-line", source: src)
+        line.lineColor = color
+        line.lineOpacity = NSExpression(forConstantValue: 0.85)
+        line.lineWidth = NSExpression(forConstantValue: 1.6)
+        line.lineDashPattern = NSExpression(forConstantValue: [3, 2])
+        insertBelowLabels([fill, line], in: style)
+    }
+
     /// مربعات تغطية الشبكة (تعبئة ملونة حسب الحالة).
     @MainActor static func coverage(_ cells: [CoverageCell], on map: MLNMapView) {
         guard let style = map.style else { return }
@@ -171,14 +204,28 @@ final class DataMKMultiPolyline: MKMultiPolyline {
 final class DataMKMultiPolygon: MKMultiPolygon {
     var fill: UIColor = .clear
     var stroke: UIColor?
+    var lineWidth: CGFloat = 0.6
+    var dash: [NSNumber]?
 }
 
 enum MapKitDataLayers {
     /// يستبدل طبقات البيانات على الخريطة. تُضاف تحت خطوط الملاحة والمسارات.
     @MainActor static func apply(dirt: [DirtRoad], coverage: [CoverageCell], rain: [RainCell], rainHour: Int,
-                                 rainShapes: [RainShape] = [], to m: MKMapView) {
+                                 rainShapes: [RainShape] = [], reserves: [Reserve] = [], to m: MKMapView) {
         m.removeOverlays(m.overlays.filter { $0 is DataMKMultiPolyline || $0 is DataMKMultiPolygon })
         var bottomToTop: [MKOverlay] = []
+
+        // المحميات: تعبئة خفيفة وإطار بلون النوع
+        for kind in [Reserve.Kind.royal, .wildlife, .park] {
+            let polys = reserves.filter { $0.kind == kind }.flatMap(\.mkPolygons)
+            guard !polys.isEmpty else { continue }
+            let mp = DataMKMultiPolygon(polys)
+            mp.fill = kind.uiColor.withAlphaComponent(0.10)
+            mp.stroke = kind.uiColor.withAlphaComponent(0.85)
+            mp.lineWidth = 1.6
+            mp.dash = [6, 4]
+            bottomToTop.append(mp)
+        }
 
         // التغطية: لون لكل حالة
         for level in [CoverageLevel.none, .voice, .data] {
@@ -244,7 +291,7 @@ enum MapKitDataLayers {
         if let p = overlay as? DataMKMultiPolygon {
             let r = MKMultiPolygonRenderer(multiPolygon: p)
             r.fillColor = p.fill
-            if let s = p.stroke { r.strokeColor = s; r.lineWidth = 0.6 }
+            if let s = p.stroke { r.strokeColor = s; r.lineWidth = p.lineWidth; r.lineDashPattern = p.dash }
             return r
         }
         return nil

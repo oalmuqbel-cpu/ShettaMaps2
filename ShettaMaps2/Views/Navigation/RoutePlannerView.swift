@@ -73,6 +73,23 @@ struct RoutePlannerView: View {
                     }
                     LabeledContent("المسافة المباشرة الكلية", value: Fmt.distance(NavigationEngine.totalDistance(for: plan)))
                 }
+                let crossed = ReserveService.shared.reserves(along: plan.allPoints.map(\.coordinate))
+                if !crossed.isEmpty {
+                    Section {
+                        Label {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("الخط المباشر يمر بنطاق \(crossed.count == 1 ? "محمية" : "\(crossed.count) محميات"):")
+                                    .font(.subheadline.weight(.semibold))
+                                ForEach(crossed) { r in
+                                    Button(r.name) { router.mapSheet = nil; DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { router.mapSheet = .reserve(r.id) } }
+                                        .font(.subheadline)
+                                }
+                            }
+                        } icon: { Image(systemName: "leaf.fill").foregroundStyle(.green) }
+                    } footer: {
+                        Text("قد يلزم تصريح للدخول أو التخييم. الحدود تقريبية من OpenStreetMap، فتأكد من الجهة الرسمية.")
+                    }
+                }
                 Section {
                     Button {
                         navigation.start(plan)

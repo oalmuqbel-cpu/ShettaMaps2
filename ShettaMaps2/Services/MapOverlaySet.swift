@@ -25,6 +25,8 @@ struct MapOverlaySet: Equatable {
         case coverage
         /// آخر موقع معروف لشخص أتابع رحلته الآمنة.
         case friend
+        /// اسم محمية (يفتح بطاقة معلوماتها).
+        case reserve
         var isSmall: Bool { self == .stop || self == .resume }
     }
     enum LineKind: Equatable { case track, direct, road, importedTrack, community, myTracks }

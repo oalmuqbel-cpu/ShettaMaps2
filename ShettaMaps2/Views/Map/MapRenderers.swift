@@ -113,13 +113,13 @@ enum MapKitOverlayRenderer {
         v.glyphImage = UIImage(systemName: a.symbol ?? PinImageFactory.symbol(kind: a.kind))
         switch a.kind {
         case .destination, .friend: v.displayPriority = .required
-        case .landmark: v.displayPriority = .defaultLow
+        case .landmark, .reserve: v.displayPriority = .defaultLow
         case .stop, .resume: v.displayPriority = .defaultLow
         default: v.displayPriority = .defaultHigh
         }
         v.canShowCallout = true
         // أسماء الأماكن المعروفة تظهر عند توفر مساحة فقط حتى لا تزدحم الشاشة
-        v.titleVisibility = a.kind == .landmark || a.kind == .community ? .adaptive : .visible
+        v.titleVisibility = a.kind == .landmark || a.kind == .community || a.kind == .reserve ? .adaptive : .visible
         return v
     }
 }
@@ -162,6 +162,7 @@ enum PinImageFactory {
         case .resume: return UIColor(red: 0.20, green: 0.60, blue: 0.30, alpha: 1)
         case .coverage: return UIColor.systemTeal
         case .friend: return UIColor.systemIndigo
+        case .reserve: return UIColor(red: 0.18, green: 0.49, blue: 0.20, alpha: 1)
         }
     }
 
@@ -179,6 +180,7 @@ enum PinImageFactory {
         case .resume: return "play.fill"
         case .coverage: return "antenna.radiowaves.left.and.right"
         case .friend: return "person.fill"
+        case .reserve: return "leaf.fill"
         }
     }
 

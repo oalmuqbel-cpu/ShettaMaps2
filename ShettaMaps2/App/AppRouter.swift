@@ -40,6 +40,7 @@ enum MapSheet: Identifiable {
     case convoy
     case weather
     case reviews(String, String)
+    case reserve(String)
 
     var id: String {
         switch self {
@@ -56,6 +57,7 @@ enum MapSheet: Identifiable {
         case .convoy: return "convoy"
         case .weather: return "weather"
         case .reviews(let k, _): return "reviews-\(k)"
+        case .reserve(let id): return "reserve-\(id)"
         }
     }
 }

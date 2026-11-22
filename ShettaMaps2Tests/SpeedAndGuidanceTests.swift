@@ -661,3 +661,29 @@ final class KMLTests: XCTestCase {
         XCTAssertThrowsError(try KMLService.parse(data: Data("<kml><Document/></kml>".utf8)))
     }
 }
+
+final class ReserveTests: XCTestCase {
+    private let json = """
+    {"type":"FeatureCollection","features":[
+     {"type":"Feature","properties":{"name":"محمية كبيرة","kind":"royal","area_km2":1000,"osm":"https://www.openstreetmap.org/relation/1","website":"example.gov.sa","country":"SA"},
+      "geometry":{"type":"Polygon","coordinates":[[[46,24],[47,24],[47,25],[46,25],[46,24]],[[46.4,24.4],[46.6,24.4],[46.6,24.6],[46.4,24.6],[46.4,24.4]]]}},
+     {"type":"Feature","properties":{"name":"محمية صغيرة","kind":"wildlife","area_km2":10,"osm":"https://www.openstreetmap.org/way/2"},
+      "geometry":{"type":"MultiPolygon","coordinates":[[[[46.8,24.8],[46.9,24.8],[46.9,24.9],[46.8,24.9],[46.8,24.8]]]]}}
+    ]}
+    """
+
+    func testParseContainsAndHoles() throws {
+        let list = try ReserveService.parse(Data(json.utf8))
+        XCTAssertEqual(list.count, 2)
+        let big = list[0]
+        XCTAssertEqual(big.kind, .royal)
+        XCTAssertEqual(big.website?.absoluteString, "https://example.gov.sa")
+        XCTAssertEqual(big.source?.absoluteString, "https://www.openstreetmap.org/relation/1")
+        XCTAssertTrue(big.contains(.init(latitude: 24.2, longitude: 46.2)))
+        XCTAssertFalse(big.contains(.init(latitude: 24.5, longitude: 46.5)))   // داخل الثقب
+        XCTAssertFalse(big.contains(.init(latitude: 23.9, longitude: 46.5)))
+        XCTAssertTrue(big.contains(big.labelPoint))
+        XCTAssertTrue(list[1].contains(.init(latitude: 24.85, longitude: 46.85)))
+        XCTAssertEqual(list[1].kind, .wildlife)
+    }
+}

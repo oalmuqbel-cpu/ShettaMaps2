@@ -286,11 +286,13 @@ struct ProximitySection: View {
     @AppStorage(ProximityAlerts.savedKey) private var saved = false
     @AppStorage(ProximityAlerts.waterKey) private var water = false
     @AppStorage(ProximityAlerts.radiusKey) private var radius: Double = 1000
+    @AppStorage(SettingsKeys.reserveAlerts) private var reserveAlerts = true
 
     var body: some View {
         Section {
             Toggle("الأماكن المحفوظة", isOn: $saved)
             Toggle("موارد الماء والآبار", isOn: $water)
+            Toggle("دخول نطاق محمية", isOn: $reserveAlerts)
             if saved || water {
                 Picker("التنبيه على بعد", selection: $radius) {
                     Text("500 م").tag(500.0)
@@ -302,7 +304,7 @@ struct ProximitySection: View {
         } header: {
             Text("تنبيه الاقتراب")
         } footer: {
-            Text("ينبهك صوتيًا وبإشعار عند الاقتراب من المكان، مرة واحدة كل 12 ساعة لكل مكان. لا ينبه عن مكان كنت فيه عند فتح التطبيق.")
+            Text("ينبهك صوتيًا وبإشعار عند الاقتراب من المكان، مرة واحدة كل 12 ساعة لكل مكان، وعند دخول نطاق محمية أثناء السير. لا ينبه عن مكان كنت فيه عند فتح التطبيق.")
         }
     }
 }

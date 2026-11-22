@@ -44,6 +44,8 @@ struct MapScreen: View {
     @StateObject private var rainNow = RainNowService.shared
     @StateObject private var fuelRange = FuelRangeMonitor.shared
     @StateObject private var proximity = ProximityAlerts.shared
+    @StateObject private var reservesService = ReserveService.shared
+    @AppStorage(SettingsKeys.showReserves) private var showReserves = true
     @StateObject private var rainForecast = RainForecastService.shared
     @AppStorage(RainNowService.modeKey) private var rainObserved = false
 
@@ -114,7 +116,7 @@ struct MapScreen: View {
                             navigation: navigation.snapshot,
                             currentLocation: location.location?.coordinate,
                             picked: mapManager.pickedCoordinate,
-                            extraPins: landmarkPins + communityPins + shownTrackPins + followPins + (mapManager.searchPin.map { [$0] } ?? []),
+                            extraPins: reservePins + landmarkPins + communityPins + shownTrackPins + followPins + (mapManager.searchPin.map { [$0] } ?? []),
                             extraLines: myTracksLines
                                 + (router.shownTrack?.segments ?? []).map { .init(kind: .importedTrack, coordinates: $0) }
                                 + communityTrackLines)
@@ -162,6 +164,20 @@ struct MapScreen: View {
                               kinds: kinds, nameFilter: nameFilter, waterSubs: subs).map {
             .init(id: "g-\($0.id)", title: $0.name, subtitle: [$0.kind.title, $0.region].compactMap { $0 }.joined(separator: " · "), coordinate: .init(latitude: $0.lat, longitude: $0.lon),
                   kind: .landmark, symbol: $0.kind.icon)
+        }
+    }
+
+    /// المحميات الظاهرة (حدودها تُرسم في طبقة مستقلة، واسمها علامة تفتح بطاقة معلوماتها).
+    private var shownReserves: [Reserve] {
+        guard showReserves, let b = mapManager.visibleBounds else { return [] }
+        let key = "\(regionKey)|\(reservesService.revision)"
+        return memo.get("reserves", key) { reservesService.reserves(in: b.sw, b.ne) }
+    }
+
+    private var reservePins: [MapOverlaySet.Pin] {
+        shownReserves.map {
+            .init(id: "reserve-\($0.id)", title: $0.name, subtitle: $0.kind.title, coordinate: $0.labelPoint,
+                  kind: .reserve, symbol: "leaf.fill")
         }
     }
 
@@ -467,18 +483,18 @@ struct MapScreen: View {
             // نفس مصدر الخرائط المجاني مع إبراز الطرق الترابية؛ يعمل دون إنترنت في المناطق المنزّلة
             OfflineMapView(styleURL: URL(string: OfflineMapManager.defaultStyleURL), overlays: overlays, mapManager: mapManager,
                            highlightDirtRoads: true, dirtRoads: dirtRoads, coverageCells: coverageCells,
-                           rainCells: shownRainCells, rainHour: shownRainHour, rainShapes: shownRainShapes,
+                           rainCells: shownRainCells, rainHour: shownRainHour, rainShapes: shownRainShapes, reserves: shownReserves,
                            markerStyle: markerStyle, markerColor: markerColor)
                 .overlay(nightDim)
         } else if mapManager.layer == .offline {
             OfflineMapView(styleURL: offlineMaps.activeStyleURL, overlays: overlays, mapManager: mapManager, highlightDirtRoads: true,
                            dirtRoads: dirtRoads, coverageCells: coverageCells,
-                           rainCells: shownRainCells, rainHour: shownRainHour, rainShapes: shownRainShapes,
+                           rainCells: shownRainCells, rainHour: shownRainHour, rainShapes: shownRainShapes, reserves: shownReserves,
                            markerStyle: markerStyle, markerColor: markerColor)
                 .overlay(nightDim)
         } else {
             OnlineMapView(overlays: overlays, mapManager: mapManager, dirtRoads: dirtRoads, dirtLabels: dirtLabels,
-                          coverageCells: coverageCells, rainCells: shownRainCells, rainHour: shownRainHour, rainShapes: shownRainShapes,
+                          coverageCells: coverageCells, rainCells: shownRainCells, rainHour: shownRainHour, rainShapes: shownRainShapes, reserves: shownReserves,
                           userCoordinate: location.location?.coordinate, userHeading: userHeading,
                           markerStyle: markerStyle, markerColor: markerColor)
         }
@@ -758,6 +774,12 @@ struct MapScreen: View {
     // MARK: - الضغط على مكان في الخريطة
 
     private func pinPrimaryActions(_ pin: MapOverlaySet.Pin) -> [PlaceCard.Action] {
+        if pin.kind == .reserve {
+            let id = String(pin.id.dropFirst("reserve-".count))
+            return [.init(id: "reserveInfo", title: "معلومات المحمية", icon: "info.circle") {
+                router.mapSheet = .reserve(id); mapManager.selectedPin = nil
+            }]
+        }
         var list: [PlaceCard.Action] = [
             .init(id: "nav", title: "الملاحة", icon: "location.north.line.fill") {
                 navigation.navigate(to: Waypoint(name: pin.title, coordinate: pin.coordinate)); mapManager.selectedPin = nil
@@ -904,6 +926,10 @@ struct MapScreen: View {
             NavigationStack { WeatherView() }
         case .reviews(let key, let name):
             NavigationStack { ReviewsView(placeKey: key, placeName: name) }
+        case .reserve(let id):
+            if let r = reservesService.reserve(id: id) {
+                NavigationStack { ReserveInfoView(reserve: r) }
+            }
         }
     }
 }

@@ -47,6 +47,7 @@ enum CarPlaySettings {
     static var showCoverage: Bool { bool(SettingsKeys.showCoverage, false) }
     static var coverageOnlyMine: Bool { bool(SettingsKeys.coverageOnlyMine, true) }
     static var showRainMap: Bool { bool(SettingsKeys.showRainMap, false) }
+    static var showReserves: Bool { bool(SettingsKeys.showReserves, true) }
     static var northUp: Bool { bool(northUpKey, false) }
     static var landmarkKinds: Set<PlaceKind> {
         PlaceKind.expand(PlaceKind.decodeSet(UserDefaults.standard.string(forKey: SettingsKeys.landmarkKinds) ?? ""))
@@ -87,6 +88,7 @@ final class CarPlayMapViewController: UIViewController {
     private var coverageCells: [CoverageCell] = []
     private var rainCells: [RainCell] = []
     private var rainShapes: [RainShape] = []
+    private var reserves: [Reserve] = []
     private var lastDataRegion: MKCoordinateRegion?
     private var dataWork: DispatchWorkItem?
     private var settingsSignature = CarPlaySettings.signature
@@ -331,7 +333,8 @@ final class CarPlayMapViewController: UIViewController {
             .merge(with: SearchService.shared.$indexRevision.map { _ in () })
             .merge(with: RainNowService.shared.$cells.map { _ in () })
             .merge(with: RainForecastService.shared.$frames.map { _ in () })
-            .dropFirst(4)
+            .merge(with: ReserveService.shared.$revision.map { _ in () })
+            .dropFirst(5)
             .throttle(for: .seconds(3), scheduler: RunLoop.main, latest: true)
             .sink { [weak self] _ in
                 guard let self, self.role == .main, !self.gestureActive else { return }
@@ -474,6 +477,7 @@ final class CarPlayMapViewController: UIViewController {
         let online = env.network.isOnline
 
         var pins: [MapOverlaySet.Pin] = []
+        reserves = CarPlaySettings.showReserves ? ReserveService.shared.reserves(in: sw, ne) : []
         if CarPlaySettings.showLandmarks, span >= 2.5, span < 12,
            CarPlaySettings.landmarkKinds.isEmpty || CarPlaySettings.landmarkKinds.contains(.nafud) {
             // أسماء النفود والعروق تظهر من مسافة أبعد
@@ -575,13 +579,15 @@ final class CarPlayMapViewController: UIViewController {
     private func applyDataLayers() {
         guard role == .main else { return }
         if let m = mapKitView {
-            MapKitDataLayers.apply(dirt: dirt, coverage: coverageCells, rain: rainCells, rainHour: 0, rainShapes: rainShapes, to: m)
+            MapKitDataLayers.apply(dirt: dirt, coverage: coverageCells, rain: rainCells, rainHour: 0, rainShapes: rainShapes,
+                                   reserves: reserves, to: m)
         }
         if let m = libreView {
             MapLibreDataLayers.dirt(dirt, on: m)
             MapLibreDataLayers.coverage(coverageCells, on: m)
             MapLibreDataLayers.rain(rainCells, hour: 0, on: m)
             MapLibreDataLayers.rainShapes(rainShapes, on: m)
+            MapLibreDataLayers.reserves(reserves, on: m)
             MapLibreDataLayers.highlightStyleDirt(on: m, visible: CarPlaySettings.showDirtRoads)
         }
     }

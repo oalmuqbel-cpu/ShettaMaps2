@@ -13,6 +13,7 @@ struct OfflineMapView: UIViewRepresentable {
     var rainCells: [RainCell] = []
     var rainHour: Int = 0
     var rainShapes: [RainShape] = []
+    var reserves: [Reserve] = []
     var markerStyle: UserMarkerStyle = .dot
     var markerColor: UserMarkerColor = .white
 
@@ -76,6 +77,12 @@ struct OfflineMapView: UIViewRepresentable {
             c.pendingRainShapes = rainShapes
             MapLibreDataLayers.rainShapes(rainShapes, on: map)
         }
+        let reservesKey = reserves.map(\.id).joined(separator: ",")
+        if c.lastReservesKey != reservesKey {
+            c.lastReservesKey = reservesKey
+            c.pendingReserves = reserves
+            MapLibreDataLayers.reserves(reserves, on: map)
+        }
         // المفتاح يشمل الحالة: مربع تغيّر لونه (برتقالي إلى أخضر) يُعاد رسمه حتى لو بقيت المربعات نفسها
         let covKey = coverageCells.map { "\($0.id):\($0.level.rawValue)" }.joined(separator: ",")
         if c.lastCoverageKey != covKey {
@@ -111,6 +118,8 @@ struct OfflineMapView: UIViewRepresentable {
         var pendingCoverage: [CoverageCell] = []
         var pendingRainShapes: [RainShape] = []
         var lastRainShapesKey = ""
+        var pendingReserves: [Reserve] = []
+        var lastReservesKey = ""
         var markerKey = ""
         var markerStyle: UserMarkerStyle = .dot
         var markerColor: UserMarkerColor = .white
@@ -129,6 +138,7 @@ struct OfflineMapView: UIViewRepresentable {
                 applyCoverage(on: mapView)
                 applyRain(pendingRain.0, hour: pendingRain.1, on: mapView)
                 MapLibreDataLayers.rainShapes(pendingRainShapes, on: mapView)
+                MapLibreDataLayers.reserves(pendingReserves, on: mapView)
                 if highlightDirtRoads { MapLibreDataLayers.highlightStyleDirt(on: mapView, visible: true) }
             }
         }

@@ -11,6 +11,7 @@ struct OnlineMapView: View {
     var rainCells: [RainCell] = []
     var rainHour: Int = 0
     var rainShapes: [RainShape] = []
+    var reserves: [Reserve] = []
     var userCoordinate: CLLocationCoordinate2D?
     var userHeading: Double?
     var markerStyle: UserMarkerStyle = .dot
@@ -25,6 +26,14 @@ struct OnlineMapView: View {
     var body: some View {
         MapReader { proxy in
             Map(position: $position, interactionModes: .all, selection: $selection) {
+                ForEach(reserves) { r in
+                    let color = Color(uiColor: r.kind.uiColor)
+                    ForEach(Array(r.mkPolygons.enumerated()), id: \.offset) { _, poly in
+                        MapPolygon(poly)
+                            .foregroundStyle(color.opacity(0.10))
+                            .stroke(color.opacity(0.85), style: StrokeStyle(lineWidth: 1.6, dash: [6, 4]))
+                    }
+                }
                 ForEach(rainCells) { cell in
                     let l = RainScale.level(cell.hourly.indices.contains(rainHour) ? cell.hourly[rainHour] : 0)
                     if l > 0 {
