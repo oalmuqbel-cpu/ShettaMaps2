@@ -22,6 +22,8 @@ enum OfflineRouter {
     /// حتى ثلاثة طرق، الأسرع أولًا.
     static func routes(on g: RouteGraph, from: CLLocationCoordinate2D, to: CLLocationCoordinate2D, alternatives: Int = 3) throws -> [RoadRoute] {
         guard let s = g.snap(from), let t = g.snap(to) else { throw RouterError.notOnRoad }
+        // البداية والوجهة على الطريق نفسه وباتجاه السير المسموح: طريق مباشر قصير
+        if s.info == t.info, let same = sameEdgeRoute(g, s, t) { return [same] }
         var penalties: [Int: Double] = [:]
         var out: [RoadRoute] = []
         var usedSets: [Set<Int>] = []
@@ -42,6 +44,28 @@ enum OfflineRouter {
         }
         guard !out.isEmpty else { throw RouterError.noRoute }
         return out.sorted { $0.expectedTravelTime < $1.expectedTravelTime }
+    }
+
+    private static func sameEdgeRoute(_ g: RouteGraph, _ s: RouteGraph.Snap, _ t: RouteGraph.Snap) -> RoadRoute? {
+        let inf = g.info(s.info)
+        let oneway = inf.flags & RouteGraph.flagOneway != 0, rev = inf.flags & RouteGraph.flagReverse != 0
+        let forward = t.fraction >= s.fraction
+        guard forward ? (!oneway || !rev) : (!oneway || rev) else { return nil }
+        let full = g.edgeCoordinates(from: s.vertexA, to: s.vertexB, info: inf, reversed: false)
+        let line = forward ? full : Array(full.reversed())
+        let f0 = forward ? s.fraction : 1 - s.fraction, f1 = forward ? t.fraction : 1 - t.fraction
+        let total = zip(line, line.dropFirst()).reduce(0) { $0 + GeoMath.distance($1.0, $1.1) }
+        var acc = 0.0
+        var coords = [s.point]
+        for k in 1..<line.count {
+            acc += GeoMath.distance(line[k - 1], line[k])
+            if acc > total * f0 && acc < total * f1 { coords.append(line[k]) }
+        }
+        coords.append(t.point)
+        let d = total * abs(f1 - f0)
+        let time = edgeTime(inf, fraction: abs(f1 - f0))
+        let steps = RoadRoutingService.buildSteps([("", d, coords)])
+        return RoadRoute(coordinates: coords, steps: steps, distance: d, expectedTravelTime: time, name: g.name(inf.nameOffset))
     }
 
     // MARK: - البحث
