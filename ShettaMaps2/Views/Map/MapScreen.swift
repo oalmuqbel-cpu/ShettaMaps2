@@ -103,6 +103,12 @@ struct MapScreen: View {
         }
     }
 
+    /// خط القبلة من الموقع الحالي إلى الكعبة (عند تفعيل القبلة من البوصلة).
+    private var qiblaLines: [MapOverlaySet.Line] {
+        guard mapManager.showQibla, let c = location.location?.coordinate else { return [] }
+        return [.init(kind: .qibla, coordinates: Qibla.line(from: c))]
+    }
+
     /// كل مساراتي السابقة (عند تفعيل زر المسارات) بلون مختلف.
     private var myTracksLines: [MapOverlaySet.Line] {
         guard showMyTracks, let b = mapManager.visibleBounds else { return [] }
@@ -120,7 +126,8 @@ struct MapScreen: View {
                             extraPins: reservePins + landmarkPins + communityPins + shownTrackPins + followPins + (mapManager.searchPin.map { [$0] } ?? []),
                             extraLines: myTracksLines
                                 + (router.shownTrack?.segments ?? []).map { .init(kind: .importedTrack, coordinates: $0) }
-                                + communityTrackLines)
+                                + communityTrackLines
+                                + qiblaLines)
     }
 
     /// أسماء الأماكن المعروفة (OpenStreetMap) ضمن المنطقة الظاهرة، عند تكبير كافٍ.

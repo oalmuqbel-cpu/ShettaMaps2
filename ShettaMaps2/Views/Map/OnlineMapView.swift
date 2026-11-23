@@ -158,6 +158,10 @@ struct OnlineMapView: View {
             MapPolyline(coordinates: line.coordinates)
                 .stroke(Color(red: 0.55, green: 0.30, blue: 0.12).opacity(0.85),
                         style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round, dash: [6, 5]))
+        case .qibla:
+            MapPolyline(coordinates: line.coordinates)
+                .stroke(Color(red: 0.05, green: 0.45, blue: 0.25).opacity(0.95),
+                        style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round, dash: [12, 6]))
         case .myTracks:
             MapPolyline(coordinates: line.coordinates)
                 .stroke(Theme.myTracks, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))

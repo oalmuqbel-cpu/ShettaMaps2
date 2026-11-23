@@ -95,6 +95,8 @@ final class MapManager: ObservableObject {
     /// نتيجة بحث معروضة على الخريطة كعلامة مؤقتة (مثل نتائج خرائط Apple التي لا يُسمح بتخزينها)، حتى يحفظها المستخدم أو يغلقها.
     @Published var searchPin: MapOverlaySet.Pin?
     @Published private(set) var command: MapCommand?
+    /// عرض اتجاه القبلة (سطر القبلة في الشريط العلوي وخطها على الخريطة).
+    @Published var showQibla = false
     @Published private(set) var commandID = 0
 
     init() {

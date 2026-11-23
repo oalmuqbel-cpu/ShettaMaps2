@@ -29,7 +29,7 @@ struct MapOverlaySet: Equatable {
         case reserve
         var isSmall: Bool { self == .stop || self == .resume }
     }
-    enum LineKind: Equatable { case track, direct, road, roadDone, routeAlt, importedTrack, community, myTracks }
+    enum LineKind: Equatable { case track, direct, road, roadDone, routeAlt, importedTrack, community, myTracks, qibla }
 
     struct Line: Equatable {
         var kind: LineKind

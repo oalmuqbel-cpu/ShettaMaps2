@@ -9,14 +9,14 @@ struct StatusHUD: View {
     @EnvironmentObject private var carPlay: CarPlayConnectionMonitor
     @AppStorage(SettingsKeys.coordinateFormat) private var formatRaw = CoordinateFormat.decimal.rawValue
     @State private var copied = false
-    @State private var showQibla = false
+    @EnvironmentObject private var mapManager: MapManager
 
     private var format: CoordinateFormat { CoordinateFormat(rawValue: formatRaw) ?? .decimal }
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.s) {
             HStack(alignment: .center, spacing: DS.m) {
-                Button { withAnimation(.easeInOut(duration: 0.2)) { showQibla.toggle() } } label: {
+                Button { withAnimation(.easeInOut(duration: 0.2)) { mapManager.showQibla.toggle() } } label: {
                     // القرص مرسوم بمقاس ٥٤ ثم يُصغَّر لمقاس الأزرار الموحد
                     CompassDial(heading: location.currentHeadingDegrees, qibla: qiblaBearing)
                         .frame(width: 54, height: 54)
@@ -74,18 +74,37 @@ struct StatusHUD: View {
                     }
                 }
             }
-            if showQibla, let q = qiblaInfo {
-                HStack(spacing: DS.s) {
-                    KaabaMark().frame(width: 12, height: 12)
-                    Text("القبلة \(Fmt.bearing(q.bearing))").font(.footnote.weight(.semibold))
-                    Text("· مكة المكرمة على بعد \(Fmt.distance(q.distance))").font(.footnote).foregroundStyle(.secondary)
-                    Spacer(minLength: 0)
+            if mapManager.showQibla, let q = qiblaInfo {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: DS.s) {
+                        KaabaMark().frame(width: 12, height: 12)
+                        Text("القبلة \(Fmt.bearing(q.bearing))").font(.footnote.weight(.semibold))
+                        Text("· مكة المكرمة على بعد \(Fmt.distance(q.distance))").font(.footnote).foregroundStyle(.secondary)
+                        Spacer(minLength: 0)
+                    }
+                    Text("الخط الأخضر على الخريطة يمتد من موقعك إلى الكعبة المشرفة، ولا يعتمد على بوصلة الجوال. قارنه بالشوارع والمعالم.")
+                        .font(.caption2).foregroundStyle(.secondary)
+                    if let warn = compassWarning {
+                        Label(warn, systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption2.weight(.semibold)).foregroundStyle(.orange)
+                    }
                 }
                 .transition(.opacity)
             }
         }
         .hudCard()
         .alert("تم نسخ الإحداثيات", isPresented: $copied) { Button("حسنًا", role: .cancel) {} }
+    }
+
+    /// تنبيه عند ضعف دقة البوصلة: الإبرة وعلامة الكعبة على القرص تعتمدان عليها.
+    private var compassWarning: String? {
+        guard let h = location.heading, h.headingAccuracy >= 0 else {
+            return "البوصلة غير متاحة الآن: اعتمد على الخط الأخضر في الخريطة."
+        }
+        if h.headingAccuracy > 20 {
+            return "دقة البوصلة ضعيفة (± \(Int(h.headingAccuracy))°): حرّك الجوال على شكل الرقم ٨ وابتعد عن السيارة والمعادن."
+        }
+        return nil
     }
 
     private var qiblaBearing: Double? { location.location.map { Qibla.bearing(from: $0.coordinate) } }
@@ -115,6 +134,22 @@ enum Qibla {
     static let kaaba = CLLocationCoordinate2D(latitude: 21.422487, longitude: 39.826206)
     static func bearing(from c: CLLocationCoordinate2D) -> Double { GeoMath.bearing(from: c, to: kaaba) }
     static func distance(from c: CLLocationCoordinate2D) -> Double { GeoMath.distance(c, kaaba) }
+
+    /// خط القبلة على الدائرة العظمى من الموقع إلى الكعبة (نقاط متتابعة حتى يظهر الاتجاه الصحيح محليًا على الخريطة).
+    static func line(from c: CLLocationCoordinate2D, segments: Int = 64) -> [CLLocationCoordinate2D] {
+        let r = Double.pi / 180
+        let la1 = c.latitude * r, lo1 = c.longitude * r, la2 = kaaba.latitude * r, lo2 = kaaba.longitude * r
+        let d = 2 * asin(sqrt(pow(sin((la2 - la1) / 2), 2) + cos(la1) * cos(la2) * pow(sin((lo2 - lo1) / 2), 2)))
+        guard d > 1e-9 else { return [c, kaaba] }
+        return (0...segments).map { i in
+            let f = Double(i) / Double(segments)
+            let a = sin((1 - f) * d) / sin(d), b = sin(f * d) / sin(d)
+            let x = a * cos(la1) * cos(lo1) + b * cos(la2) * cos(lo2)
+            let y = a * cos(la1) * sin(lo1) + b * cos(la2) * sin(lo2)
+            let z = a * sin(la1) + b * sin(la2)
+            return CLLocationCoordinate2D(latitude: atan2(z, sqrt(x * x + y * y)) / r, longitude: atan2(y, x) / r)
+        }
+    }
 }
 
 /// رمز الكعبة الصغير: مربع داكن بحزام ذهبي.

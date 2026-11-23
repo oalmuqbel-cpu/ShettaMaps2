@@ -871,7 +871,7 @@ final class NavFormatTests: XCTestCase {
     }
 }
 
-final class QiblaTests: XCTestCase {
+final class QiblaReferenceTests: XCTestCase {
     func testQiblaBearingFromRiyadh() {
         let b = Qibla.bearing(from: .init(latitude: 24.7136, longitude: 46.6753))
         XCTAssertEqual(b, 244, accuracy: 2)
@@ -888,5 +888,18 @@ final class QiblaTests: XCTestCase {
         XCTAssertEqual(LocationManager.headingOrientation(for: .landscapeLeft), .landscapeRight)
         XCTAssertEqual(LocationManager.headingOrientation(for: .landscapeRight), .landscapeLeft)
         XCTAssertEqual(LocationManager.headingOrientation(for: .unknown), .portrait)
+    }
+}
+
+final class QiblaLineTests: XCTestCase {
+    func testLineStartsAlongQiblaBearingAndEndsAtKaaba() {
+        let here = CLLocationCoordinate2D(latitude: 24.812631, longitude: 46.620366)
+        let line = Qibla.line(from: here)
+        XCTAssertGreaterThan(line.count, 10)
+        XCTAssertEqual(line.first!.latitude, here.latitude, accuracy: 1e-9)
+        XCTAssertLessThan(GeoMath.distance(line.last!, Qibla.kaaba), 1)
+        // أول مقطع من الخط يتجه باتجاه القبلة نفسه (المرجع: 244° للرياض)
+        XCTAssertEqual(GeoMath.bearing(from: line[0], to: line[1]), Qibla.bearing(from: here), accuracy: 0.5)
+        XCTAssertEqual(Qibla.bearing(from: here), 244, accuracy: 1)
     }
 }
