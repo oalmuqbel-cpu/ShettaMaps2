@@ -687,3 +687,22 @@ final class ReserveTests: XCTestCase {
         XCTAssertEqual(list[1].kind, .wildlife)
     }
 }
+
+/// فحص خدمة اتجاهات Apple من بيئة الاختبار (لا يُفشل البناء إن تعذّر الاتصال).
+final class AppleDirectionsProbe: XCTestCase {
+    func testProbeRiyadhRoute() async throws {
+        let req = MKDirections.Request()
+        req.source = MKMapItem(placemark: MKPlacemark(coordinate: .init(latitude: 24.7136, longitude: 46.6753)))
+        req.destination = MKMapItem(placemark: MKPlacemark(coordinate: .init(latitude: 24.6765, longitude: 46.8243)))
+        req.transportType = .automobile
+        req.requestsAlternateRoutes = true
+        do {
+            let r = try await MKDirections(request: req).calculate()
+            print("DIRPROBE routes=\(r.routes.count)", r.routes.map { "\(Int($0.distance))m \(Int($0.expectedTravelTime))s steps=\($0.steps.count) name=\($0.name)" })
+            for s in r.routes.first?.steps.prefix(6) ?? [] { print("DIRPROBE step:", s.instructions, Int(s.distance)) }
+        } catch {
+            print("DIRPROBE error:", (error as NSError).domain, (error as NSError).code, error.localizedDescription)
+            throw XCTSkip("directions unavailable")
+        }
+    }
+}
