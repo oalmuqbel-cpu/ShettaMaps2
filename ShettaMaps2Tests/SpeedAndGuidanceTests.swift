@@ -808,3 +808,50 @@ final class OfflineRouterTests: XCTestCase {
         XCTAssertEqual(OfflineRouter.turnAngle(a, right), 90, accuracy: 3)
     }
 }
+
+/// اختبار على شبكة الطرق الحقيقية للمنطقة الوسطى (يُنزَّل من إصدار road-graph؛ يُتخطى إن تعذّر التنزيل).
+final class RealRoadGraphTests: XCTestCase {
+    private static var cached: RouteGraph?
+
+    private func central() async throws -> RouteGraph {
+        if let g = Self.cached { return g }
+        let url = URL(string: "https://github.com/oalmuqbel-cpu/ShettaMaps2/releases/download/road-graph/roads-central.samtroute")!
+        guard let (tmp, resp) = try? await URLSession.shared.download(from: url), (resp as? HTTPURLResponse)?.statusCode == 200 else {
+            throw XCTSkip("road graph not published yet")
+        }
+        let dest = FileManager.default.temporaryDirectory.appendingPathComponent("roads-central-test.samtroute")
+        try? FileManager.default.removeItem(at: dest)
+        try FileManager.default.moveItem(at: tmp, to: dest)
+        let g = try RouteGraph(url: dest)
+        Self.cached = g
+        return g
+    }
+
+    private func check(_ name: String, _ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) async throws {
+        let g = try await central()
+        let t0 = Date()
+        let routes = try OfflineRouter.routes(on: g, from: a, to: b)
+        let ms = Int(Date().timeIntervalSince(t0) * 1000)
+        XCTAssertFalse(routes.isEmpty)
+        for r in routes {
+            print("REALROUTE \(name): \(Int(r.distance / 1000)) km \(Int(r.expectedTravelTime / 60)) min via \(r.name) steps=\(r.steps.count) [\(ms) ms]")
+        }
+        for s in routes[0].steps.prefix(12) { print("REALSTEP \(name): \(Int(s.distance)) m -> \(s.instruction)") }
+        let straight = GeoMath.distance(a, b)
+        XCTAssertGreaterThan(routes[0].distance, straight * 0.95)
+        XCTAssertLessThan(routes[0].distance, straight * 2.2)
+    }
+
+    func testRiyadhCity() async throws {
+        // من وسط الرياض (العليا) إلى شرق الرياض (قرب طريق الجنادرية)
+        try await check("riyadh", .init(latitude: 24.6905, longitude: 46.6853), .init(latitude: 24.7840, longitude: 46.8020))
+    }
+
+    func testRiyadhToKharj() async throws {
+        try await check("kharj", .init(latitude: 24.7136, longitude: 46.6753), .init(latitude: 24.1556, longitude: 47.3346))
+    }
+
+    func testRiyadhToQassim() async throws {
+        try await check("buraidah", .init(latitude: 24.7136, longitude: 46.6753), .init(latitude: 26.3260, longitude: 43.9750))
+    }
+}
