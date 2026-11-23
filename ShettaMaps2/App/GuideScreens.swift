@@ -167,6 +167,16 @@ enum GuideScreens {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 router.mapSheet = .reserve(r.id)
             }
+        case "routepreview", "roadnav":
+            await RouteGraphStore.shared.installForGuide("central")
+            mapManager.layer = .standard
+            // من وسط الرياض إلى طريق الجنادرية شرقًا
+            env.navigation.previewRoutes(to: Waypoint(name: "مهرجان الجنادرية", coordinate: .init(latitude: 24.7840, longitude: 46.8020)))
+            try? await Task.sleep(nanoseconds: 6_000_000_000)
+            if screen == "roadnav" {
+                env.navigation.startFromPreview(mode: .road)
+                mapManager.send(.followCourse)
+            }
         case "night":
             UserDefaults.standard.set(AppearanceMode.dark.rawValue, forKey: SettingsKeys.appearanceMode)
             AppearanceController.shared.update()

@@ -96,6 +96,21 @@ final class RouteGraphStore: NSObject, ObservableObject {
         return regions.filter { inside(a, $0) && inside(b, $0) }.min { $0.bytes < $1.bytes }
     }
 
+    #if DEBUG
+    /// لقطات الشاشة فقط: تنزيل مباشر في المقدمة.
+    func installForGuide(_ id: String) async {
+        guard !isInstalled(id) else { return }
+        await loadManifest()
+        guard let p = manifest?.regions.first(where: { $0.id == id }),
+              let (tmp, resp) = try? await URLSession.shared.download(from: URL(string: Self.base + p.file)!),
+              (resp as? HTTPURLResponse)?.statusCode == 200 else { return }
+        let keep = FileManager.default.temporaryDirectory.appendingPathComponent("guide-\(id)")
+        try? FileManager.default.removeItem(at: keep)
+        try? FileManager.default.moveItem(at: tmp, to: keep)
+        finish(id: id, file: keep)
+    }
+    #endif
+
     fileprivate func finish(id: String, file: URL) {
         tasks[id] = nil; progress[id] = nil
         do {
