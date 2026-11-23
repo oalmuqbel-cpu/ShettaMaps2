@@ -25,7 +25,6 @@ final class CarPlayTemplateManager: NSObject {
     /// طرق السيارة المحسوبة للمعاينة الحالية، ووجهتها.
     var previewRoutes: [RoadRoute] = []
     var routesFor: Waypoint?
-    var currentTrip: CPTrip?
     /// قوائم مفتوحة تُحدَّث في مكانها.
     weak var layersTemplate: CPListTemplate?
     weak var regionsTemplate: CPListTemplate?

@@ -129,7 +129,6 @@ extension CarPlayTemplateManager {
         direct.userInfo = GuidanceMode.direct.rawValue
         choices.append(direct)
         let trip = CPTrip(origin: origin, destination: dest, routeChoices: choices)
-        currentTrip = trip
         mapTemplate.showTripPreviews([trip], textConfiguration: CPTripPreviewTextConfiguration(
             startButtonTitle: "ابدأ", additionalRoutesButtonTitle: "خيارات", overviewButtonTitle: nil))
         mapViewController.showPreview(w.coordinate)
