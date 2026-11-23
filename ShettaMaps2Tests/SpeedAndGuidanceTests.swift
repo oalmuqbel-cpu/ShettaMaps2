@@ -870,3 +870,23 @@ final class NavFormatTests: XCTestCase {
         XCTAssertEqual(Fmt.tripDuration(66 * 60), "1 س 6 د")
     }
 }
+
+final class QiblaTests: XCTestCase {
+    func testQiblaBearingFromRiyadh() {
+        let b = Qibla.bearing(from: .init(latitude: 24.7136, longitude: 46.6753))
+        XCTAssertEqual(b, 244, accuracy: 2)
+    }
+
+    func testQiblaBearingFromJeddah() {
+        // جدة غرب مكة: القبلة شرقًا تقريبًا
+        let b = Qibla.bearing(from: .init(latitude: 21.5433, longitude: 39.1728))
+        XCTAssertEqual(b, 100, accuracy: 6)
+    }
+
+    func testHeadingFollowsInterfaceNotDevice() {
+        XCTAssertEqual(LocationManager.headingOrientation(for: .portrait), .portrait)
+        XCTAssertEqual(LocationManager.headingOrientation(for: .landscapeLeft), .landscapeRight)
+        XCTAssertEqual(LocationManager.headingOrientation(for: .landscapeRight), .landscapeLeft)
+        XCTAssertEqual(LocationManager.headingOrientation(for: .unknown), .portrait)
+    }
+}

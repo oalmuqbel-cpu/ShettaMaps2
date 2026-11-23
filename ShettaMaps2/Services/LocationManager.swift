@@ -96,18 +96,33 @@ final class LocationManager: NSObject, ObservableObject {
         manager.headingOrientation = .portrait
         UIDevice.current.beginGeneratingDeviceOrientationNotifications()
         NotificationCenter.default.addObserver(forName: UIDevice.orientationDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            // ننتظر اكتمال دوران الواجهة (أو عدمه عند قفل الدوران) ثم نقرأ اتجاهها الفعلي
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { MainActor.assumeIsolated { self?.updateHeadingOrientation() } }
+        }
+        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.updateHeadingOrientation() }
         }
         applyBatteryMode()
     }
 
+    /// الاتجاه يُحسب بالنسبة لأعلى الواجهة كما تظهر فعلًا، لا لوضع الجهاز الفيزيائي:
+    /// مع قفل الدوران أو حامل السيارة الأفقي تبقى الواجهة عمودية بينما الجهاز مائل، فكانت البوصلة
+    /// والقبلة تنحرفان 90° (أو 180° عند قلب الجوال).
     private func updateHeadingOrientation() {
-        switch UIDevice.current.orientation {
-        case .portrait: manager.headingOrientation = .portrait
-        case .portraitUpsideDown: manager.headingOrientation = .portraitUpsideDown
-        case .landscapeLeft: manager.headingOrientation = .landscapeLeft
-        case .landscapeRight: manager.headingOrientation = .landscapeRight
-        default: break  // على الطاولة (وجه للأعلى أو للأسفل) نبقي آخر وضع
+        let scene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.session.role == .windowApplication }
+        let o = Self.headingOrientation(for: scene?.interfaceOrientation ?? .portrait)
+        if manager.headingOrientation != o { manager.headingOrientation = o }
+    }
+
+    /// يحوّل اتجاه الواجهة إلى اتجاه الجهاز المقابل (الأفقي معكوس بين النظامين في UIKit).
+    nonisolated static func headingOrientation(for interface: UIInterfaceOrientation) -> CLDeviceOrientation {
+        switch interface {
+        case .portraitUpsideDown: return .portraitUpsideDown
+        case .landscapeLeft: return .landscapeRight
+        case .landscapeRight: return .landscapeLeft
+        default: return .portrait
         }
     }
 
