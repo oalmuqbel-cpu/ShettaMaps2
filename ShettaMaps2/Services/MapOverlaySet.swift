@@ -83,8 +83,16 @@ struct MapOverlaySet: Equatable {
                 let k = min(max(0, navigation.roadProgressIndex), road.coordinates.count - 1)
                 if k > 0 { set.lines.append(Line(kind: .roadDone, coordinates: Array(road.coordinates[0...k]))) }
                 var rest = Array(road.coordinates[k...])
-                if let c = currentLocation, rest.count > 1 { rest[0] = c }
+                // يبدأ الخط من إسقاط موقعك على الطريق (لا من نقطة GPS نفسها) فلا تظهر زوائد أو انكسارات
+                if let c = currentLocation, rest.count > 1 {
+                    rest[0] = RoadRoutingService.project(c, onto: rest[0], rest[1])
+                }
                 set.lines.append(Line(kind: .road, coordinates: rest))
+                // الوجهة في البر: بعد نهاية الطريق خط مستقيم منقط إلى الهدف
+                if road.offRoadTail > 0, let end = road.coordinates.last,
+                   let target = plan.targets.dropFirst(targetIndex).first?.coordinate {
+                    set.lines.append(Line(kind: .direct, coordinates: [end, target]))
+                }
             } else if coords.count > 1 {
                 set.lines.append(Line(kind: .direct, coordinates: coords))
             }
@@ -97,6 +105,9 @@ struct MapOverlaySet: Equatable {
             }
             if let r = preview.selectedRoute {
                 set.lines.append(Line(kind: .road, coordinates: r.coordinates))
+                if r.offRoadTail > 0, let end = r.coordinates.last {
+                    set.lines.append(Line(kind: .direct, coordinates: [end, preview.destination.coordinate]))
+                }
             } else if let c = currentLocation {
                 set.lines.append(Line(kind: .direct, coordinates: [c, preview.destination.coordinate]))
             }

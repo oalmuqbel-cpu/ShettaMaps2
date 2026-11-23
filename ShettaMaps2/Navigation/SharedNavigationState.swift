@@ -110,6 +110,14 @@ final class SharedNavigationState: ObservableObject {
         }
     }
 
+    /// أثناء القيادة: يعرض الطرق الثلاثة المقترحة من موقعك الحالي إلى الوجهة دون إيقاف الملاحة.
+    var canShowAlternatives: Bool { snapshot.isNavigating && snapshot.plan?.waypoints.isEmpty == true }
+
+    func previewAlternatives() {
+        guard canShowAlternatives, let plan = snapshot.plan else { return }
+        previewRoutes(to: plan.destination, tripID: plan.tripID)
+    }
+
     func selectPreviewRoute(_ i: Int) { if preview?.routes.indices.contains(i) == true { preview?.selected = i } }
 
     func cancelPreview() { previewTask?.cancel(); preview = nil }
@@ -229,15 +237,22 @@ final class SharedNavigationState: ObservableObject {
                 snapshot.instruction = NavigationEngine.instruction(for: p)
             }
             // الخروج عن المسار: قراءتان متتاليتان بعيدتان (تجنب إعادة الحساب بسبب قفزة GPS)، ثم إعادة الحساب خلال ثوانٍ
-            if offRoute(route, loc.coordinate), loc.horizontalAccuracy < 50 {
+            // بعد نهاية الطريق إلى وجهة في البر يكون الابتعاد عن الطريق مقصودًا، فلا يُعاد الحساب
+            let pastRoadEnd = route.offRoadTail > 0 && snapshot.roadStepIndex >= route.steps.count
+            if !pastRoadEnd, offRoute(route, loc.coordinate), loc.horizontalAccuracy < 50 {
                 offRouteCount += 1
                 if offRouteCount >= 2 { requestRoadRoute(force: false, minInterval: 8) }
             } else {
                 offRouteCount = 0
             }
             // المسافة والوقت المتبقيان على الطريق نفسه (لا بالخط المباشر)
-            let remaining = Self.remainingRoadDistance(route: route, stepIndex: snapshot.roadStepIndex, at: loc.coordinate)
-            if remaining > 0 {
+            let remaining = pastRoadEnd ? p.distanceToTarget
+                : Self.remainingRoadDistance(route: route, stepIndex: snapshot.roadStepIndex, at: loc.coordinate)
+            if pastRoadEnd {
+                // في البر: تقدير بسرعة ٣٠ كم/س تقريبًا
+                p.remainingDistance = remaining
+                p.estimatedSeconds = remaining / 8.3
+            } else if remaining > 0 {
                 p.remainingDistance = remaining
                 p.estimatedSeconds = route.distance > 0 ? route.expectedTravelTime * min(1, remaining / route.distance) : nil
             } else {
@@ -274,7 +289,7 @@ final class SharedNavigationState: ObservableObject {
     nonisolated static func remainingRoadDistance(route: RoadRoute, stepIndex: Int, at c: CLLocationCoordinate2D) -> Double {
         guard stepIndex < route.steps.count else { return 0 }
         let current = GeoMath.distance(c, route.steps[stepIndex].endCoordinate)
-        return current + route.steps.dropFirst(stepIndex + 1).reduce(0) { $0 + $1.distance }
+        return current + route.steps.dropFirst(stepIndex + 1).reduce(0) { $0 + $1.distance } + route.offRoadTail
     }
 
     /// عند عودة الإنترنت أثناء ملاحة «عبر الطرق» بلا مسار: يُحسب المسار فورًا.

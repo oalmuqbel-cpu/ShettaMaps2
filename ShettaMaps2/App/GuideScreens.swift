@@ -176,13 +176,16 @@ enum GuideScreens {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 router.mapSheet = .reserve(r.id)
             }
-        case "routepreview", "roadnav":
+        case "routepreview", "roadnav", "offroad":
             glog("start \(screen)")
             await RouteGraphStore.shared.installForGuide("central")
             glog("graph installed=\(RouteGraphStore.shared.isInstalled("central"))")
             mapManager.layer = .standard
-            let dest = Waypoint(name: "مهرجان الجنادرية", coordinate: .init(latitude: 24.7840, longitude: 46.8020))
-            if screen == "routepreview" {
+            // «offroad»: نقطة في البر غرب الرياض (جبال طويق) لا يصلها طريق
+            let dest = screen == "offroad"
+                ? Waypoint(name: "نقطة في البر", coordinate: .init(latitude: 24.6050, longitude: 46.3200))
+                : Waypoint(name: "مهرجان الجنادرية", coordinate: .init(latitude: 24.7840, longitude: 46.8020))
+            if screen == "routepreview" || screen == "offroad" {
                 env.navigation.previewRoutes(to: dest)
             } else {
                 do {

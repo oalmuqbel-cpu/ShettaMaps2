@@ -51,6 +51,12 @@ final class VoicePrompter: NSObject, AVSpeechSynthesizerDelegate {
         worker.speak(text)
     }
 
+    /// إيقاف الكلام فورًا (عند كتم التعليمات من الشاشة).
+    func stop() {
+        worker.stop()
+        lastText = ""
+    }
+
     private func playTone() {
         AudioServicesPlaySystemSound(1315)
     }
@@ -93,6 +99,10 @@ final class SpeechWorker: @unchecked Sendable {
             u.rate = AVSpeechUtteranceDefaultSpeechRate
             s.speak(u)
         }
+    }
+
+    func stop() {
+        queue.async { if self.synth?.isSpeaking == true { self.synth?.stopSpeaking(at: .immediate) } }
     }
 
     func whenIdle(_ action: @escaping @Sendable () -> Void) {

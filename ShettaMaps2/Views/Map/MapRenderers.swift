@@ -142,9 +142,9 @@ private func color(for kind: MapOverlaySet.LineKind) -> UIColor {
 
 private func width(for kind: MapOverlaySet.LineKind) -> CGFloat {
     switch kind {
-    case .road: return 7
-    case .roadDone: return 6
-    case .routeAlt: return 6
+    case .road: return 5
+    case .roadDone: return 4.5
+    case .routeAlt: return 4.5
     case .direct: return 3
     case .track, .importedTrack: return 4
     case .community: return 3

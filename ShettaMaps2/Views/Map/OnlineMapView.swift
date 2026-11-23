@@ -16,6 +16,8 @@ struct OnlineMapView: View {
     var userHeading: Double?
     var markerStyle: UserMarkerStyle = .dot
     var markerColor: UserMarkerColor = .white
+    /// القيادة على طريق: تتبع قريب بمنظور مائل والسيارة أسفل الشاشة.
+    var driving: Bool = false
 
     @State private var position: MapCameraPosition = .userLocation(fallback: .region(
         MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 24.7136, longitude: 46.6753),
@@ -122,11 +124,16 @@ struct OnlineMapView: View {
                 camera = ctx.camera
                 mapManager.visibleRegion = ctx.region
                 mapManager.cameraHeading = ctx.camera.heading
-                if position.positionedByUser { mapManager.followsUser = false }
+                if position.positionedByUser { mapManager.followsUser = false; mapManager.headingUp = false }
+                followDistance = ctx.camera.distance
             }
             .onChange(of: mapManager.commandID) { _, _ in
                 if let cmd = mapManager.command { perform(cmd) }
             }
+            // التتبع يدويًا مع كل قراءة موقع أو اتجاه: يحافظ على التقريب الذي نختاره ويدور مع الاتجاه بثبات
+            .onChange(of: userCoordinate?.latitude) { _, _ in follow() }
+            .onChange(of: userCoordinate?.longitude) { _, _ in follow() }
+            .onChange(of: userHeading) { _, _ in if mapManager.headingUp { follow(duration: 0.35) } }
         }
     }
 
@@ -139,15 +146,15 @@ struct OnlineMapView: View {
         case .road:
             // خط الطريق مثل تطبيقات الملاحة: إطار داكن ثم أزرق عريض
             MapPolyline(coordinates: line.coordinates)
-                .stroke(Color(red: 0.05, green: 0.25, blue: 0.6), style: StrokeStyle(lineWidth: 10, lineCap: .round, lineJoin: .round))
+                .stroke(Color(red: 0.05, green: 0.25, blue: 0.6), style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round))
             MapPolyline(coordinates: line.coordinates)
-                .stroke(Theme.route, style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round))
+                .stroke(Theme.route, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
         case .roadDone:
             MapPolyline(coordinates: line.coordinates)
-                .stroke(Color.gray.opacity(0.75), style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+                .stroke(Color.gray.opacity(0.75), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
         case .routeAlt:
             MapPolyline(coordinates: line.coordinates)
-                .stroke(Color(red: 0.55, green: 0.62, blue: 0.72).opacity(0.9), style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+                .stroke(Color(red: 0.55, green: 0.62, blue: 0.72).opacity(0.9), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
         case .track:
             MapPolyline(coordinates: line.coordinates)
                 .stroke(Theme.track, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
@@ -172,6 +179,8 @@ struct OnlineMapView: View {
         switch cmd {
         case .zoomIn: scale(by: 0.5)
         case .zoomOut: scale(by: 2)
+        case .resetNorth where mapManager.followsUser:
+            follow(duration: 0.4)
         case .resetNorth:
             // يعمل حتى لو لم تُسجَّل الكاميرا بعد (مثل أول تشغيل أثناء تتبع الموقع)
             let center = camera?.centerCoordinate ?? mapManager.visibleRegion?.center ?? userCoordinate
@@ -180,14 +189,14 @@ struct OnlineMapView: View {
             withAnimation { position = .camera(MapCamera(centerCoordinate: center, distance: distance, heading: 0, pitch: camera?.pitch ?? 0)) }
             mapManager.cameraHeading = 0
         case .followCourse:
-            withAnimation { position = .userLocation(followsHeading: true, fallback: .automatic) }
-        case .centerOnUser:
-            if mapManager.is3D, let c = userCoordinate {
-                withAnimation { position = .camera(MapCamera(centerCoordinate: c, distance: min(camera?.distance ?? 2500, 4000),
-                                                             heading: camera?.heading ?? 0, pitch: 65)) }
-            } else {
-                withAnimation { position = .userLocation(followsHeading: false, fallback: .automatic) }
-            }
+            // وضع القيادة: قريب من السيارة مهما كان التقريب السابق
+            followDistance = Self.drivingDistance
+            follow(duration: 0.6)
+        case .followHeading, .centerOnUser:
+            // إذا كانت الخريطة بعيدة جدًا (مستوى الدولة) نقرّب على موقعك
+            let d = camera?.distance ?? 3000
+            followDistance = d > 40_000 ? 3000 : d
+            follow(duration: 0.5)
         case let .focus(coord, span):
             withAnimation { position = .region(MKCoordinateRegion(center: coord, latitudinalMeters: span, longitudinalMeters: span)) }
         case let .fit(coords):
@@ -209,9 +218,32 @@ struct OnlineMapView: View {
         }
     }
 
+    static let drivingDistance: Double = 700
+    @State private var followDistance: Double?
+
+    /// يضع الكاميرا على موقعك: الشمال للأعلى أو باتجاهك، وفي القيادة تظهر السيارة أسفل الشاشة ليظهر الطريق أمامك.
+    private func follow(duration: Double = 0.9) {
+        guard mapManager.followsUser else { return }
+        guard let c = userCoordinate else {
+            position = .userLocation(followsHeading: mapManager.headingUp, fallback: .automatic)
+            return
+        }
+        let heading = mapManager.headingUp ? (userHeading ?? camera?.heading ?? 0) : 0
+        var distance = followDistance ?? camera?.distance ?? 3000
+        if driving && mapManager.headingUp { distance = min(distance, 1_500) }
+        let pitch: Double = mapManager.is3D ? 60 : (driving && mapManager.headingUp ? 45 : 0)
+        // في القيادة نزيح المركز للأمام فتظهر السيارة في الثلث السفلي
+        let center = driving && mapManager.headingUp ? GeoMath.destination(from: c, distance: distance * 0.25, bearing: heading) : c
+        withAnimation(.linear(duration: duration)) {
+            position = .camera(MapCamera(centerCoordinate: center, distance: distance, heading: heading, pitch: pitch))
+        }
+    }
+
     private func scale(by factor: Double) {
         guard let cam = camera else { return }
         let d = min(max(cam.distance * factor, 150), 20_000_000)
+        followDistance = d
+        if mapManager.followsUser { follow(duration: 0.3); return }
         withAnimation {
             position = .camera(MapCamera(centerCoordinate: cam.centerCoordinate, distance: d, heading: cam.heading, pitch: cam.pitch))
         }

@@ -58,7 +58,9 @@ enum MapLayer: String, CaseIterable, Identifiable {
 /// أوامر للخريطة تُرسل من الأزرار إلى المحرك النشط (MapKit أو MapLibre).
 enum MapCommand: Equatable {
     case zoomIn, zoomOut, centerOnUser, resetNorth
-    /// تتبع موقعي مع اتجاه السير (أثناء القيادة على الطريق).
+    /// تتبع موقعي مع تدوير الخريطة على اتجاهك (رأسك أو اتجاه السير)، بنفس مستوى التقريب.
+    case followHeading
+    /// وضع القيادة: تتبع قريب من السيارة بمنظور مائل والخريطة باتجاه السير (مثل قوقل وويز).
     case followCourse
     case focus(CLLocationCoordinate2D, spanMeters: Double)
     case fit([CLLocationCoordinate2D])
@@ -67,7 +69,8 @@ enum MapCommand: Equatable {
 
     static func == (a: MapCommand, b: MapCommand) -> Bool {
         switch (a, b) {
-        case (.zoomIn, .zoomIn), (.zoomOut, .zoomOut), (.centerOnUser, .centerOnUser), (.resetNorth, .resetNorth), (.followCourse, .followCourse): return true
+        case (.zoomIn, .zoomIn), (.zoomOut, .zoomOut), (.centerOnUser, .centerOnUser), (.resetNorth, .resetNorth), (.followCourse, .followCourse),
+             (.followHeading, .followHeading): return true
         case let (.focus(c1, s1), .focus(c2, s2)): return c1.latitude == c2.latitude && c1.longitude == c2.longitude && s1 == s2
         case let (.fit(x), .fit(y)): return x.count == y.count
         case let (.pitch(x), .pitch(y)): return x == y
@@ -83,6 +86,8 @@ final class MapManager: ObservableObject {
         didSet { UserDefaults.standard.set(layer.rawValue, forKey: SettingsKeys.mapLayer) }
     }
     @Published var followsUser = true
+    /// الخريطة تدور مع اتجاهك (وإلا الشمال للأعلى).
+    @Published var headingUp = false
     @Published var isPickingPoint = false
     @Published var pickedCoordinate: CLLocationCoordinate2D?
     /// مركز الخريطة ومنطقتها الظاهرة (تستخدم لتنزيل منطقة دون إنترنت والبحث).
@@ -105,10 +110,12 @@ final class MapManager: ObservableObject {
 
     func send(_ c: MapCommand) {
         switch c {
-        case .centerOnUser, .followCourse: followsUser = true
-        case .zoomIn, .zoomOut, .resetNorth: break
+        case .centerOnUser: followsUser = true; headingUp = false
+        case .followHeading, .followCourse: followsUser = true; headingUp = true
+        case .resetNorth: headingUp = false
+        case .zoomIn, .zoomOut: break
         case .pitch(let on): is3D = on
-        case .focus, .fit: followsUser = false
+        case .focus, .fit: followsUser = false; headingUp = false
         }
         command = c
         commandID += 1

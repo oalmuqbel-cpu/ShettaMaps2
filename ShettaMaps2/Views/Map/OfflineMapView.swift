@@ -147,12 +147,26 @@ struct OfflineMapView: UIViewRepresentable {
             switch cmd {
             case .zoomIn: map.setZoomLevel(min(map.zoomLevel + 1, map.maximumZoomLevel), animated: true)
             case .zoomOut: map.setZoomLevel(max(map.zoomLevel - 1, map.minimumZoomLevel), animated: true)
-            case .resetNorth: map.setDirection(0, animated: true)
+            case .resetNorth:
+                // من وضع «الخريطة باتجاهي» نرجع للتتبع العادي والشمال للأعلى
+                if map.userTrackingMode == .followWithHeading || map.userTrackingMode == .followWithCourse {
+                    map.setUserTrackingMode(.follow, animated: true, completionHandler: nil)
+                }
+                map.setDirection(0, animated: true)
             case .centerOnUser:
+                if map.zoomLevel < 9 { map.setZoomLevel(14, animated: false) }
                 map.setUserTrackingMode(.follow, animated: true, completionHandler: nil)
+                map.setDirection(0, animated: true)
+            case .followHeading:
+                if map.zoomLevel < 9 { map.setZoomLevel(14, animated: false) }
+                map.setUserTrackingMode(.followWithHeading, animated: true, completionHandler: nil)
             case .followCourse:
-                if map.zoomLevel < 15 { map.setZoomLevel(16, animated: false) }
+                // قريب من السيارة مثل تطبيقات الملاحة مهما كان التقريب السابق، مع ميلان خفيف
+                map.setZoomLevel(16.5, animated: false)
                 map.setUserTrackingMode(.followWithCourse, animated: true, completionHandler: nil)
+                let cam = map.camera
+                cam.pitch = 45
+                map.setCamera(cam, withDuration: 0.6, animationTimingFunction: nil)
             case let .focus(coord, span):
                 // مستوى تكبير تقريبي من المسافة المطلوبة
                 let zoom = max(2, min(18, log2(40_075_000 / max(span, 50))))
@@ -198,6 +212,7 @@ struct OfflineMapView: UIViewRepresentable {
         nonisolated func mapView(_ mapView: MLNMapView, didChange mode: MLNUserTrackingMode, animated: Bool) {
             MainActor.assumeIsolated {
                 mapManager.followsUser = mode != .none
+                mapManager.headingUp = mode == .followWithHeading || mode == .followWithCourse
             }
         }
 

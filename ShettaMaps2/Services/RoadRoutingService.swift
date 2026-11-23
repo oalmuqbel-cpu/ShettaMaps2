@@ -24,6 +24,8 @@ struct RoadRoute: Equatable {
     var expectedTravelTime: TimeInterval
     /// اسم الطريق الرئيسي كما تعطيه الخدمة (مثل «طريق الملك فهد»).
     var name: String = ""
+    /// المسافة المستقيمة الباقية من نهاية الطريق إلى الوجهة (إذا كانت الوجهة في البر بعيدًا عن أي طريق).
+    var offRoadTail: Double = 0
 
     static func == (a: RoadRoute, b: RoadRoute) -> Bool {
         a.distance == b.distance && a.steps == b.steps && a.coordinates.count == b.coordinates.count
@@ -56,15 +58,31 @@ enum RoadRoutingService {
             let count = alternatives ? 3 : 1
             return try await Task.detached(priority: .userInitiated) {
                 try OfflineRouter.routes(on: g, from: from, to: to, alternatives: count)
-            }.value
+            }.value.map { withOffRoadTail($0, to: to) }
         }
         do {
-            return try await appleRoutes(from: from, to: to, alternatives: alternatives)
+            return try await appleRoutes(from: from, to: to, alternatives: alternatives).map { withOffRoadTail($0, to: to) }
         } catch {
             // في السعودية: لا توجيهات من Apple، فالمطلوب تنزيل طرق الملاحة للمنطقة
             if RouteGraphStore.shared.suggestedRegion(for: from, to) != nil || isSaudi(from) { throw OfflineRouter.RouterError.noGraph }
             throw error
         }
+    }
+
+    /// أبعد من هذا عن نهاية الطريق تُعد الوجهة خارج الطرق (في البر).
+    static let offRoadThreshold: Double = 150
+
+    /// إذا كانت الوجهة بعيدة عن نهاية الطريق: يُعلَّم المسار بأنه طريق ثم خط مستقيم، وتتغير آخر تعليمة لتوضح ذلك.
+    static func withOffRoadTail(_ route: RoadRoute, to destination: CLLocationCoordinate2D) -> RoadRoute {
+        guard let end = route.coordinates.last else { return route }
+        let gap = GeoMath.distance(end, destination)
+        guard gap > offRoadThreshold else { return route }
+        var r = route
+        r.offRoadTail = gap
+        if !r.steps.isEmpty {
+            r.steps[r.steps.count - 1].instruction = "نهاية الطريق: أكمل بخط مستقيم إلى الوجهة (\(Fmt.navDistance(gap)))"
+        }
+        return r
     }
 
     static func isSaudi(_ c: CLLocationCoordinate2D) -> Bool {
@@ -125,6 +143,17 @@ extension RoadRoutingService {
         // عند الوصول لنهاية المقطع ننتقل للتالي
         if best < steps.count, GeoMath.distance(p, steps[best].endCoordinate) < 40 { best += 1 }
         return max(index, best)
+    }
+
+    /// أقرب نقطة على قطعة مستقيمة إلى نقطة معطاة (تقريب مستوٍ يكفي للمسافات القصيرة).
+    static func project(_ p: CLLocationCoordinate2D, onto a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> CLLocationCoordinate2D {
+        let k = cos(a.latitude * .pi / 180)
+        let dx = (b.longitude - a.longitude) * k, dy = b.latitude - a.latitude
+        let len2 = dx * dx + dy * dy
+        guard len2 > 0 else { return a }
+        let t = max(0, min(1, (((p.longitude - a.longitude) * k) * dx + (p.latitude - a.latitude) * dy) / len2))
+        return CLLocationCoordinate2D(latitude: a.latitude + t * (b.latitude - a.latitude),
+                                      longitude: a.longitude + t * (b.longitude - a.longitude))
     }
 
     /// المسافة التقريبية (م) من نقطة إلى قطعة مستقيمة.

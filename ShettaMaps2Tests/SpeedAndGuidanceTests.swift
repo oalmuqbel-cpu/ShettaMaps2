@@ -903,3 +903,42 @@ final class QiblaLineTests: XCTestCase {
         XCTAssertEqual(Qibla.bearing(from: here), 243, accuracy: 1)
     }
 }
+
+final class OffRoadTailTests: XCTestCase {
+    private func route(endingAt end: CLLocationCoordinate2D) -> RoadRoute {
+        let start = CLLocationCoordinate2D(latitude: 24.70, longitude: 46.60)
+        let steps = [RoadStep(instruction: "انعطف يمينًا", distance: 1000, endCoordinate: end, turnAngle: 90),
+                     RoadStep(instruction: "الوصول إلى الوجهة", distance: 500, endCoordinate: end, turnAngle: nil)]
+        return RoadRoute(coordinates: [start, end], steps: steps, distance: 1500, expectedTravelTime: 120)
+    }
+
+    func testDestinationNearRoadUnchanged() {
+        let end = CLLocationCoordinate2D(latitude: 24.71, longitude: 46.61)
+        let r = RoadRoutingService.withOffRoadTail(route(endingAt: end), to: GeoMath.destination(from: end, distance: 60, bearing: 90))
+        XCTAssertEqual(r.offRoadTail, 0)
+        XCTAssertEqual(r.steps.last?.instruction, "الوصول إلى الوجهة")
+    }
+
+    func testDesertDestinationGetsStraightTail() {
+        let end = CLLocationCoordinate2D(latitude: 24.71, longitude: 46.61)
+        let dest = GeoMath.destination(from: end, distance: 4200, bearing: 250)
+        let r = RoadRoutingService.withOffRoadTail(route(endingAt: end), to: dest)
+        XCTAssertEqual(r.offRoadTail, 4200, accuracy: 30)
+        XCTAssertTrue(r.steps.last!.instruction.contains("خط مستقيم"))
+        XCTAssertTrue(r.steps.last!.instruction.contains("4.2 كم"))
+        // المتبقي يشمل الجزء المستقيم
+        let remaining = SharedNavigationState.remainingRoadDistance(route: r, stepIndex: 1, at: end)
+        XCTAssertEqual(remaining, 500 + 4200, accuracy: 40)
+    }
+
+    func testProjectionStaysOnSegment() {
+        let a = CLLocationCoordinate2D(latitude: 24.70, longitude: 46.60)
+        let b = CLLocationCoordinate2D(latitude: 24.70, longitude: 46.61)
+        let p = CLLocationCoordinate2D(latitude: 24.7003, longitude: 46.605)  // ~33 م شمال منتصف القطعة
+        let q = RoadRoutingService.project(p, onto: a, b)
+        XCTAssertEqual(q.latitude, 24.70, accuracy: 1e-9)
+        XCTAssertEqual(q.longitude, 46.605, accuracy: 1e-6)
+        let beyond = RoadRoutingService.project(CLLocationCoordinate2D(latitude: 24.70, longitude: 46.62), onto: a, b)
+        XCTAssertEqual(beyond.longitude, 46.61, accuracy: 1e-9)
+    }
+}

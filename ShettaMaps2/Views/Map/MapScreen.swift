@@ -12,6 +12,7 @@ struct MapScreen: View {
     @EnvironmentObject private var offlineMaps: OfflineMapManager
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var mapManager: MapManager
+    @AppStorage(VoicePrompter.enabledKey) private var voiceGuidance = true
     @EnvironmentObject private var trips: TripManager
     @EnvironmentObject private var search: SearchService
     @EnvironmentObject private var community: CommunityService
@@ -298,6 +299,17 @@ struct MapScreen: View {
                 Spacer()
                 controls
             }
+            if navigation.snapshot.isNavigating && !mapManager.followsUser && navigation.preview == nil {
+                // مثل قوقل: بعد تحريك الخريطة أثناء القيادة، زر للرجوع لمتابعة السيارة
+                Button { mapManager.send(.followCourse) } label: {
+                    Label("متابعة القيادة", systemImage: "location.north.line.fill")
+                        .font(.subheadline.weight(.bold))
+                        .padding(.horizontal, 16).padding(.vertical, 10)
+                        .background(Capsule().fill(Theme.route))
+                        .foregroundStyle(.white)
+                }
+                .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
+            }
             Group {
                 if let preview = navigation.preview {
                     RoutePreviewPanel(preview: preview).frame(maxWidth: isWide ? DS.panelMaxWidth : .infinity)
@@ -515,7 +527,8 @@ struct MapScreen: View {
             OnlineMapView(overlays: overlays, mapManager: mapManager, dirtRoads: dirtRoads, dirtLabels: dirtLabels,
                           coverageCells: coverageCells, rainCells: shownRainCells, rainHour: shownRainHour, rainShapes: shownRainShapes, reserves: shownReserves,
                           userCoordinate: location.location?.coordinate, userHeading: userHeading,
-                          markerStyle: markerStyle, markerColor: markerColor)
+                          markerStyle: markerStyle, markerColor: markerColor,
+                          driving: navigation.snapshot.isNavigating)
         }
     }
 
@@ -538,13 +551,32 @@ struct MapScreen: View {
                 .init(id: "out", systemImage: "minus", label: "تصغير") { mapManager.send(.zoomOut) }
             ])
             MapControlGroup(items: [
-                .init(id: "me", systemImage: mapManager.followsUser ? "location.fill" : "location", label: "موقعي الحالي",
-                      isActive: mapManager.followsUser) { mapManager.send(.centerOnUser) },
+                // ضغطة: تتبع موقعي (الشمال للأعلى)، ضغطة ثانية: الخريطة باتجاهي، ثالثة: رجوع للشمال
+                .init(id: "me", systemImage: locateIcon, label: locateLabel,
+                      isActive: mapManager.followsUser) { cycleLocate() },
                 .init(id: "pick", systemImage: "scope", label: "تحديد نقطة من الخريطة",
                       isActive: mapManager.isPickingPoint) { mapManager.isPickingPoint.toggle() }
             ])
         }
         .padding(.bottom, DS.s)
+    }
+
+    private var locateIcon: String {
+        !mapManager.followsUser ? "location" : (mapManager.headingUp ? "location.north.line.fill" : "location.fill")
+    }
+
+    private var locateLabel: String {
+        !mapManager.followsUser ? "موقعي الحالي" : (mapManager.headingUp ? "إرجاع الشمال للأعلى" : "توجيه الخريطة على اتجاهي")
+    }
+
+    private func cycleLocate() {
+        if !mapManager.followsUser {
+            mapManager.send(navigation.snapshot.isNavigating ? .followCourse : .centerOnUser)
+        } else if !mapManager.headingUp {
+            mapManager.send(navigation.snapshot.isNavigating ? .followCourse : .followHeading)
+        } else {
+            mapManager.send(.centerOnUser)
+        }
     }
 
     /// العمود الثاني: المنظور ثلاثي الأبعاد، مساراتي السابقة، والشمال.
@@ -591,6 +623,13 @@ struct MapScreen: View {
                 },
                 .init(id: "north", systemImage: "location.north.line", label: "توجيه الخريطة للشمال") { mapManager.send(.resetNorth) }
             ])
+            if navigation.snapshot.isNavigating {
+                MapControlButton(systemImage: voiceGuidance ? "speaker.wave.2.fill" : "speaker.slash.fill",
+                                 label: voiceGuidance ? "كتم التعليمات الصوتية" : "تشغيل التعليمات الصوتية") {
+                    voiceGuidance.toggle()
+                    if !voiceGuidance { VoicePrompter.shared.stop() }
+                }
+            }
         }
         .padding(.bottom, DS.s)
     }

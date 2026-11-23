@@ -21,7 +21,11 @@ struct RoutePreviewPanel: View {
                     }
                 }
                 Spacer()
-                Button { navigation.cancelPreview() } label: {
+                Button {
+                    navigation.cancelPreview()
+                    // إن كانت الملاحة جارية نرجع لمتابعة السيارة
+                    if navigation.snapshot.isNavigating { mapManager.send(.followCourse) }
+                } label: {
                     Image(systemName: "xmark").font(.subheadline.weight(.bold)).frame(width: 32, height: 32)
                         .background(Circle().fill(Color(.tertiarySystemFill)))
                 }
@@ -36,6 +40,13 @@ struct RoutePreviewPanel: View {
                     ForEach(Array(preview.routes.enumerated()), id: \.offset) { i, r in
                         routeRow(r, index: i, selected: i == preview.selected)
                     }
+                }
+                if let r = preview.selectedRoute, r.offRoadTail > 0 {
+                    // الوجهة في البر: الطريق لا يصلها
+                    Label("لا يوجد طريق يصل إلى الوجهة. يوصلك المسار بالطريق إلى أقرب نقطة، ثم تكمل بخط مستقيم مسافة \(Fmt.navDistance(r.offRoadTail)) (منقط على الخريطة). انتبه للتضاريس.",
+                          systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption.weight(.semibold)).foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             } else if let e = preview.error {
                 Text(e).font(.footnote).foregroundStyle(.orange)
@@ -152,10 +163,13 @@ struct ManeuverBanner: View {
         let s = navigation.snapshot
         let step = s.currentRoadStep
         let next = s.roadRoute.flatMap { r in r.steps.indices.contains(s.roadStepIndex + 1) ? r.steps[s.roadStepIndex + 1] : nil }
+        // بعد نهاية الطريق (وجهة في البر): إرشاد بخط مستقيم مع المسافة إلى الهدف
+        let offRoad = step == nil && s.status != .arrived && (s.roadRoute?.offRoadTail ?? 0) > 0
         let d = step.flatMap { st in location.location.map { GeoMath.distance($0.coordinate, st.endCoordinate) } }
+            ?? (offRoad ? s.progress?.distanceToTarget : nil)
         VStack(spacing: 0) {
             HStack(spacing: 14) {
-                Image(systemName: s.status == .arrived ? "flag.checkered" : ManeuverIcon.symbol(step))
+                Image(systemName: s.status == .arrived ? "flag.checkered" : (offRoad ? "location.north.line.fill" : ManeuverIcon.symbol(step)))
                     .font(.system(size: 40, weight: .bold))
                     .frame(width: 56)
                     .environment(\.layoutDirection, .leftToRight)
@@ -163,7 +177,7 @@ struct ManeuverBanner: View {
                     if let d, s.status != .arrived {
                         Text(Fmt.navDistance(d)).font(.system(size: 28, weight: .heavy, design: .rounded)).monospacedDigit()
                     }
-                    Text(s.status == .arrived ? "وصلت إلى الوجهة" : (step?.instruction ?? s.instruction))
+                    Text(s.status == .arrived ? "وصلت إلى الوجهة" : (step?.instruction ?? (offRoad ? "خارج الطريق: \(s.instruction)" : s.instruction)))
                         .font(.headline).lineLimit(2).minimumScaleFactor(0.8)
                 }
                 Spacer(minLength: 0)
@@ -217,6 +231,13 @@ struct RoadTripBar: View {
                 }
             }
             Spacer(minLength: 0)
+            if navigation.canShowAlternatives {
+                Button { navigation.previewAlternatives() } label: {
+                    Image(systemName: "arrow.triangle.branch").font(.headline).frame(width: 46, height: 46)
+                        .background(Circle().fill(Theme.route.opacity(0.15))).foregroundStyle(Theme.route)
+                }
+                .accessibilityLabel("الطرق المقترحة")
+            }
             Menu {
                 Button { mapManager.send(.fit(s.roadRoute?.coordinates ?? [])) } label: { Label("عرض الطريق كاملًا", systemImage: "map") }
                 Button { mapManager.send(.followCourse) } label: { Label("تتبع موقعي", systemImage: "location.north.line") }
