@@ -898,8 +898,8 @@ final class QiblaLineTests: XCTestCase {
         XCTAssertGreaterThan(line.count, 10)
         XCTAssertEqual(line.first!.latitude, here.latitude, accuracy: 1e-9)
         XCTAssertLessThan(GeoMath.distance(line.last!, Qibla.kaaba), 1)
-        // أول مقطع من الخط يتجه باتجاه القبلة نفسه (المرجع: 244° للرياض)
+        // أول مقطع من الخط يتجه باتجاه القبلة نفسه (المرجع: قرابة 243° شمال الرياض، و244° لوسطها)
         XCTAssertEqual(GeoMath.bearing(from: line[0], to: line[1]), Qibla.bearing(from: here), accuracy: 0.5)
-        XCTAssertEqual(Qibla.bearing(from: here), 244, accuracy: 1)
+        XCTAssertEqual(Qibla.bearing(from: here), 243, accuracy: 1)
     }
 }

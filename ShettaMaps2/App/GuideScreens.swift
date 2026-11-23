@@ -200,9 +200,8 @@ enum GuideScreens {
                 } catch { glog("route error \(error)") }
             }
         case "qibla":
-            let spot = CLLocationCoordinate2D(latitude: 24.812631, longitude: 46.620366)
             mapManager.showQibla = true
-            mapManager.send(.focus(spot, spanMeters: 6_000))
+            mapManager.send(.focus(here, spanMeters: 6_000))
         case "night":
             UserDefaults.standard.set(AppearanceMode.dark.rawValue, forKey: SettingsKeys.appearanceMode)
             AppearanceController.shared.update()
