@@ -70,6 +70,11 @@ jobs:
             if [ "$s" = "roadnav" ] || [ "$s" = "routepreview" ]; then sleep 25; fi
             t 60 xcrun simctl io "$UDID" screenshot "shots/$(printf %02d $i)-$s.png" || echo "shot failed: $s"
             D=$(xcrun simctl get_app_container "$UDID" $BID data 2>/dev/null); [ -n "$D" ] && cat "$D/Documents/guide.log" 2>/dev/null | tail -20 || true
+            if [ "$s" = "roadnav" ]; then
+              PID=$(pgrep -f "ShettaMaps2.app/ShettaMaps2" | head -1); echo "PID=$PID"
+              [ -n "$PID" ] && sample "$PID" 3 -file /tmp/sample.txt >/dev/null 2>&1 && grep -n -A70 "Thread_.*main-thread\|com.apple.main-thread" /tmp/sample.txt | head -120
+              sleep 30; [ -n "$D" ] && tail -8 "$D/Documents/guide.log"
+            fi
             t 30 xcrun simctl terminate "$UDID" $BID || true
             i=$((i+1)); sleep 2
           done
