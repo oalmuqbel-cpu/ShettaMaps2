@@ -161,7 +161,7 @@ struct ManeuverBanner: View {
                     .environment(\.layoutDirection, .leftToRight)
                 VStack(alignment: .leading, spacing: 2) {
                     if let d, s.status != .arrived {
-                        Text(Fmt.distance(d)).font(.system(size: 28, weight: .heavy, design: .rounded)).monospacedDigit()
+                        Text(Fmt.navDistance(d)).font(.system(size: 28, weight: .heavy, design: .rounded)).monospacedDigit()
                     }
                     Text(s.status == .arrived ? "وصلت إلى الوجهة" : (step?.instruction ?? s.instruction))
                         .font(.headline).lineLimit(2).minimumScaleFactor(0.8)
@@ -210,7 +210,7 @@ struct RoadTripBar: View {
             VStack(spacing: 2) {
                 if let eta = s.progress?.estimatedSeconds {
                     Text(Date().addingTimeInterval(eta), style: .time).font(.title2.weight(.bold)).foregroundStyle(.green)
-                    Text("\(Fmt.tripDuration(eta)) · \(Fmt.distance(s.progress?.remainingDistance ?? 0))")
+                    Text("\(Fmt.tripDuration(eta)) · \(Fmt.navDistance(s.progress?.remainingDistance ?? 0))")
                         .font(.subheadline).foregroundStyle(.secondary).monospacedDigit()
                 } else if let p = s.progress {
                     Text(Fmt.distance(p.remainingDistance)).font(.title2.weight(.bold))

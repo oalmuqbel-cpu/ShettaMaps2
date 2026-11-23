@@ -104,7 +104,8 @@ struct OnlineMapView: View {
             }
             .mapStyle(mapManager.layer.mapStyle(threeD: mapManager.is3D))
             .mapControls {
-                MapCompass()
+                // أثناء القيادة على طريق تدور الخريطة مع الاتجاه دائمًا، فتختفي البوصلة حتى لا تغطي شريط الحالة
+                MapCompass().mapControlVisibility(overlays.lines.contains { $0.kind == .road } ? .hidden : .automatic)
                 MapScaleView()
             }
             .gesture(SpatialTapGesture().onEnded { value in

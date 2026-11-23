@@ -855,3 +855,18 @@ final class RealRoadGraphTests: XCTestCase {
         try await check("buraidah", .init(latitude: 24.7136, longitude: 46.6753), .init(latitude: 26.3260, longitude: 43.9750))
     }
 }
+
+final class NavFormatTests: XCTestCase {
+    func testNavDistance() {
+        XCTAssertEqual(Fmt.navDistance(1912), "1.9 كم")
+        XCTAssertEqual(Fmt.navDistance(17170), "17 كم")
+        XCTAssertEqual(Fmt.navDistance(143), "150 م")
+        XCTAssertEqual(Fmt.navDistance(47), "50 م")
+        XCTAssertEqual(Fmt.navDistance(3), "10 م")
+    }
+
+    func testTripDuration() {
+        XCTAssertEqual(Fmt.tripDuration(13 * 60), "13 د")
+        XCTAssertEqual(Fmt.tripDuration(66 * 60), "1 س 6 د")
+    }
+}

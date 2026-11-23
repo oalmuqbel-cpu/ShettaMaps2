@@ -13,6 +13,17 @@ enum Fmt {
         return km < 100 ? String(format: "%.2f كم", km) : String(format: "%.0f كم", km)
     }
 
+    /// مسافة الملاحة على الطرق بصيغة مقرّبة مثل تطبيقات القيادة: «150 م»، «1.9 كم»، «24 كم».
+    static func navDistance(_ meters: Double) -> String {
+        guard meters.isFinite, meters >= 0 else { return "—" }
+        if meters < 1000 {
+            let step: Double = meters < 100 ? 10 : 50
+            return "\(Int(max(step, (meters / step).rounded() * step))) م"
+        }
+        let km = meters / 1000
+        return km < 10 ? String(format: "%.1f كم", km) : "\(Int(km.rounded())) كم"
+    }
+
     static func duration(_ seconds: TimeInterval) -> String {
         guard seconds.isFinite, seconds >= 0 else { return "—" }
         let s = Int(seconds)
