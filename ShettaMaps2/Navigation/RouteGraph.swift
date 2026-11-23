@@ -18,10 +18,11 @@ final class RouteGraph {
     private let oVert: Int, oFirst: Int, oDirected: Int, oInfo: Int, oGeom: Int, oNames: Int, oCellStart: Int, oCellItems: Int
 
     init(url: URL) throws {
-        data = try Data(contentsOf: url, options: .alwaysMapped)
-        guard data.count > 64, data.prefix(7) == Data("SAMTRT1".utf8) else { throw GraphError.badFile }
-        func u32(_ o: Int) -> Int { Int(data.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: o, as: UInt32.self) }) }
-        func f64(_ o: Int) -> Double { data.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: o, as: Double.self) } }
+        let d = try Data(contentsOf: url, options: .alwaysMapped)
+        guard d.count > 64, d.prefix(7) == Data("SAMTRT1".utf8) else { throw GraphError.badFile }
+        data = d
+        let u32 = { (o: Int) -> Int in Int(d.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: o, as: UInt32.self) }) }
+        let f64 = { (o: Int) -> Double in d.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: o, as: Double.self) } }
         vertexCount = u32(12); edgeCount = u32(16); directedCount = u32(20); geomCount = u32(24); namesBytes = u32(28)
         minLon = f64(32); minLat = f64(40); cell = f64(48); cols = u32(56); rows = u32(60)
         oVert = 64
@@ -32,7 +33,7 @@ final class RouteGraph {
         oNames = oGeom + geomCount * 8
         oCellStart = oNames + namesBytes
         oCellItems = oCellStart + (cols * rows + 1) * 4
-        guard oCellItems <= data.count else { throw GraphError.badFile }
+        guard oCellItems <= d.count else { throw GraphError.badFile }
     }
 
     // MARK: - القراءة
