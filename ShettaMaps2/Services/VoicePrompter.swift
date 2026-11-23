@@ -10,13 +10,16 @@ final class VoicePrompter: NSObject, AVSpeechSynthesizerDelegate {
     static let shared = VoicePrompter()
     static let enabledKey = "voiceGuidance"
 
-    private let synth = AVSpeechSynthesizer()
+    /// كل عمليات محرك الكلام على طابور خلفي: تحميل الصوت العربي (AVSpeechSynthesisVoice) قد يعلّق
+    /// الخيط الرئيسي ثواني أو أكثر، فكان يجمّد الشاشة لحظة بدء الملاحة.
+    private let worker = SpeechWorker()
     private var lastText = ""
     private var lastAt = Date.distantPast
 
     private override init() {
         super.init()
-        synth.delegate = self
+        worker.setDelegate(self)
+        worker.prewarm()
     }
 
     static var enabled: Bool { UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true }
@@ -45,11 +48,7 @@ final class VoicePrompter: NSObject, AVSpeechSynthesizerDelegate {
         }
         do { try session.setActive(true) } catch { return }
         if tone { AudioServicesPlaySystemSound(1315) }
-        if synth.isSpeaking { synth.stopSpeaking(at: .word) }
-        let u = AVSpeechUtterance(string: text)
-        u.voice = AVSpeechSynthesisVoice(language: "ar-SA") ?? AVSpeechSynthesisVoice(language: "ar")
-        u.rate = AVSpeechUtteranceDefaultSpeechRate * 1.0
-        synth.speak(u)
+        worker.speak(text)
     }
 
     private func playTone() {
@@ -66,8 +65,50 @@ final class VoicePrompter: NSObject, AVSpeechSynthesizerDelegate {
 
     /// لا نبقي الجلسة نشطة بعد انتهاء الكلام حتى يعود صوت الراديو فورًا.
     private func deactivate() {
-        guard !synth.isSpeaking else { return }
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        worker.whenIdle {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
+    }
+}
+
+/// يشغّل محرك الكلام على طابور تسلسلي خاص بعيدًا عن الخيط الرئيسي.
+final class SpeechWorker: @unchecked Sendable {
+    private let queue = DispatchQueue(label: "samt.voice", qos: .userInitiated)
+    private var synth: AVSpeechSynthesizer?
+    private var voice: AVSpeechSynthesisVoice?
+    private var voiceLoaded = false
+    private weak var delegate: AVSpeechSynthesizerDelegate?
+
+    func setDelegate(_ d: AVSpeechSynthesizerDelegate) { queue.async { self.delegate = d; self.synth?.delegate = d } }
+
+    /// تحميل الصوت مسبقًا حتى تكون أول تعليمة فورية.
+    func prewarm() { queue.async { _ = self.ensureReady() } }
+
+    func speak(_ text: String) {
+        queue.async {
+            let s = self.ensureReady()
+            if s.isSpeaking { s.stopSpeaking(at: .word) }
+            let u = AVSpeechUtterance(string: text)
+            u.voice = self.voice
+            u.rate = AVSpeechUtteranceDefaultSpeechRate
+            s.speak(u)
+        }
+    }
+
+    func whenIdle(_ action: @escaping @Sendable () -> Void) {
+        queue.async { if self.synth?.isSpeaking != true { action() } }
+    }
+
+    private func ensureReady() -> AVSpeechSynthesizer {
+        if !voiceLoaded {
+            voice = AVSpeechSynthesisVoice(language: "ar-SA") ?? AVSpeechSynthesisVoice(language: "ar")
+            voiceLoaded = true
+        }
+        if let s = synth { return s }
+        let s = AVSpeechSynthesizer()
+        s.delegate = delegate
+        synth = s
+        return s
     }
 }
 
