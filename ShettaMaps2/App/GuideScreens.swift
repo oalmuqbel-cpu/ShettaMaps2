@@ -127,6 +127,19 @@ enum GuideScreens {
             router.mapSheet = .emergency
         case "regions":
             router.mapSheet = .offlineMaps
+        case "regionzoom":
+            // تحقق: الخريطة دون إنترنت عند موقع شرق الرياض بتقريب الشوارع
+            let rp = RegionPackService.shared
+            await rp.loadManifest()
+            if let p = rp.manifest?.regions.first(where: { $0.id == "central" }) {
+                if !rp.isInstalled(p) { rp.download(p) }
+                for _ in 0..<160 where !rp.isInstalled(p) { try? await Task.sleep(nanoseconds: 1_000_000_000) }
+                glog("region installed=\(rp.isInstalled(p))")
+                if let t = OfflineMapManager.shared.regionTileset(id: p.id) { OfflineMapManager.shared.selectedTilesetID = t.id }
+            }
+            mapManager.layer = .offline
+            glog("style=\(OfflineMapManager.shared.activeStyleURL?.lastPathComponent ?? "nil")")
+            mapManager.send(.focus(.init(latitude: 24.679021, longitude: 46.814185), spanMeters: 6_000))
         case "regioninstall":
             // تحقق شامل: تنزيل منطقة جاهزة (الوسطى) وتثبيتها ثم عرضها بالخطوط والرموز المحلية
             let rp = RegionPackService.shared
