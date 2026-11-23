@@ -186,6 +186,7 @@ enum GuideScreens {
                 ? Waypoint(name: "نقطة في البر", coordinate: .init(latitude: 24.6050, longitude: 46.3200))
                 : Waypoint(name: "مهرجان الجنادرية", coordinate: .init(latitude: 24.7840, longitude: 46.8020))
             if screen == "routepreview" || screen == "offroad" {
+                env.navigation.stop()  // لا ملاحة مستعادة من لقطة سابقة
                 env.navigation.previewRoutes(to: dest)
             } else {
                 do {

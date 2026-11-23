@@ -43,7 +43,7 @@ struct RoutePreviewPanel: View {
                 }
                 if let r = preview.selectedRoute, r.offRoadTail > 0 {
                     // الوجهة في البر: الطريق لا يصلها
-                    Label("لا يوجد طريق يصل إلى الوجهة. يوصلك المسار بالطريق إلى أقرب نقطة، ثم تكمل بخط مستقيم مسافة \(Fmt.navDistance(r.offRoadTail)) (منقط على الخريطة). انتبه للتضاريس.",
+                    Label("لا يصل طريق إلى الوجهة: تكمل آخر \(Fmt.navDistance(r.offRoadTail)) بخط مستقيم (المنقط على الخريطة).",
                           systemImage: "exclamationmark.triangle.fill")
                         .font(.caption.weight(.semibold)).foregroundStyle(.orange)
                         .fixedSize(horizontal: false, vertical: true)

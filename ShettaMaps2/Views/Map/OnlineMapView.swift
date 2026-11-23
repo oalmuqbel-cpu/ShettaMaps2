@@ -233,7 +233,7 @@ struct OnlineMapView: View {
         if driving && mapManager.headingUp { distance = min(distance, 1_500) }
         let pitch: Double = mapManager.is3D ? 60 : (driving && mapManager.headingUp ? 45 : 0)
         // في القيادة نزيح المركز للأمام فتظهر السيارة في الثلث السفلي
-        let center = driving && mapManager.headingUp ? GeoMath.destination(from: c, distance: distance * 0.25, bearing: heading) : c
+        let center = driving && mapManager.headingUp ? GeoMath.destination(from: c, distance: distance * 0.12, bearing: heading) : c
         withAnimation(.linear(duration: duration)) {
             position = .camera(MapCamera(centerCoordinate: center, distance: distance, heading: heading, pitch: pitch))
         }

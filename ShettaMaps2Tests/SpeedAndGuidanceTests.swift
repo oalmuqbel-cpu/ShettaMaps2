@@ -928,7 +928,8 @@ final class OffRoadTailTests: XCTestCase {
         XCTAssertTrue(r.steps.last!.instruction.contains("4.2 كم"))
         // المتبقي يشمل الجزء المستقيم
         let remaining = SharedNavigationState.remainingRoadDistance(route: r, stepIndex: 1, at: end)
-        XCTAssertEqual(remaining, 500 + 4200, accuracy: 40)
+        // عند نهاية آخر مقطع لا يبقى إلا الجزء المستقيم
+        XCTAssertEqual(remaining, 4200, accuracy: 40)
     }
 
     func testProjectionStaysOnSegment() {

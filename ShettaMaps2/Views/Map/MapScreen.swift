@@ -274,9 +274,9 @@ struct MapScreen: View {
     private var overlayColumn: some View {
         VStack(spacing: DS.s) {
             VStack(spacing: DS.s) {
-                if onRoad {
+                if onRoad && navigation.preview == nil {
                     ManeuverBanner()
-                } else {
+                } else if !onRoad {
                     StatusHUD()
                 }
                 if showLandmarks && !navigation.snapshot.isNavigating && !mapManager.isPickingPoint && navigation.preview == nil { placeFilterBar }
@@ -288,7 +288,8 @@ struct MapScreen: View {
                 if showRainMap && !navigation.snapshot.isNavigating {
                     RainPanel(forecast: rainForecast, observedService: rainNow, observed: $rainObserved)
                 }
-                if navigation.snapshot.isNavigating && !onRoad { NavigationPanel() }
+                // أثناء اختيار الطريق تختفي لوحة الملاحة حتى لا تزدحم الشاشة
+                if navigation.snapshot.isNavigating && !onRoad && navigation.preview == nil { NavigationPanel() }
                 if recorder.isActive { RecordingPanel(onStop: { showStopRecordingConfirm = true }) }
             }
             .frame(maxWidth: isWide ? DS.panelMaxWidth : .infinity)
