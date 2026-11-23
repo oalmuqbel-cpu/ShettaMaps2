@@ -773,7 +773,7 @@ final class OfflineRouterTests: XCTestCase {
     func testFastestUsesHighwayAndHasInstructions() throws {
         let g = try grid()
         let from = CLLocationCoordinate2D(latitude: 24.7201, longitude: 46.6000)   // أعلى اليسار
-        let to = CLLocationCoordinate2D(latitude: 24.7199, longitude: 46.6200)     // أعلى اليمين
+        let to = CLLocationCoordinate2D(latitude: 24.7001, longitude: 46.6199)     // أسفل اليمين على الطريق السريع
         let routes = try OfflineRouter.routes(on: g, from: from, to: to)
         XCTAssertFalse(routes.isEmpty)
         let best = routes[0]
@@ -788,13 +788,13 @@ final class OfflineRouterTests: XCTestCase {
 
     func testOnewayRespected() throws {
         let g = try grid()
-        // من (2,2) إلى (2,1) مسموح مباشرة
-        let a = CLLocationCoordinate2D(latitude: 24.72, longitude: 46.6195), b = CLLocationCoordinate2D(latitude: 24.72, longitude: 46.6105)
-        let direct = try OfflineRouter.routes(on: g, from: a, to: b, alternatives: 1)[0]
-        XCTAssertLessThan(direct.distance, 1_500)
-        // العكس ممنوع على الشارع نفسه: يلتف
-        let back = try OfflineRouter.routes(on: g, from: b, to: a, alternatives: 1)[0]
-        XCTAssertGreaterThan(back.distance, 1_500)
+        // الشارع باتجاه واحد من (2,1) إلى (2,2): السير معه مباشر
+        let nearB = CLLocationCoordinate2D(latitude: 24.72, longitude: 46.6105), nearA = CLLocationCoordinate2D(latitude: 24.72, longitude: 46.6195)
+        let with = try OfflineRouter.routes(on: g, from: nearB, to: nearA, alternatives: 1)[0]
+        XCTAssertLessThan(with.distance, 1_500)
+        // عكسه ممنوع: يلتف من شارع آخر
+        let against = try OfflineRouter.routes(on: g, from: nearA, to: nearB, alternatives: 1)[0]
+        XCTAssertGreaterThan(against.distance, 1_500)
     }
 
     func testFarPointIsNotOnRoad() throws {
