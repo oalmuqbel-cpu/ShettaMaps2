@@ -21,6 +21,14 @@ enum Fmt {
         return String(format: "%02d:%02d", m, sec)
     }
 
+    /// مدة الرحلة بأسلوب تطبيقات الملاحة: «13 د» أو «1 س 6 د».
+    static func tripDuration(_ seconds: TimeInterval) -> String {
+        guard seconds.isFinite, seconds >= 0 else { return "—" }
+        let m = Int((seconds / 60).rounded())
+        if m < 60 { return "\(max(1, m)) د" }
+        return m % 60 == 0 ? "\(m / 60) س" : "\(m / 60) س \(m % 60) د"
+    }
+
     /// السرعة من متر/ثانية إلى كم/س.
     static func speed(_ mps: Double?) -> String {
         guard let mps, mps >= 0, mps.isFinite else { return "—" }

@@ -260,7 +260,7 @@ struct NavigationPanel: View {
                         .font(.caption)
                         HStack(spacing: 12) {
                             Text("المتبقي: \(Fmt.distance(p.remainingDistance))")
-                            if let eta = p.estimatedSeconds { Text("الوقت المقدر: \(Fmt.duration(eta))") }
+                            if let eta = p.estimatedSeconds { Text("الوقت المقدر: \(Fmt.tripDuration(eta))") }
                         }
                         .font(.caption)
                         .foregroundStyle(.secondary)

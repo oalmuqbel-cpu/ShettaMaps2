@@ -116,7 +116,7 @@ extension CarPlayTemplateManager {
         // طرق السيارة المحسوبة (حتى ثلاثة) ثم الخط المباشر للصحراء
         var choices: [CPRouteChoice] = []
         for (i, r) in previewRoutes.enumerated() {
-            let time = Fmt.duration(r.expectedTravelTime), dist = Fmt.distance(r.distance)
+            let time = Fmt.tripDuration(r.expectedTravelTime), dist = Fmt.distance(r.distance)
             let road = CPRouteChoice(summaryVariants: [r.name.isEmpty ? "طريق \(i + 1)" : "عبر \(r.name)", "طريق \(i + 1)"],
                                      additionalInformationVariants: ["\(time) · \(dist)" + (i == 0 ? " · الأسرع" : "")],
                                      selectionSummaryVariants: ["\(time) · \(dist)"])

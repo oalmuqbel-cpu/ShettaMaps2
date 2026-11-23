@@ -71,7 +71,7 @@ struct RoutePreviewPanel: View {
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
-                        Text(Fmt.duration(r.expectedTravelTime)).font(.title3.weight(.bold))
+                        Text(Fmt.tripDuration(r.expectedTravelTime)).font(.title3.weight(.bold))
                             .foregroundStyle(selected ? Theme.route : .primary)
                         if index == 0, preview.routes.count > 1 {
                             Text("الأسرع").font(.caption2.weight(.bold)).padding(.horizontal, 6).padding(.vertical, 2)
@@ -119,6 +119,8 @@ struct RoutePreviewPanel: View {
             if let here = location.location?.coordinate { pts.append(here) }
         }
         mapManager.send(.fit(pts))
+        // مرة ثانية بعد استقرار الخريطة (أول أمر قد يصل قبل جاهزيتها)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { mapManager.send(.fit(pts)) }
     }
 }
 
@@ -208,7 +210,7 @@ struct RoadTripBar: View {
             VStack(spacing: 2) {
                 if let eta = s.progress?.estimatedSeconds {
                     Text(Date().addingTimeInterval(eta), style: .time).font(.title2.weight(.bold)).foregroundStyle(.green)
-                    Text("\(Fmt.duration(eta)) · \(Fmt.distance(s.progress?.remainingDistance ?? 0))")
+                    Text("\(Fmt.tripDuration(eta)) · \(Fmt.distance(s.progress?.remainingDistance ?? 0))")
                         .font(.subheadline).foregroundStyle(.secondary).monospacedDigit()
                 } else if let p = s.progress {
                     Text(Fmt.distance(p.remainingDistance)).font(.title2.weight(.bold))
