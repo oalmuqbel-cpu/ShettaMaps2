@@ -131,9 +131,9 @@ struct OnlineMapView: View {
                 if let cmd = mapManager.command { perform(cmd) }
             }
             // التتبع يدويًا مع كل قراءة موقع أو اتجاه: يحافظ على التقريب الذي نختاره ويدور مع الاتجاه بثبات
-            .onChange(of: userCoordinate?.latitude) { _, _ in follow() }
-            .onChange(of: userCoordinate?.longitude) { _, _ in follow() }
-            .onChange(of: userHeading) { _, _ in if mapManager.headingUp { follow(duration: 0.35) } }
+            .onChange(of: userCoordinate?.latitude) { _, _ in follow(onlyIfMoved: true) }
+            .onChange(of: userCoordinate?.longitude) { _, _ in follow(onlyIfMoved: true) }
+            .onChange(of: userHeading) { _, _ in if mapManager.headingUp { follow(duration: 0.35, onlyIfMoved: true) } }
         }
     }
 
@@ -220,15 +220,23 @@ struct OnlineMapView: View {
 
     static let drivingDistance: Double = 700
     @State private var followDistance: Double?
+    @State private var lastFollow: (coordinate: CLLocationCoordinate2D, heading: Double)?
 
     /// يضع الكاميرا على موقعك: الشمال للأعلى أو باتجاهك، وفي القيادة تظهر السيارة أسفل الشاشة ليظهر الطريق أمامك.
-    private func follow(duration: Double = 0.9) {
+    private func follow(duration: Double = 0.9, onlyIfMoved: Bool = false) {
         guard mapManager.followsUser else { return }
         guard let c = userCoordinate else {
             position = .userLocation(followsHeading: mapManager.headingUp, fallback: .automatic)
             return
         }
         let heading = mapManager.headingUp ? (userHeading ?? camera?.heading ?? 0) : 0
+        // لا نحرك الكاميرا لتذبذب GPS أو البوصلة وأنت واقف: الحركة المستمرة تمنع الضغط على الأماكن في الخريطة
+        if onlyIfMoved, let last = lastFollow {
+            let moved = GeoMath.distance(last.coordinate, c)
+            let turned = abs(GeoMath.angleDelta(from: last.heading, to: heading))
+            if moved < 4 && turned < 5 { return }
+        }
+        lastFollow = (c, heading)
         var distance = followDistance ?? camera?.distance ?? 3000
         if driving && mapManager.headingUp { distance = min(distance, 1_500) }
         let pitch: Double = mapManager.is3D ? 60 : (driving && mapManager.headingUp ? 45 : 0)

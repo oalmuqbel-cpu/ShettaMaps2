@@ -89,16 +89,28 @@ final class MapManager: ObservableObject {
     /// الخريطة تدور مع اتجاهك (وإلا الشمال للأعلى).
     @Published var headingUp = false
     @Published var isPickingPoint = false
-    @Published var pickedCoordinate: CLLocationCoordinate2D?
+    @Published var pickedCoordinate: CLLocationCoordinate2D? {
+        didSet { if pickedCoordinate != nil { stopFollowing() } }
+    }
     /// مركز الخريطة ومنطقتها الظاهرة (تستخدم لتنزيل منطقة دون إنترنت والبحث).
     @Published var visibleRegion: MKCoordinateRegion?
     @Published var cameraHeading: Double = 0
     /// المنظور ثلاثي الأبعاد مفعل.
     @Published var is3D = false
     /// علامة ضغط عليها المستخدم على الخريطة (مكان معروف، روضة، مكان محفوظ...).
-    @Published var selectedPin: MapOverlaySet.Pin?
+    /// عند اختيار مكان على الخريطة يتوقف تتبع موقعي حتى تبقى الخريطة على المكان (مثل خرائط Apple وقوقل).
+    @Published var selectedPin: MapOverlaySet.Pin? {
+        didSet { if selectedPin != nil { stopFollowing() } }
+    }
     /// نتيجة بحث معروضة على الخريطة كعلامة مؤقتة (مثل نتائج خرائط Apple التي لا يُسمح بتخزينها)، حتى يحفظها المستخدم أو يغلقها.
-    @Published var searchPin: MapOverlaySet.Pin?
+    @Published var searchPin: MapOverlaySet.Pin? {
+        didSet { if searchPin != nil { stopFollowing() } }
+    }
+
+    private func stopFollowing() {
+        if followsUser { followsUser = false }
+        if headingUp { headingUp = false }
+    }
     @Published private(set) var command: MapCommand?
     /// عرض اتجاه القبلة (سطر القبلة في الشريط العلوي وخطها على الخريطة).
     @Published var showQibla = false
