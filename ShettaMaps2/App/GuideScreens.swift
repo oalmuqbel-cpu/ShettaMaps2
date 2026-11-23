@@ -192,6 +192,11 @@ enum GuideScreens {
                                                         destination: dest, mode: .road), presetRoute: routes[0])
                     glog("navigating=\(env.navigation.snapshot.isNavigating) road=\(env.navigation.snapshot.roadRoute != nil)")
                     mapManager.send(.followCourse)
+                    for t in [2, 6, 12, 20] {
+                        try? await Task.sleep(nanoseconds: UInt64(t) * 1_000_000_000 / 2)
+                        let s = env.navigation.snapshot
+                        glog("t+\(t) status=\(s.status) nav=\(s.isNavigating) road=\(s.roadRoute != nil) step=\(s.roadStepIndex) loc=\(env.location.location.map { "\($0.coordinate.latitude),\($0.coordinate.longitude)" } ?? "nil") instr=\(s.instruction)")
+                    }
                 } catch { glog("route error \(error)") }
             }
         case "night":
