@@ -225,7 +225,7 @@ struct MapScreen: View {
 
             overlayColumn
 
-            if (showLandmarks || showCommunity || !dirtRoads.isEmpty) && !hasPlaceCard {
+            if (showLandmarks || showCommunity || !dirtRoads.isEmpty) && !hasPlaceCard && navigation.preview == nil {
                 VStack {
                     Spacer()
                     HStack {

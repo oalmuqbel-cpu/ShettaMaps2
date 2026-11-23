@@ -16,7 +16,7 @@ struct RoutePreviewPanel: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(preview.destination.name).font(.headline).lineLimit(1)
                     if let here = location.location?.coordinate {
-                        Text("بخط مستقيم \(Fmt.distance(GeoMath.distance(here, preview.destination.coordinate)))")
+                        Text("بخط مستقيم \(Fmt.navDistance(GeoMath.distance(here, preview.destination.coordinate)))")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -78,7 +78,7 @@ struct RoutePreviewPanel: View {
                                 .background(Capsule().fill(Color.green.opacity(0.18))).foregroundStyle(.green)
                         }
                     }
-                    Text([Fmt.distance(r.distance), r.name.isEmpty ? nil : "عبر \(r.name)"].compactMap { $0 }.joined(separator: " · "))
+                    Text([Fmt.navDistance(r.distance), r.name.isEmpty ? nil : "عبر \(r.name)"].compactMap { $0 }.joined(separator: " · "))
                         .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 }
                 Spacer()
