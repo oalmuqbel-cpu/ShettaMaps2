@@ -706,3 +706,105 @@ final class AppleDirectionsProbe: XCTestCase {
         }
     }
 }
+
+/// شبكة طرق صغيرة مكتوبة بنفس صيغة samtroute لاختبار حساب الطريق داخل الجوال.
+enum TestGraphWriter {
+    struct E { var a: Int; var b: Int; var speed: UInt8; var cls: UInt8; var flags: UInt8; var name: String }
+
+    static func write(vertices: [CLLocationCoordinate2D], edges: [E]) throws -> URL {
+        var names = Data([0]); var nameOff: [String: UInt32] = ["": 0]
+        var info = Data(); var out: [Int: [(UInt32, UInt32)]] = [:]
+        func put<T>(_ v: T, _ d: inout Data) { withUnsafeBytes(of: v) { d.append(contentsOf: $0) } }
+        for (i, e) in edges.enumerated() {
+            if nameOff[e.name] == nil { nameOff[e.name] = UInt32(names.count); names.append(contentsOf: Array(e.name.utf8) + [0]) }
+            let len = Float(GeoMath.distance(vertices[e.a], vertices[e.b]))
+            put(len, &info); info.append(contentsOf: [e.speed, e.cls, e.flags, 0])
+            put(nameOff[e.name]!, &info); put(UInt32(0), &info); put(UInt32(0), &info); put(UInt32(e.a), &info); put(UInt32(e.b), &info)
+            let oneway = e.flags & 1 != 0, rev = e.flags & 2 != 0
+            if !oneway || !rev { out[e.a, default: []].append((UInt32(e.b), UInt32(i))) }
+            if !oneway || rev { out[e.b, default: []].append((UInt32(e.a), UInt32(i) | 0x8000_0000)) }
+        }
+        var first = Data(), directed = Data(); var count: UInt32 = 0
+        for v in 0..<vertices.count {
+            put(count, &first)
+            for (t, inf) in out[v] ?? [] { put(t, &directed); put(inf, &directed); count += 1 }
+        }
+        put(count, &first)
+        let lats = vertices.map(\.latitude), lons = vertices.map(\.longitude)
+        let minLon = lons.min()! - 0.01, minLat = lats.min()! - 0.01, cell = 0.01
+        let cols = Int((lons.max()! + 0.01 - minLon) / cell) + 1, rows = Int((lats.max()! + 0.01 - minLat) / cell) + 1
+        var buckets: [Int: [UInt32]] = [:]
+        for (i, e) in edges.enumerated() {
+            for v in [e.a, e.b] {
+                let c = Int((vertices[v].longitude - minLon) / cell), r = Int((vertices[v].latitude - minLat) / cell)
+                if !(buckets[r * cols + c]?.contains(UInt32(i)) ?? false) { buckets[r * cols + c, default: []].append(UInt32(i)) }
+            }
+        }
+        var cellStart = Data(), items = Data(); var n: UInt32 = 0
+        for k in 0..<(cols * rows) { put(n, &cellStart); for x in buckets[k] ?? [] { put(x, &items); n += 1 } }
+        put(n, &cellStart)
+
+        var d = Data("SAMTRT1\0".utf8)
+        for x in [UInt32(1), UInt32(vertices.count), UInt32(edges.count), count, UInt32(0), UInt32(names.count)] { put(x, &d) }
+        put(minLon, &d); put(minLat, &d); put(cell, &d); put(UInt32(cols), &d); put(UInt32(rows), &d)
+        for v in vertices { put(Int32((v.latitude * 1e6).rounded()), &d); put(Int32((v.longitude * 1e6).rounded()), &d) }
+        d.append(first); d.append(directed); d.append(info); d.append(names); d.append(cellStart); d.append(items)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("test-\(UUID().uuidString).samtroute")
+        try d.write(to: url)
+        return url
+    }
+}
+
+final class OfflineRouterTests: XCTestCase {
+    /// شبكة 3×3 في الرياض: طريق سريع على الصف السفلي، وشوارع سكنية، وشارع باتجاه واحد.
+    private func grid() throws -> RouteGraph {
+        var v: [CLLocationCoordinate2D] = []
+        for r in 0..<3 { for c in 0..<3 { v.append(.init(latitude: 24.70 + Double(r) * 0.01, longitude: 46.60 + Double(c) * 0.01)) } }
+        func id(_ r: Int, _ c: Int) -> Int { r * 3 + c }
+        var e: [TestGraphWriter.E] = []
+        for c in 0..<2 { e.append(.init(a: id(0, c), b: id(0, c + 1), speed: 110, cls: 0, flags: 0, name: "طريق الملك فهد")) }
+        for r in 1..<3 { for c in 0..<2 { e.append(.init(a: id(r, c), b: id(r, c + 1), speed: 30, cls: 6, flags: 0, name: "شارع \(r)")) } }
+        for c in 0..<3 { for r in 0..<2 { e.append(.init(a: id(r, c), b: id(r + 1, c), speed: 40, cls: 6, flags: 0, name: "طريق \(c)")) } }
+        // اتجاه واحد من (2,2) إلى (2,1) فقط
+        e[e.firstIndex { $0.a == id(2, 1) && $0.b == id(2, 2) }!].flags = 1
+        return try RouteGraph(url: TestGraphWriter.write(vertices: v, edges: e))
+    }
+
+    func testFastestUsesHighwayAndHasInstructions() throws {
+        let g = try grid()
+        let from = CLLocationCoordinate2D(latitude: 24.7201, longitude: 46.6000)   // أعلى اليسار
+        let to = CLLocationCoordinate2D(latitude: 24.7199, longitude: 46.6200)     // أعلى اليمين
+        let routes = try OfflineRouter.routes(on: g, from: from, to: to)
+        XCTAssertFalse(routes.isEmpty)
+        let best = routes[0]
+        XCTAssertGreaterThan(best.distance, 1_500)
+        XCTAssertGreaterThan(best.expectedTravelTime, 0)
+        XCTAssertFalse(best.steps.isEmpty)
+        XCTAssertEqual(best.steps.last?.instruction, "الوصول إلى الوجهة")
+        XCTAssertTrue(best.steps.contains { $0.instruction.contains("انعطف") }, "\(best.steps.map(\.instruction))")
+        // البدائل أبطأ أو مساوية
+        for r in routes.dropFirst() { XCTAssertGreaterThanOrEqual(r.expectedTravelTime, best.expectedTravelTime) }
+    }
+
+    func testOnewayRespected() throws {
+        let g = try grid()
+        // من (2,2) إلى (2,1) مسموح مباشرة
+        let a = CLLocationCoordinate2D(latitude: 24.72, longitude: 46.6195), b = CLLocationCoordinate2D(latitude: 24.72, longitude: 46.6105)
+        let direct = try OfflineRouter.routes(on: g, from: a, to: b, alternatives: 1)[0]
+        XCTAssertLessThan(direct.distance, 1_500)
+        // العكس ممنوع على الشارع نفسه: يلتف
+        let back = try OfflineRouter.routes(on: g, from: b, to: a, alternatives: 1)[0]
+        XCTAssertGreaterThan(back.distance, 1_500)
+    }
+
+    func testFarPointIsNotOnRoad() throws {
+        let g = try grid()
+        XCTAssertThrowsError(try OfflineRouter.routes(on: g, from: .init(latitude: 25.5, longitude: 47.5), to: .init(latitude: 24.71, longitude: 46.61)))
+    }
+
+    func testTurnAngle() {
+        let a = [CLLocationCoordinate2D(latitude: 24.70, longitude: 46.60), .init(latitude: 24.71, longitude: 46.60)]   // شمالًا
+        let right = [CLLocationCoordinate2D(latitude: 24.71, longitude: 46.60), .init(latitude: 24.71, longitude: 46.61)] // شرقًا
+        XCTAssertEqual(OfflineRouter.turnAngle(a, right), 90, accuracy: 3)
+    }
+}
