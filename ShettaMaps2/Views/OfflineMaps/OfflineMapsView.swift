@@ -12,6 +12,7 @@ struct OfflineMapsView: View {
     @EnvironmentObject private var dirt: DirtRoadsStore
     @ObservedObject private var package = OfflinePackageService.shared
     @ObservedObject private var regionPacks = RegionPackService.shared
+    @ObservedObject private var roadGraphs = RouteGraphStore.shared
     @State private var confirmRegionDelete: RegionPack?
     @AppStorage("offlineInclude_dirt") private var includeDirt = true
     @AppStorage("offlineInclude_speed") private var includeSpeed = true
@@ -45,6 +46,8 @@ struct OfflineMapsView: View {
             }
 
             readyRegionsSection
+
+            roadGraphsSection
 
             Section {
                 TextField("اسم المنطقة (مثال: نفود الدهناء)", text: $regionName)
@@ -304,6 +307,43 @@ struct MapSourceSettingsView: View {
 
 extension OfflineMapsView {
     @ViewBuilder
+    /// طرق الملاحة: شبكة الطرق لحساب طريق السيارة داخل الجوال (Apple لا توفر توجيهات القيادة في السعودية).
+    var roadGraphsSection: some View {
+        Section {
+            if let m = roadGraphs.manifest {
+                ForEach(m.regions) { g in
+                    let title = regionPacks.manifest?.regions.first { $0.id == g.id }?.title ?? g.id
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(title)
+                            Text(ByteCountFormatter.string(fromByteCount: g.bytes, countStyle: .file))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if let p = roadGraphs.progress[g.id] {
+                            ProgressView(value: p).frame(width: 80)
+                            Button { roadGraphs.cancel(g.id) } label: { Image(systemName: "xmark.circle") }.buttonStyle(.borderless)
+                        } else if roadGraphs.isInstalled(g.id) {
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                            Button(role: .destructive) { roadGraphs.delete(g.id) } label: { Image(systemName: "trash") }.buttonStyle(.borderless)
+                        } else {
+                            Button { roadGraphs.download(g.id) } label: { Image(systemName: "arrow.down.circle") }
+                                .buttonStyle(.borderless).disabled(!network.isOnline)
+                        }
+                    }
+                }
+            } else {
+                HStack { ProgressView(); Text("جارٍ تحميل القائمة").foregroundStyle(.secondary) }
+            }
+            if let e = roadGraphs.lastError { Text(e).font(.footnote).foregroundStyle(.red) }
+        } header: {
+            Text("طرق الملاحة (طريق السيارة دون إنترنت)")
+        } footer: {
+            Text("تُحسب بها طرق السيارة ومنعطفاتها داخل الجوال دون إنترنت. شبكة الطرق من OpenStreetMap، ووقت الوصول تقديري من نوع الطريق وحد السرعة دون زحمة مباشرة.")
+        }
+        .task { if roadGraphs.manifest == nil { await roadGraphs.loadManifest() } }
+    }
+
     var readyRegionsSection: some View {
         Section {
             if let m = regionPacks.manifest {
