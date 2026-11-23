@@ -261,20 +261,29 @@ enum OfflineRouter {
         var raw: [(instruction: String, distance: Double, coords: [CLLocationCoordinate2D])] = []
         for (k, leg) in legs.enumerated() {
             var text = ""
+            var merge = false
             if k > 0 {
                 let prevLeg = legs[k - 1]
                 if leg.roundabout {
-                    // نجمع المناورة مع المقطع التالي للدوار
+                    // تعليمة واحدة للدوار تشمل المخرج والطريق بعده
                     let next = k + 1 < legs.count ? legs[k + 1] : nil
                     let exitNo = max(1, leg.exitsPassed)
                     text = "عند الدوار، خذ المخرج \(ordinal(exitNo))" + (next.map { roadName($0).isEmpty ? "" : " إلى \(roadName($0))" } ?? "")
                 } else if prevLeg.roundabout {
-                    text = "اخرج من الدوار" + (roadName(leg).isEmpty ? "" : " إلى \(roadName(leg))")
+                    merge = true          // الخروج من الدوار جزء من تعليمة الدوار نفسها
                 } else {
                     text = maneuver(from: prevLeg, to: leg)
+                    // تغيّر اسم الطريق مع السير مستقيمًا ليس منعطفًا: لا نعلن عنه (مثل تطبيقات الملاحة)
+                    if text.hasPrefix("استمر") { merge = true }
                 }
             }
-            raw.append((text, leg.length, leg.coords))
+            if merge, var last = raw.last {
+                last.coords += leg.coords.dropFirst()
+                last.distance += leg.length
+                raw[raw.count - 1] = last
+            } else {
+                raw.append((text, leg.length, leg.coords))
+            }
         }
         let coords = legs.flatMap { $0.coords }
         let distance = legs.reduce(0) { $0 + $1.length }
@@ -288,16 +297,19 @@ enum OfflineRouter {
         ["الأول", "الثاني", "الثالث", "الرابع", "الخامس", "السادس"][min(max(n, 1), 6) - 1]
     }
 
-    private static func roadName(_ l: Leg) -> String { l.name }
+    /// اسم الطريق في التعليمات: العربي فقط (بعض الطرق في المصدر باسم إنجليزي فقط فلا نخلط اللغتين).
+    private static func roadName(_ l: Leg) -> String {
+        l.name.unicodeScalars.contains { (0x0600...0x06FF).contains($0.value) } || l.name.allSatisfy({ $0.isNumber || $0 == " " }) ? l.name : ""
+    }
 
     private static func maneuver(from a: Leg, to b: Leg) -> String {
         let angle = turnAngle(a.coords, b.coords)
-        let target = b.name.isEmpty ? "" : " إلى \(b.name)"
+        let target = roadName(b).isEmpty ? "" : " إلى \(roadName(b))"
         let isLink = (8...12).contains(b.roadClass), fromLink = (8...12).contains(a.roadClass)
         if isLink && !fromLink { return "اسلك المخرج" + (angle > 15 ? " يمينًا" : angle < -15 ? " يسارًا" : "") + target }
-        if fromLink && !isLink && b.roadClass <= 2 { return "اندمج في الطريق" + target }
+        if fromLink && !isLink && b.roadClass <= 2 { return roadName(b).isEmpty ? "اندمج في الطريق" : "اندمج في \(roadName(b))" }
         switch abs(angle) {
-        case ..<20: return b.name.isEmpty ? "استمر في الطريق" : "استمر إلى \(b.name)"
+        case ..<20: return roadName(b).isEmpty ? "استمر في الطريق" : "استمر إلى \(roadName(b))"
         case ..<55: return (angle > 0 ? "انحرف يمينًا" : "انحرف يسارًا") + target
         case ..<145: return (angle > 0 ? "انعطف يمينًا" : "انعطف يسارًا") + target
         default: return "استدر للخلف" + target
