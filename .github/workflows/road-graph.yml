@@ -1,0 +1,40 @@
+# شبكة طرق القيادة للمناطق (OpenStreetMap) لحساب الطريق داخل الجوال دون إنترنت
+name: Road graph
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        default: "1"
+      publish:
+        description: "نشر في الإصدار road-graph (yes/no)"
+        default: "no"
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost /usr/local/.ghcup; df -h /
+      - name: Download data
+        run: |
+          pip3 install --quiet osmium
+          mkdir -p data out
+          curl -sSL --fail --retry 6 --retry-delay 20 --retry-all-errors -o data/gcc.osm.pbf https://download.geofabrik.de/asia/gcc-states-latest.osm.pbf
+          ls -la data
+      - name: Build graph
+        run: /usr/bin/time -v python3 tools/roads/build_graph.py data/gcc.osm.pbf tools/regions/regions.json out ${{ inputs.version || '1' }} 2>&1 | grep -vE "^\s+(Average|Socket|Signals|Swaps|File system|Page size|Voluntary|Involuntary|Exit|Minor|Major|Percent)"
+      - name: Compress check
+        run: for f in out/*.samtroute; do echo "$f $(stat -c%s $f) gz=$(gzip -6 -c $f | wc -c)"; done
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with: { name: roads-central, path: out/roads-central.samtroute }
+      - name: Publish
+        if: ${{ inputs.publish == 'yes' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view road-graph >/dev/null 2>&1 || gh release create road-graph --title "Road graph" --notes "شبكة الطرق لحساب الطريق دون إنترنت في سَمْت. © OpenStreetMap contributors (ODbL)" --latest=false
+          gh release upload road-graph out/* --clobber
