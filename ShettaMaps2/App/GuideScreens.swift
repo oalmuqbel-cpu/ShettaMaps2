@@ -12,7 +12,16 @@ enum GuideScreens {
         return args[i + 1]
     }
 
+    /// سجل خطوات اللقطات (يقرؤه خادم البناء).
+    static func glog(_ m: String) {
+        let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("guide.log")
+        let line = "\(Date()) \(m)\n"
+        if let h = try? FileHandle(forWritingTo: url) { h.seekToEndOfFile(); h.write(Data(line.utf8)); try? h.close() }
+        else { try? Data(line.utf8).write(to: url) }
+    }
+
     static func applyIfRequested(router: AppRouter, mapManager: MapManager) async {
+        glog("apply \(requested ?? "-")")
         guard let screen = requested else { return }
         try? await Task.sleep(nanoseconds: 3_000_000_000)
         let env = AppEnvironment.shared
@@ -168,17 +177,22 @@ enum GuideScreens {
                 router.mapSheet = .reserve(r.id)
             }
         case "routepreview", "roadnav":
+            glog("start \(screen)")
             await RouteGraphStore.shared.installForGuide("central")
+            glog("graph installed=\(RouteGraphStore.shared.isInstalled("central"))")
             mapManager.layer = .standard
-            // من وسط الرياض إلى طريق الجنادرية شرقًا
-            env.navigation.previewRoutes(to: Waypoint(name: "مهرجان الجنادرية", coordinate: .init(latitude: 24.7840, longitude: 46.8020)))
-            for _ in 0..<60 {
-                if env.navigation.preview?.loading == false { break }
-                try? await Task.sleep(nanoseconds: 250_000_000)
-            }
-            if screen == "roadnav" {
-                env.navigation.startFromPreview(mode: .road)
-                mapManager.send(.followCourse)
+            let dest = Waypoint(name: "مهرجان الجنادرية", coordinate: .init(latitude: 24.7840, longitude: 46.8020))
+            if screen == "routepreview" {
+                env.navigation.previewRoutes(to: dest)
+            } else {
+                do {
+                    let routes = try await RoadRoutingService.routes(from: here, to: dest.coordinate)
+                    glog("routes \(routes.count) first=\(Int(routes[0].distance))m steps=\(routes[0].steps.count)")
+                    env.navigation.start(NavigationPlan(origin: Waypoint(name: "موقعي", coordinate: here), waypoints: [],
+                                                        destination: dest, mode: .road), presetRoute: routes[0])
+                    glog("navigating=\(env.navigation.snapshot.isNavigating) road=\(env.navigation.snapshot.roadRoute != nil)")
+                    mapManager.send(.followCourse)
+                } catch { glog("route error \(error)") }
             }
         case "night":
             UserDefaults.standard.set(AppearanceMode.dark.rawValue, forKey: SettingsKeys.appearanceMode)
