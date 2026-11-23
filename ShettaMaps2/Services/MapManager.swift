@@ -58,6 +58,8 @@ enum MapLayer: String, CaseIterable, Identifiable {
 /// أوامر للخريطة تُرسل من الأزرار إلى المحرك النشط (MapKit أو MapLibre).
 enum MapCommand: Equatable {
     case zoomIn, zoomOut, centerOnUser, resetNorth
+    /// تتبع موقعي مع اتجاه السير (أثناء القيادة على الطريق).
+    case followCourse
     case focus(CLLocationCoordinate2D, spanMeters: Double)
     case fit([CLLocationCoordinate2D])
     /// منظور ثلاثي الأبعاد (ميلان الكاميرا) أو مسطح.
@@ -65,7 +67,7 @@ enum MapCommand: Equatable {
 
     static func == (a: MapCommand, b: MapCommand) -> Bool {
         switch (a, b) {
-        case (.zoomIn, .zoomIn), (.zoomOut, .zoomOut), (.centerOnUser, .centerOnUser), (.resetNorth, .resetNorth): return true
+        case (.zoomIn, .zoomIn), (.zoomOut, .zoomOut), (.centerOnUser, .centerOnUser), (.resetNorth, .resetNorth), (.followCourse, .followCourse): return true
         case let (.focus(c1, s1), .focus(c2, s2)): return c1.latitude == c2.latitude && c1.longitude == c2.longitude && s1 == s2
         case let (.fit(x), .fit(y)): return x.count == y.count
         case let (.pitch(x), .pitch(y)): return x == y
@@ -101,7 +103,7 @@ final class MapManager: ObservableObject {
 
     func send(_ c: MapCommand) {
         switch c {
-        case .centerOnUser: followsUser = true
+        case .centerOnUser, .followCourse: followsUser = true
         case .zoomIn, .zoomOut, .resetNorth: break
         case .pitch(let on): is3D = on
         case .focus, .fit: followsUser = false

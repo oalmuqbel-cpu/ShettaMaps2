@@ -7,7 +7,7 @@
   vertices: N × (int32 lat×1e6, int32 lon×1e6)
   firstOut: (N+1) × uint32               — بداية حواف كل رأس (CSR)
   directed: D × (uint32 target, uint32 info | 0x80000000 إذا كانت بعكس اتجاه الرسم)
-  info: M × (float32 length_m, uint8 speed_kmh, uint8 class, uint8 flags, uint8 pad, uint32 name_off, uint32 geom_start, uint32 geom_count)
+  info: M × (float32 length_m, uint8 speed_kmh, uint8 class, uint8 flags, uint8 pad, uint32 name_off, uint32 geom_start, uint32 geom_count, uint32 vertexA, uint32 vertexB)
   geometry: G × (int32 lat×1e6, int32 lon×1e6)  — النقاط الوسطية للحافة باتجاه الرسم
   names: S bytes (UTF-8، كل اسم منتهٍ بصفر؛ الإزاحة 0 = بلا اسم)
   grid: header (float64 minLon, minLat, cell; uint32 cols, rows) ثم cellStart[(cols*rows)+1] ثم info indices
@@ -123,7 +123,7 @@ def write_region(rid, bbox):
         va, vb = vertex(a, la, oa), vertex(b, lb, ob)
         if name not in name_off:
             name_off[name] = len(names); names += name.encode("utf-8") + b"\0"
-        info += struct.pack("<fBBBBIII", length, speed, cls, flags, 0, name_off[name], len(geom) // 2, len(mid) // 2)
+        info += struct.pack("<fBBBBIIIII", length, speed, cls, flags, 0, name_off[name], len(geom) // 2, len(mid) // 2, va, vb)
         geom.extend(mid)
         fwd = not (flags & F_ONEWAY) or not (flags & F_REVERSE_ONEWAY)
         bwd = not (flags & F_ONEWAY) or bool(flags & F_REVERSE_ONEWAY)

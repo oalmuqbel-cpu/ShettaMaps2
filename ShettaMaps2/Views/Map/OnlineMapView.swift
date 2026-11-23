@@ -136,8 +136,17 @@ struct OnlineMapView: View {
             MapPolyline(coordinates: line.coordinates)
                 .stroke(Theme.directLine, style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [10, 8]))
         case .road:
+            // خط الطريق مثل تطبيقات الملاحة: إطار داكن ثم أزرق عريض
             MapPolyline(coordinates: line.coordinates)
-                .stroke(Theme.route, lineWidth: 7)
+                .stroke(Color(red: 0.05, green: 0.25, blue: 0.6), style: StrokeStyle(lineWidth: 10, lineCap: .round, lineJoin: .round))
+            MapPolyline(coordinates: line.coordinates)
+                .stroke(Theme.route, style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round))
+        case .roadDone:
+            MapPolyline(coordinates: line.coordinates)
+                .stroke(Color.gray.opacity(0.75), style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+        case .routeAlt:
+            MapPolyline(coordinates: line.coordinates)
+                .stroke(Color(red: 0.55, green: 0.62, blue: 0.72).opacity(0.9), style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
         case .track:
             MapPolyline(coordinates: line.coordinates)
                 .stroke(Theme.track, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
@@ -165,6 +174,8 @@ struct OnlineMapView: View {
             let distance = camera?.distance ?? max(1_000, (mapManager.visibleRegion?.span.latitudeDelta ?? 0.05) * 111_000 * 1.6)
             withAnimation { position = .camera(MapCamera(centerCoordinate: center, distance: distance, heading: 0, pitch: camera?.pitch ?? 0)) }
             mapManager.cameraHeading = 0
+        case .followCourse:
+            withAnimation { position = .userLocation(followsHeading: true, fallback: .automatic) }
         case .centerOnUser:
             if mapManager.is3D, let c = userCoordinate {
                 withAnimation { position = .camera(MapCamera(centerCoordinate: c, distance: min(camera?.distance ?? 2500, 4000),

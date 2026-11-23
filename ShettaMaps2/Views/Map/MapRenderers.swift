@@ -134,12 +134,16 @@ private func color(for kind: MapOverlaySet.LineKind) -> UIColor {
     case .myTracks: return Theme.myTracksUI
     case .direct: return Theme.directLineUI
     case .road: return Theme.routeUI
+    case .roadDone: return UIColor.systemGray.withAlphaComponent(0.75)
+    case .routeAlt: return UIColor(red: 0.55, green: 0.62, blue: 0.72, alpha: 0.9)
     }
 }
 
 private func width(for kind: MapOverlaySet.LineKind) -> CGFloat {
     switch kind {
     case .road: return 7
+    case .roadDone: return 6
+    case .routeAlt: return 6
     case .direct: return 3
     case .track, .importedTrack: return 4
     case .community: return 3

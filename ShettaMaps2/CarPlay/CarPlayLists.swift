@@ -82,6 +82,19 @@ extension CarPlayTemplateManager {
     /// يعرض الوجهة على الخريطة مع زر «ابدأ» (أسلوب CarPlay القياسي). أثناء الملاحة يطلب تأكيد تغيير الوجهة.
     func preview(_ w: Waypoint) {
         interfaceController.popToRootTemplate(animated: true, completion: nil)
+        // نحسب طرق السيارة أولًا (داخل الجوال)، ثم نعرض المعاينة بخياراتها
+        if !env.navigation.snapshot.isNavigating, let here = env.location.location?.coordinate, routesFor?.id != w.id {
+            previewRoutes = []
+            routesFor = w
+            Task { [weak self] in
+                let list = (try? await RoadRoutingService.routes(from: here, to: w.coordinate)) ?? []
+                guard let self, self.routesFor?.id == w.id else { return }
+                self.previewRoutes = list
+                self.preview(w)
+            }
+            return
+        }
+        routesFor = nil
         if env.navigation.snapshot.isNavigating {
             let change = CPAlertAction(title: "تغيير الوجهة", style: .default) { [weak self] _ in
                 self?.interfaceController.dismissTemplate(animated: true, completion: nil)
@@ -100,13 +113,14 @@ extension CarPlayTemplateManager {
         let dest = MKMapItem(placemark: MKPlacemark(coordinate: w.coordinate))
         dest.name = w.name
         let summary = distanceText(to: w.coordinate) ?? w.name
-        // خياران: عبر الطرق (عند توفر الإنترنت) أو خط مباشر للصحراء
+        // طرق السيارة المحسوبة (حتى ثلاثة) ثم الخط المباشر للصحراء
         var choices: [CPRouteChoice] = []
-        if env.network.isOnline {
-            let road = CPRouteChoice(summaryVariants: ["عبر الطرق", "طرق"],
-                                     additionalInformationVariants: ["تعليمات منعطف بمنعطف من خرائط Apple عند توفر طريق"],
-                                     selectionSummaryVariants: ["عبر الطرق · \(summary)"])
-            road.userInfo = GuidanceMode.road.rawValue
+        for (i, r) in previewRoutes.enumerated() {
+            let time = Fmt.duration(r.expectedTravelTime), dist = Fmt.distance(r.distance)
+            let road = CPRouteChoice(summaryVariants: [r.name.isEmpty ? "طريق \(i + 1)" : "عبر \(r.name)", "طريق \(i + 1)"],
+                                     additionalInformationVariants: ["\(time) · \(dist)" + (i == 0 ? " · الأسرع" : "")],
+                                     selectionSummaryVariants: ["\(time) · \(dist)"])
+            road.userInfo = "road:\(i)"
             choices.append(road)
         }
         let direct = CPRouteChoice(summaryVariants: ["خط مباشر", "مباشر"],
@@ -115,6 +129,7 @@ extension CarPlayTemplateManager {
         direct.userInfo = GuidanceMode.direct.rawValue
         choices.append(direct)
         let trip = CPTrip(origin: origin, destination: dest, routeChoices: choices)
+        currentTrip = trip
         mapTemplate.showTripPreviews([trip], textConfiguration: CPTripPreviewTextConfiguration(
             startButtonTitle: "ابدأ", additionalRoutesButtonTitle: "خيارات", overviewButtonTitle: nil))
         mapViewController.showPreview(w.coordinate)

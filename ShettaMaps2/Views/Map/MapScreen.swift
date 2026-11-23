@@ -116,6 +116,7 @@ struct MapScreen: View {
                             navigation: navigation.snapshot,
                             currentLocation: location.location?.coordinate,
                             picked: mapManager.pickedCoordinate,
+                            preview: navigation.preview,
                             extraPins: reservePins + landmarkPins + communityPins + shownTrackPins + followPins + (mapManager.searchPin.map { [$0] } ?? []),
                             extraLines: myTracksLines
                                 + (router.shownTrack?.segments ?? []).map { .init(kind: .importedTrack, coordinates: $0) }
@@ -259,11 +260,18 @@ struct MapScreen: View {
     /// على الآيباد (العرض الواسع) لا تمتد البطاقات بعرض الشاشة.
     private var isWide: Bool { hSizeClass == .regular }
 
+    /// قيادة على طريق محسوب: واجهة مثل تطبيقات الملاحة (لافتة المنعطف أعلى، وشريط الرحلة أسفل).
+    private var onRoad: Bool { navigation.snapshot.isNavigating && navigation.snapshot.roadRoute != nil }
+
     private var overlayColumn: some View {
         VStack(spacing: DS.s) {
             VStack(spacing: DS.s) {
-                StatusHUD()
-                if showLandmarks && !navigation.snapshot.isNavigating && !mapManager.isPickingPoint { placeFilterBar }
+                if onRoad {
+                    ManeuverBanner()
+                } else {
+                    StatusHUD()
+                }
+                if showLandmarks && !navigation.snapshot.isNavigating && !mapManager.isPickingPoint && navigation.preview == nil { placeFilterBar }
                 banners
                 // مفتاح ألوان التغطية أعلى الشاشة تحت الشريط، لا في وسط الخريطة
                 if showCoverage && !navigation.snapshot.isNavigating {
@@ -272,7 +280,7 @@ struct MapScreen: View {
                 if showRainMap && !navigation.snapshot.isNavigating {
                     RainPanel(forecast: rainForecast, observedService: rainNow, observed: $rainObserved)
                 }
-                if navigation.snapshot.isNavigating { NavigationPanel() }
+                if navigation.snapshot.isNavigating && !onRoad { NavigationPanel() }
                 if recorder.isActive { RecordingPanel(onStop: { showStopRecordingConfirm = true }) }
             }
             .frame(maxWidth: isWide ? DS.panelMaxWidth : .infinity)
@@ -284,7 +292,11 @@ struct MapScreen: View {
                 controls
             }
             Group {
-                if hasPlaceCard {
+                if let preview = navigation.preview {
+                    RoutePreviewPanel(preview: preview).frame(maxWidth: isWide ? DS.panelMaxWidth : .infinity)
+                } else if onRoad {
+                    RoadTripBar().frame(maxWidth: isWide ? DS.panelMaxWidth : .infinity)
+                } else if hasPlaceCard {
                     placeCard.frame(maxWidth: isWide ? DS.panelMaxWidth : .infinity)
                 } else {
                     ActionBar(onRecordTap: toggleRecording).frame(maxWidth: isWide ? DS.actionBarMaxWidth : .infinity)
@@ -416,7 +428,7 @@ struct MapScreen: View {
                       coordinateText: CoordinateUtilities.format(c, as: .decimal),
                       primary: [
                         .init(id: "nav", title: "الملاحة", icon: "location.north.line.fill") {
-                            navigation.navigate(to: Waypoint(name: "نقطة محددة", coordinate: c)); closePicked()
+                            navigation.previewRoutes(to: Waypoint(name: "نقطة محددة", coordinate: c)); closePicked()
                         },
                         .init(id: "save", title: "حفظ", icon: "mappin.and.ellipse") { router.mapSheet = .savePlace(c); closePicked() },
                         .init(id: "share", title: "مشاركة", icon: "square.and.arrow.up") {
@@ -782,7 +794,7 @@ struct MapScreen: View {
         }
         var list: [PlaceCard.Action] = [
             .init(id: "nav", title: "الملاحة", icon: "location.north.line.fill") {
-                navigation.navigate(to: Waypoint(name: pin.title, coordinate: pin.coordinate)); mapManager.selectedPin = nil
+                navigation.previewRoutes(to: Waypoint(name: pin.title, coordinate: pin.coordinate)); mapManager.selectedPin = nil
             }
         ]
         if pin.kind != .saved {
@@ -798,9 +810,6 @@ struct MapScreen: View {
 
     private func pinMoreActions(_ pin: MapOverlaySet.Pin) -> [PlaceCard.Action] {
         var list: [PlaceCard.Action] = [
-            .init(id: "road", title: "طريق بالسيارة إن وُجد", icon: "car") {
-                navigation.navigate(to: Waypoint(name: pin.title, coordinate: pin.coordinate), mode: .road); mapManager.selectedPin = nil
-            },
             .init(id: "plan", title: "إضافة إلى مخطط المسار", icon: "point.3.connected.trianglepath.dotted") {
                 router.plannerDraft.waypoints.append(Waypoint(name: pin.title, coordinate: pin.coordinate))
                 mapManager.selectedPin = nil; router.mapSheet = .routePlanner

@@ -15,7 +15,8 @@ enum Theme {
                                  dark: UIColor(red: 0.141, green: 0.110, blue: 0.086, alpha: 1))
     static let sandUI = dynamic(light: UIColor(red: 0.937, green: 0.890, blue: 0.812, alpha: 1),
                                 dark: UIColor(red: 0.220, green: 0.176, blue: 0.137, alpha: 1))
-    static let routeUI = UIColor(red: 0.851, green: 0.400, blue: 0.098, alpha: 1)
+    /// خط طريق القيادة: أزرق مثل تطبيقات الملاحة المعروفة.
+    static let routeUI = UIColor(red: 0.10, green: 0.45, blue: 0.95, alpha: 1)
     static let trackUI = UIColor(red: 0.420, green: 0.267, blue: 0.137, alpha: 1)
     static let directLineUI = UIColor(red: 0.150, green: 0.380, blue: 0.780, alpha: 1)
 

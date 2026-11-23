@@ -419,7 +419,8 @@ final class CarPlayMapViewController: UIViewController {
                                       navigation: env.navigation.snapshot,
                                       currentLocation: env.location.location?.coordinate,
                                       extraPins: extra,
-                                      extraLines: role == .main ? dataLines : [])
+                                      extraLines: (role == .main ? dataLines : [])
+                                        + (previewRoute.map { [.init(kind: .road, coordinates: $0)] } ?? []))
         guard force || set != lastOverlays else { return }
         lastOverlays = set
         if let m = mapKitView { MapKitOverlayRenderer.apply(set, to: m) }
@@ -771,7 +772,17 @@ final class CarPlayMapViewController: UIViewController {
     }
 
     /// عرض الوجهة قبل بدء الملاحة (مع موقعي)، أو إلغاء المعاينة بـ nil.
+    /// خط الطريق المختار في معاينة الرحلة.
+    var previewRoute: [CLLocationCoordinate2D]?
+
+    func showPreviewRoute(_ coords: [CLLocationCoordinate2D]?) {
+        previewRoute = coords
+        refreshOverlays(force: true)
+        if let coords, coords.count > 1 { fit(coords) }
+    }
+
     func showPreview(_ c: CLLocationCoordinate2D?) {
+        if c == nil { previewRoute = nil }
         previewCoordinate = c
         refreshOverlays(force: true)
         guard let c else { recenter(); return }

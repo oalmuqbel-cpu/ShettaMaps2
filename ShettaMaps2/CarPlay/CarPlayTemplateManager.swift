@@ -22,6 +22,10 @@ final class CarPlayTemplateManager: NSObject {
     private var barShowsNavigation: Bool?
     /// الوجهة المعروضة للمعاينة على الخريطة قبل بدء الملاحة.
     var previewWaypoint: Waypoint?
+    /// طرق السيارة المحسوبة للمعاينة الحالية، ووجهتها.
+    var previewRoutes: [RoadRoute] = []
+    var routesFor: Waypoint?
+    var currentTrip: CPTrip?
     /// قوائم مفتوحة تُحدَّث في مكانها.
     weak var layersTemplate: CPListTemplate?
     weak var regionsTemplate: CPListTemplate?
@@ -439,15 +443,34 @@ extension CarPlayTemplateManager: CPMapTemplateDelegate {
         }
     }
 
+    /// عند اختيار طريق في المعاينة: نرسمه على خريطة السيارة.
+    nonisolated func mapTemplate(_ mapTemplate: CPMapTemplate, selectedPreviewFor trip: CPTrip, using routeChoice: CPRouteChoice) {
+        MainActor.assumeIsolated {
+            let info = routeChoice.userInfo as? String ?? ""
+            if info.hasPrefix("road:"), let i = Int(info.dropFirst(5)), previewRoutes.indices.contains(i) {
+                mapViewController.showPreviewRoute(previewRoutes[i].coordinates)
+            } else {
+                mapViewController.showPreviewRoute(nil)
+            }
+        }
+    }
+
     nonisolated func mapTemplate(_ mapTemplate: CPMapTemplate, startedTrip trip: CPTrip, using routeChoice: CPRouteChoice) {
         MainActor.assumeIsolated {
             mapTemplate.hideTripPreviews()
             let c = trip.destination.placemark.coordinate
             let w = previewWaypoint ?? Waypoint(name: trip.destination.name ?? "الوجهة", coordinate: c)
-            let mode = (routeChoice.userInfo as? String).flatMap(GuidanceMode.init(rawValue:)) ?? .direct
+            let info = routeChoice.userInfo as? String ?? ""
             previewWaypoint = nil
             mapViewController.showPreview(nil)
-            env.navigation.navigate(to: w, mode: mode)
+            if info.hasPrefix("road:"), let i = Int(info.dropFirst(5)), previewRoutes.indices.contains(i) {
+                let origin = env.location.location.map { Waypoint(name: "موقعي", coordinate: $0.coordinate) }
+                env.navigation.start(NavigationPlan(origin: origin, waypoints: [], destination: w, mode: .road),
+                                     presetRoute: previewRoutes[i])
+            } else {
+                env.navigation.navigate(to: w, mode: GuidanceMode(rawValue: info) ?? .direct)
+            }
+            previewRoutes = []
             updateBarButtons()
         }
     }

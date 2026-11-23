@@ -17,6 +17,8 @@ struct NavigationSnapshot: Equatable {
     var instruction: String = ""
     var roadRoute: RoadRoute?
     var roadStepIndex: Int = 0
+    /// موضع السائق على خط الطريق (لتلوين الجزء المقطوع بالرمادي).
+    var roadProgressIndex: Int = 0
     var notice: String?
     /// يزيد مع كل تغيير في الخطة لتعرف CarPlay متى تعيد إنشاء رحلة جديدة.
     var planRevision: Int = 0
@@ -28,12 +30,27 @@ struct NavigationSnapshot: Equatable {
     }
 }
 
+/// معاينة الطرق قبل الانطلاق (مثل Google Maps): الطرق البديلة واختيار أحدها أو الخط المباشر.
+struct RoutePreview: Equatable {
+    var destination: Waypoint
+    var routes: [RoadRoute] = []
+    var selected: Int = 0
+    var loading = true
+    var error: String?
+    /// اقتراح تنزيل طرق الملاحة لهذه المنطقة.
+    var suggestedRegion: String?
+    var tripID: UUID?
+    var selectedRoute: RoadRoute? { routes.indices.contains(selected) ? routes[selected] : nil }
+}
+
 /// مدير الملاحة المشترك (مصدر الحقيقة الوحيد) بين الآيفون وCarPlay داخل نفس العملية.
 @MainActor
 final class SharedNavigationState: ObservableObject {
     static let shared = SharedNavigationState()
 
     @Published private(set) var snapshot = NavigationSnapshot()
+    @Published private(set) var preview: RoutePreview?
+    private var previewTask: Task<Void, Never>?
 
     private weak var location: LocationManager?
     private var subscription: AnyCancellable?
@@ -57,7 +74,59 @@ final class SharedNavigationState: ObservableObject {
 
     // MARK: - التحكم
 
-    func start(_ plan: NavigationPlan) {
+    // MARK: - المعاينة قبل الانطلاق
+
+    /// يعرض الطرق المتاحة إلى الوجهة مع الخط المباشر، ولا تبدأ الملاحة حتى يختار المستخدم.
+    func previewRoutes(to destination: Waypoint, tripID: UUID? = nil) {
+        previewTask?.cancel()
+        preview = RoutePreview(destination: destination, tripID: tripID)
+        guard let from = location?.location?.coordinate else {
+            preview?.loading = false
+            preview?.error = "بانتظار تحديد موقعك."
+            return
+        }
+        previewTask = Task { [weak self] in
+            do {
+                let list = try await RoadRoutingService.routes(from: from, to: destination.coordinate)
+                guard let self, !Task.isCancelled, self.preview?.destination.id == destination.id else { return }
+                self.preview?.routes = list
+                self.preview?.selected = 0
+                self.preview?.loading = false
+            } catch {
+                guard let self, !Task.isCancelled, self.preview?.destination.id == destination.id else { return }
+                #if DEBUG
+                if ProcessInfo.processInfo.arguments.contains("-DemoRoad") {
+                    self.preview?.routes = [RoadRoutingService.sampleRoute()]
+                    self.preview?.loading = false
+                    return
+                }
+                #endif
+                self.preview?.loading = false
+                self.preview?.error = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                if case OfflineRouter.RouterError.noGraph = error {
+                    self.preview?.suggestedRegion = RouteGraphStore.shared.suggestedRegion(for: from, destination.coordinate)?.id
+                }
+            }
+        }
+    }
+
+    func selectPreviewRoute(_ i: Int) { if preview?.routes.indices.contains(i) == true { preview?.selected = i } }
+
+    func cancelPreview() { previewTask?.cancel(); preview = nil }
+
+    /// يبدأ الملاحة من المعاينة: بالطريق المختار أو بالخط المباشر.
+    func startFromPreview(mode: GuidanceMode) {
+        guard let p = preview else { return }
+        let origin = location?.location.map { Waypoint(name: "موقعي", coordinate: $0.coordinate) }
+        let route = mode == .road ? p.selectedRoute : nil
+        preview = nil
+        start(NavigationPlan(origin: origin, waypoints: [], destination: p.destination, mode: route == nil ? .direct : .road,
+                             tripID: p.tripID), presetRoute: route)
+    }
+
+    func start(_ plan: NavigationPlan) { start(plan, presetRoute: nil) }
+
+    func start(_ plan: NavigationPlan, presetRoute: RoadRoute?) {
         var s = NavigationSnapshot()
         s.status = .active
         s.plan = plan
@@ -70,8 +139,17 @@ final class SharedNavigationState: ObservableObject {
         RecentDestinations.record(plan.destination)
         location?.requestFullAccuracyIfNeeded()
         location?.beginBackgroundUpdates(reason: Self.backgroundReason)
+        if let route = presetRoute {
+            // الطريق المختار من المعاينة: نستخدمه مباشرة دون حساب جديد
+            snapshot.roadRoute = route
+            snapshot.notice = nil
+            lastRouteRequest = Date()
+            snapshot.roadStepIndex = location?.location.map {
+                RoadRoutingService.currentStepIndex(steps: route.steps, from: 0, at: $0.coordinate)
+            } ?? 0
+        }
         if let loc = location?.location { update(with: loc) }
-        if plan.mode == .road { requestRoadRoute(force: true) }
+        if plan.mode == .road, presetRoute == nil { requestRoadRoute(force: true) }
     }
 
     /// يبدأ الملاحة إلى نقطة واحدة من الموقع الحالي.
@@ -107,6 +185,7 @@ final class SharedNavigationState: ObservableObject {
         guard let plan = snapshot.plan, let loc = location?.location else { return }
         snapshot.roadRoute = nil
         snapshot.roadStepIndex = 0
+        snapshot.roadProgressIndex = 0
         let p = NavigationEngine.progress(plan: plan, targetIndex: index, current: loc.coordinate,
                                           heading: location?.currentHeadingDegrees, speed: speed(of: loc))
         snapshot.progress = p
@@ -140,6 +219,10 @@ final class SharedNavigationState: ObservableObject {
         // تعليمات الطريق إن وجدت
         if let route = snapshot.roadRoute {
             advanceRoadStep(route: route, current: loc.coordinate)
+            let pi = RoadRoutingService.progressIndex(on: route.coordinates, from: snapshot.roadProgressIndex, at: loc.coordinate)
+            if pi != snapshot.roadProgressIndex { snapshot.roadProgressIndex = pi }
+            // تحديث الطريق كل 5 دقائق (قد يظهر طريق أسرع)، والحساب داخل الجوال لا يحتاج إنترنت
+            if Date().timeIntervalSince(lastRouteRequest) > 300 { requestRoadRoute(force: false, minInterval: 300) }
             if let step = snapshot.currentRoadStep {
                 snapshot.instruction = step.instruction
             } else {
@@ -212,6 +295,7 @@ final class SharedNavigationState: ObservableObject {
                 let route = try await RoadRoutingService.route(from: from, to: target.coordinate)
                 guard let self, !Task.isCancelled, self.snapshot.planRevision == revision else { return }
                 self.snapshot.roadRoute = route
+                self.snapshot.roadProgressIndex = 0
                 self.snapshot.roadStepIndex = self.location?.location.map {
                     RoadRoutingService.currentStepIndex(steps: route.steps, from: 0, at: $0.coordinate)
                 } ?? 0

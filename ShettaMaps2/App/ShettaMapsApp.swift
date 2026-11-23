@@ -63,8 +63,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String,
                      completionHandler: @escaping () -> Void) {
         MainActor.assumeIsolated {
-            RegionPackService.backgroundCompletion = completionHandler
-            _ = RegionPackService.shared
+            if identifier.contains("roadgraph") {
+                RouteGraphStore.backgroundCompletion = completionHandler
+                _ = RouteGraphStore.shared
+            } else {
+                RegionPackService.backgroundCompletion = completionHandler
+                _ = RegionPackService.shared
+            }
         }
     }
 

@@ -63,7 +63,7 @@ struct CoordinateInputView: View {
                     Button { mapManager.send(.focus(c, spanMeters: 3000)); mapManager.pickedCoordinate = nil; dismiss(); router.showOnMap() } label: {
                         Label("انتقل إلى النقطة على الخريطة", systemImage: "map")
                     }
-                    Button { navigation.navigate(to: Waypoint(name: "إحداثيات مدخلة", coordinate: c)); dismiss(); router.showOnMap() } label: {
+                    Button { navigation.previewRoutes(to: Waypoint(name: "إحداثيات مدخلة", coordinate: c)); dismiss(); router.showOnMap() } label: {
                         Label("ابدأ الملاحة إليها", systemImage: "location.north.line.fill")
                     }
                     Button {

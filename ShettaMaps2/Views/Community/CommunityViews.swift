@@ -72,7 +72,7 @@ struct CommunityPlaceView: View {
                 Text("مكان شاركه أحد المستخدمين. قد لا يكون دقيقًا؛ تحقق من الطريق والسلامة قبل التوجه.")
             }
             Section {
-                Button { navigation.navigate(to: place.waypoint); dismiss(); router.showOnMap() } label: {
+                Button { navigation.previewRoutes(to: place.waypoint); dismiss(); router.showOnMap() } label: {
                     Label("ابدأ الملاحة إليه", systemImage: "location.north.line.fill")
                 }
                 Button {

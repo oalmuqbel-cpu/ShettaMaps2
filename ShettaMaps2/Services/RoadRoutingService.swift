@@ -42,14 +42,37 @@ enum RoadRoutingError: LocalizedError {
 
 /// يطلب طريق قيادة من Apple Maps (MKDirections). يتطلب الإنترنت ولا يغطي الطرق الصحراوية غير المعبدة غالبًا.
 enum RoadRoutingService {
+    @MainActor
     static func route(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) async throws -> RoadRoute {
         guard let r = try await routes(from: from, to: to, alternatives: false).first else { throw RoadRoutingError.noRoute }
         return r
     }
 
-    /// حتى ثلاثة طرق بديلة مرتبة من الأسرع.
+    /// حتى ثلاثة طرق بديلة مرتبة من الأسرع: من شبكة الطرق المنزلة في الجوال أولًا (تعمل دون إنترنت،
+    /// وهي الوحيدة في السعودية لأن Apple لا توفر توجيهات القيادة فيها)، وإلا من خدمة Apple حيث تتوفر.
+    @MainActor
     static func routes(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D, alternatives: Bool = true) async throws -> [RoadRoute] {
-        guard NetworkMonitor.shared.isOnline else { throw RoadRoutingError.offline }
+        if let g = RouteGraphStore.shared.graph(covering: from, to) {
+            let count = alternatives ? 3 : 1
+            return try await Task.detached(priority: .userInitiated) {
+                try OfflineRouter.routes(on: g, from: from, to: to, alternatives: count)
+            }.value
+        }
+        do {
+            return try await appleRoutes(from: from, to: to, alternatives: alternatives)
+        } catch {
+            // في السعودية: لا توجيهات من Apple، فالمطلوب تنزيل طرق الملاحة للمنطقة
+            if RouteGraphStore.shared.suggestedRegion(for: from, to) != nil || isSaudi(from) { throw OfflineRouter.RouterError.noGraph }
+            throw error
+        }
+    }
+
+    static func isSaudi(_ c: CLLocationCoordinate2D) -> Bool {
+        c.latitude > 16 && c.latitude < 32.5 && c.longitude > 34.4 && c.longitude < 55.7
+    }
+
+    static func appleRoutes(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D, alternatives: Bool) async throws -> [RoadRoute] {
+        guard await NetworkMonitor.shared.isOnline else { throw RoadRoutingError.offline }
         let request = MKDirections.Request()
         request.source = MKMapItem(placemark: MKPlacemark(coordinate: from))
         request.destination = MKMapItem(placemark: MKPlacemark(coordinate: to))

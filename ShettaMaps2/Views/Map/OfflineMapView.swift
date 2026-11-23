@@ -150,6 +150,9 @@ struct OfflineMapView: UIViewRepresentable {
             case .resetNorth: map.setDirection(0, animated: true)
             case .centerOnUser:
                 map.setUserTrackingMode(.follow, animated: true, completionHandler: nil)
+            case .followCourse:
+                if map.zoomLevel < 15 { map.setZoomLevel(16, animated: false) }
+                map.setUserTrackingMode(.followWithCourse, animated: true, completionHandler: nil)
             case let .focus(coord, span):
                 // مستوى تكبير تقريبي من المسافة المطلوبة
                 let zoom = max(2, min(18, log2(40_075_000 / max(span, 50))))

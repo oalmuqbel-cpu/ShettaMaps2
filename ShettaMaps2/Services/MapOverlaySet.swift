@@ -29,7 +29,7 @@ struct MapOverlaySet: Equatable {
         case reserve
         var isSmall: Bool { self == .stop || self == .resume }
     }
-    enum LineKind: Equatable { case track, direct, road, importedTrack, community, myTracks }
+    enum LineKind: Equatable { case track, direct, road, roadDone, routeAlt, importedTrack, community, myTracks }
 
     struct Line: Equatable {
         var kind: LineKind
@@ -53,6 +53,7 @@ struct MapOverlaySet: Equatable {
                       navigation: NavigationSnapshot,
                       currentLocation: CLLocationCoordinate2D?,
                       picked: CLLocationCoordinate2D? = nil,
+                      preview: RoutePreview? = nil,
                       extraPins: [Pin] = [],
                       extraLines: [Line] = []) -> MapOverlaySet {
         var set = MapOverlaySet()
@@ -77,8 +78,28 @@ struct MapOverlaySet: Equatable {
             var coords: [CLLocationCoordinate2D] = []
             if let c = currentLocation { coords.append(c) } else if let o = plan.origin { coords.append(o.coordinate) }
             coords += plan.targets.dropFirst(targetIndex).map(\.coordinate)
-            if coords.count > 1 { set.lines.append(Line(kind: .direct, coordinates: coords)) }
-            if let road = navigation.roadRoute { set.lines.append(Line(kind: .road, coordinates: road.coordinates)) }
+            if let road = navigation.roadRoute {
+                // على الطريق: الجزء المقطوع رمادي والمتبقي أزرق يبدأ من موقعك
+                let k = min(max(0, navigation.roadProgressIndex), road.coordinates.count - 1)
+                if k > 0 { set.lines.append(Line(kind: .roadDone, coordinates: Array(road.coordinates[0...k]))) }
+                var rest = Array(road.coordinates[k...])
+                if let c = currentLocation, rest.count > 1 { rest[0] = c }
+                set.lines.append(Line(kind: .road, coordinates: rest))
+            } else if coords.count > 1 {
+                set.lines.append(Line(kind: .direct, coordinates: coords))
+            }
+        }
+        if let preview {
+            set.pins.append(Pin(id: "pv-\(preview.destination.id)", title: preview.destination.name, subtitle: "الوجهة",
+                                coordinate: preview.destination.coordinate, kind: .destination))
+            for (i, r) in preview.routes.enumerated() where i != preview.selected {
+                set.lines.append(Line(kind: .routeAlt, coordinates: r.coordinates))
+            }
+            if let r = preview.selectedRoute {
+                set.lines.append(Line(kind: .road, coordinates: r.coordinates))
+            } else if let c = currentLocation {
+                set.lines.append(Line(kind: .direct, coordinates: [c, preview.destination.coordinate]))
+            }
         }
         if let picked {
             set.pins.append(Pin(id: "picked", title: "نقطة محددة", subtitle: nil, coordinate: picked, kind: .picked))

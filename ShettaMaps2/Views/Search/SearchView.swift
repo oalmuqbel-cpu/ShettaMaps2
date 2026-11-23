@@ -130,7 +130,7 @@ struct SearchView: View {
                 Button { showOnMap(r) } label: {
                     Label("عرض على الخريطة", systemImage: "map")
                 }
-                Button { navigation.navigate(to: r.waypoint); dismiss(); router.showOnMap() } label: {
+                Button { navigation.previewRoutes(to: r.waypoint); dismiss(); router.showOnMap() } label: {
                     Label("ابدأ الملاحة", systemImage: "location.north.line.fill")
                 }
                 Button { router.plannerDraft.waypoints.append(r.waypoint); router.mapSheet = .routePlanner } label: {

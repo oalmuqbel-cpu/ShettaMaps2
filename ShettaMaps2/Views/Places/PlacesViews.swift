@@ -178,7 +178,7 @@ struct PlaceDetailView: View {
                 if !place.notes.isEmpty { Text(place.notes) }
             }
             Section {
-                Button { navigation.navigate(to: place.asWaypoint); router.showOnMap() } label: {
+                Button { navigation.previewRoutes(to: place.asWaypoint); router.showOnMap() } label: {
                     Label("ابدأ الملاحة إلى هنا", systemImage: "location.north.line.fill")
                 }
                 Button { router.plannerDraft.waypoints.append(place.asWaypoint); router.mapSheet = .routePlanner; router.showOnMap() } label: {
