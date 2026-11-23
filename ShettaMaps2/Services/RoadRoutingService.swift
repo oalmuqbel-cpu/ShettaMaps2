@@ -22,6 +22,8 @@ struct RoadRoute: Equatable {
     var steps: [RoadStep]
     var distance: Double
     var expectedTravelTime: TimeInterval
+    /// اسم الطريق الرئيسي كما تعطيه الخدمة (مثل «طريق الملك فهد»).
+    var name: String = ""
 
     static func == (a: RoadRoute, b: RoadRoute) -> Bool {
         a.distance == b.distance && a.steps == b.steps && a.coordinates.count == b.coordinates.count
@@ -41,24 +43,48 @@ enum RoadRoutingError: LocalizedError {
 /// يطلب طريق قيادة من Apple Maps (MKDirections). يتطلب الإنترنت ولا يغطي الطرق الصحراوية غير المعبدة غالبًا.
 enum RoadRoutingService {
     static func route(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) async throws -> RoadRoute {
+        guard let r = try await routes(from: from, to: to, alternatives: false).first else { throw RoadRoutingError.noRoute }
+        return r
+    }
+
+    /// حتى ثلاثة طرق بديلة مرتبة من الأسرع.
+    static func routes(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D, alternatives: Bool = true) async throws -> [RoadRoute] {
+        guard NetworkMonitor.shared.isOnline else { throw RoadRoutingError.offline }
         let request = MKDirections.Request()
         request.source = MKMapItem(placemark: MKPlacemark(coordinate: from))
         request.destination = MKMapItem(placemark: MKPlacemark(coordinate: to))
         request.transportType = .automobile
-        request.requestsAlternateRoutes = false
+        request.requestsAlternateRoutes = alternatives
         do {
             let response = try await MKDirections(request: request).calculate()
-            guard let r = response.routes.first else { throw RoadRoutingError.noRoute }
-            let steps = buildSteps(r.steps.map { (instruction: $0.instructions, distance: $0.distance, coords: $0.polyline.coordinates) })
-            return RoadRoute(coordinates: r.polyline.coordinates, steps: steps,
-                             distance: r.distance, expectedTravelTime: r.expectedTravelTime)
+            let list = response.routes.prefix(3).map { r in
+                RoadRoute(coordinates: r.polyline.coordinates,
+                          steps: buildSteps(r.steps.map { (instruction: $0.instructions, distance: $0.distance, coords: $0.polyline.coordinates) }),
+                          distance: r.distance, expectedTravelTime: r.expectedTravelTime, name: r.name)
+            }
+            guard !list.isEmpty else { throw RoadRoutingError.noRoute }
+            return list.sorted { $0.expectedTravelTime < $1.expectedTravelTime }
         } catch let e as RoadRoutingError {
             throw e
-        } catch let e as MKError where e.code == .serverFailure || e.code == .loadingThrottled {
-            throw RoadRoutingError.offline
         } catch {
+            let ns = error as NSError
+            appLog.error("Directions failed: \(ns.domain, privacy: .public) \(ns.code) \(ns.localizedDescription, privacy: .public)")
+            if let e = error as? MKError, e.code == .serverFailure || e.code == .loadingThrottled { throw RoadRoutingError.offline }
+            if ns.domain == NSURLErrorDomain { throw RoadRoutingError.offline }
             throw RoadRoutingError.noRoute
         }
+    }
+
+    /// موضع أقرب نقطة على خط الطريق، بالبحث للأمام من آخر موضع معروف (لتلوين الجزء المقطوع).
+    static func progressIndex(on coords: [CLLocationCoordinate2D], from start: Int, at p: CLLocationCoordinate2D) -> Int {
+        guard coords.count > 1 else { return 0 }
+        var best = min(start, coords.count - 2), bestD = Double.greatestFiniteMagnitude
+        let end = min(coords.count - 1, start + 400)
+        for i in max(0, start - 5)..<end {
+            let d = segmentDistance(p, coords[i], coords[i + 1])
+            if d < bestD { bestD = d; best = i }
+        }
+        return bestD < 120 ? max(start, best) : start
     }
 }
 
