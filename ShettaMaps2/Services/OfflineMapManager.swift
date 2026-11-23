@@ -116,6 +116,7 @@ final class OfflineMapManager: ObservableObject {
     private init() {
         Self.configureNetwork()
         loadTilesets()
+        refreshRegionStylesIfNeeded()
         if let s = UserDefaults.standard.string(forKey: "selectedTileset"), let id = UUID(uuidString: s),
            tilesets.contains(where: { $0.id == id }) {
             selectedTilesetID = id
@@ -454,6 +455,38 @@ final class OfflineMapManager: ObservableObject {
         if let t = regionTileset(id: id) { deleteTileset(t) }
     }
 
+    /// إصدار تعديلات أنماط المناطق المنزلة؛ زيادته تعيد كتابة أنماط المناطق المثبتة عند التشغيل.
+    static let regionStyleVersion = 2
+
+    /// النص المعروض للأسماء: العربي أولًا، وإلا الاسم المحلي، وإلا اللاتيني.
+    nonisolated static let arabicLabelExpression: [Any] = ["coalesce", ["get", "name:ar"], ["get", "name"], ["get", "name:latin"]]
+
+    /// نمط liberty يدمج الاسم اللاتيني والعربي في نص واحد، ومعالجة هذا النص المختلط الاتجاه تفشل في MapLibre
+    /// فتُترك مربعات كاملة فارغة (لا شوارع ولا طرق) عند التقريب ١٠ فما فوق. نعرض اسمًا واحدًا بالعربية.
+    nonisolated static func useArabicLabels(_ style: inout [String: Any]) {
+        guard var layers = style["layers"] as? [[String: Any]] else { return }
+        for i in layers.indices {
+            guard var layout = layers[i]["layout"] as? [String: Any], let tf = layout["text-field"] else { continue }
+            let text = (try? JSONSerialization.data(withJSONObject: tf, options: [.fragmentsAllowed]))
+                .flatMap { String(data: $0, encoding: .utf8) } ?? "\(tf)"
+            guard text.contains("name") else { continue }
+            layout["text-field"] = arabicLabelExpression
+            layers[i]["layout"] = layout
+        }
+        style["layers"] = layers
+    }
+
+    /// يعيد كتابة أنماط المناطق المثبتة سابقًا بالتعديلات الجديدة (دون إعادة تنزيل الخرائط).
+    private func refreshRegionStylesIfNeeded() {
+        let key = "regionStyleVersion"
+        guard UserDefaults.standard.integer(forKey: key) < Self.regionStyleVersion else { return }
+        let dir = RegionPackService.styleDir
+        if FileManager.default.fileExists(atPath: dir.appendingPathComponent("style.json").path) {
+            for t in tilesets where t.fileName.hasPrefix("region-") { try? writeVectorStyle(for: t, styleDir: dir) }
+        }
+        UserDefaults.standard.set(Self.regionStyleVersion, forKey: key)
+    }
+
     /// نمط liberty نفسه، مع مصدر المربعات من الملف المحلي، والخطوط والرموز من مجلد النمط على الجهاز.
     private func writeVectorStyle(for t: LocalTileset, styleDir: URL) throws {
         let data = try Data(contentsOf: styleDir.appendingPathComponent("style.json"))
@@ -467,6 +500,7 @@ final class OfflineMapManager: ObservableObject {
             sources[k] = src
         }
         style["sources"] = sources
+        Self.useArabicLabels(&style)
         style["glyphs"] = styleDir.appendingPathComponent("fonts").absoluteString + "/{fontstack}/{range}.pbf"
         style["sprite"] = styleDir.appendingPathComponent("sprites/sprite").absoluteString
         let out = try JSONSerialization.data(withJSONObject: style)

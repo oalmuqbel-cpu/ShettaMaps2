@@ -943,3 +943,23 @@ final class OffRoadTailTests: XCTestCase {
         XCTAssertEqual(beyond.longitude, 46.61, accuracy: 1e-9)
     }
 }
+
+final class OfflineStyleLabelTests: XCTestCase {
+    func testMixedLabelsReplacedWithArabic() throws {
+        let mixed: [Any] = ["case", ["has", "name:nonlatin"], ["concat", ["get", "name:latin"], " ", ["get", "name:nonlatin"]], ["get", "name:latin"]]
+        var style: [String: Any] = ["layers": [
+            ["id": "road-name", "type": "symbol", "layout": ["text-field": mixed]],
+            ["id": "shield", "type": "symbol", "layout": ["text-field": ["to-string", ["get", "ref"]]]],
+            ["id": "water", "type": "fill"]
+        ]]
+        OfflineMapManager.useArabicLabels(&style)
+        let layers = try XCTUnwrap(style["layers"] as? [[String: Any]])
+        let road = try XCTUnwrap((layers[0]["layout"] as? [String: Any])?["text-field"] as? [Any])
+        XCTAssertEqual(road.first as? String, "coalesce")
+        XCTAssertEqual((road[1] as? [Any])?.last as? String, "name:ar")
+        // أرقام الطرق لا تتغير
+        let shield = try XCTUnwrap((layers[1]["layout"] as? [String: Any])?["text-field"] as? [Any])
+        XCTAssertEqual(shield.first as? String, "to-string")
+        XCTAssertNil(layers[2]["layout"])
+    }
+}

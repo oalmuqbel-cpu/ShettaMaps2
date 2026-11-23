@@ -133,6 +133,11 @@ struct OfflineMapView: UIViewRepresentable {
         /// إبراز الطرق الترابية والردميات من بيانات OpenStreetMap (طبقة transportation: class=track أو surface=unpaved).
         nonisolated func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
             MainActor.assumeIsolated {
+                // الأسماء المختلطة (لاتيني + عربي) تُفشل رسم مربعات كاملة؛ اسم عربي واحد بدلها
+                let label = NSExpression(mglJSONObject: OfflineMapManager.arabicLabelExpression)
+                for case let l as MLNSymbolStyleLayer in style.layers {
+                    if let t = l.text?.description, t.contains("name") { l.text = label }
+                }
                 if mapView.traitCollection.userInterfaceStyle == .dark { MapLibreNightStyle.apply(to: mapView) }
                 applyDirt(on: mapView)
                 applyCoverage(on: mapView)
