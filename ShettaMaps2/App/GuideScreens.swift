@@ -172,7 +172,10 @@ enum GuideScreens {
             mapManager.layer = .standard
             // من وسط الرياض إلى طريق الجنادرية شرقًا
             env.navigation.previewRoutes(to: Waypoint(name: "مهرجان الجنادرية", coordinate: .init(latitude: 24.7840, longitude: 46.8020)))
-            for _ in 0..<40 where env.navigation.preview?.loading ?? false { try? await Task.sleep(nanoseconds: 250_000_000) }
+            for _ in 0..<60 {
+                if env.navigation.preview?.loading == false { break }
+                try? await Task.sleep(nanoseconds: 250_000_000)
+            }
             if screen == "roadnav" {
                 env.navigation.startFromPreview(mode: .road)
                 mapManager.send(.followCourse)

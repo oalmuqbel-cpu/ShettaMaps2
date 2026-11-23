@@ -67,6 +67,7 @@ jobs:
             sleep 14
             # تنزيل منطقة كاملة يحتاج وقتًا أطول قبل التصوير
             if [ "$s" = "regioninstall" ]; then sleep 170; fi
+            if [ "$s" = "roadnav" ] || [ "$s" = "routepreview" ]; then sleep 25; fi
             t 60 xcrun simctl io "$UDID" screenshot "shots/$(printf %02d $i)-$s.png" || echo "shot failed: $s"
             t 30 xcrun simctl terminate "$UDID" $BID || true
             i=$((i+1)); sleep 2
