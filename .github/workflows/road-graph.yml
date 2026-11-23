@@ -22,7 +22,13 @@ jobs:
         run: |
           pip3 install --quiet osmium
           mkdir -p data out
-          curl -sSL --fail --retry 6 --retry-delay 20 --retry-all-errors -o data/gcc.osm.pbf https://download.geofabrik.de/asia/gcc-states-latest.osm.pbf
+          # Geofabrik أولًا، ثم مرآة openstreetmap.fr (السعودية) إن تعطل
+          ok=0
+          for U in https://download.geofabrik.de/asia/gcc-states-latest.osm.pbf \
+                   https://download.openstreetmap.fr/extracts/asia/saudi_arabia-latest.osm.pbf; do
+            curl -sSL --fail --retry 4 --retry-delay 30 --retry-all-errors -o data/gcc.osm.pbf "$U" && { ok=1; echo "from $U"; break; }
+          done
+          [ $ok = 1 ]
           ls -la data
       - name: Build graph
         run: /usr/bin/time -v python3 tools/roads/build_graph.py data/gcc.osm.pbf tools/regions/regions.json out ${{ inputs.version || '1' }} 2>&1 | grep -vE "^\s+(Average|Socket|Signals|Swaps|File system|Page size|Voluntary|Involuntary|Exit|Minor|Major|Percent)"
